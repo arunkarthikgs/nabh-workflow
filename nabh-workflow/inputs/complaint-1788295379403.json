@@ -1,0 +1,18 @@
+{
+  "complaintId": "C-FORM-001",
+  "dateOfComplaint": "01-09-2026",
+  "timeOfLodging": "10:15",
+  "timeAmPm": "AM",
+  "reportedBy": "Form Complainant",
+  "relationshipToPatient": "Self",
+  "patientName": "Form Patient",
+  "uhid": "UH-FORM-001",
+  "ipdOpdNumber": "OPD-FORM-001",
+  "contactNumber": "9999999999",
+  "complaintCategory": "Staff Behavior",
+  "complaintDescription": "Complaint entered through the streamlined form.",
+  "modeOfReceipt": "Direct Submission",
+  "responsibleDepartment": "Nursing",
+  "closureDate": "N/A",
+  "relationshipOtherText": ""
+}

@@ -1,0 +1,25 @@
+{
+  "name": "nabh-docs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Master List of Documents workflow - reads the department document register (Google Sheets or a local .xlsx export) and reports the applicable documents per department.",
+  "scripts": {
+    "master-list": "node workflows/masterListWorkflow.js",
+    "master-list:local": "node workflows/masterListWorkflow.js --local",
+    "match-documents": "node workflows/documentMatchingWorkflow.js",
+    "server": "node server.js",
+    "ui": "npm --prefix web run dev",
+    "ui:build": "npm --prefix web run build",
+    "prototype": "node workflows/generateFullStaticPrototype.js",
+    "aac-policy:word": "zsh workflows/createAacPolicyWordCopy.sh",
+    "aac-policy:clean": "node workflows/removeAacPolicyWatermark.js",
+    "aac-policy:presentation": "npm run aac-policy:word && zsh workflows/exportAacPolicyModifiedPdf.sh"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1124.0",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "googleapis": "^178.0.0",
+    "pdf-lib": "^1.17.1"
+  }
+}

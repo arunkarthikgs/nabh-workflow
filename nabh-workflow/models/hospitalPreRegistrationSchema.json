@@ -1,0 +1,22 @@
+{
+  "fullName": "",
+  "gender": "",
+  "dateOfBirth": "",
+  "idNumber": "",
+  "contactNumber": "",
+  "emailAddress": "",
+  "permanentAddress": "",
+  "admittingDoctor": "",
+  "department": "",
+  "proposedDate": "",
+  "stayType": "",
+  "paymentMode": "",
+  "insuranceCompany": "",
+  "tpaName": "",
+  "policyId": "",
+  "preAuthStatus": "",
+  "emergencyContactName": "",
+  "relationship": "",
+  "contactPhone1": "",
+  "contactPhone2": ""
+}

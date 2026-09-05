@@ -1,0 +1,24 @@
+Complaint ID: C-2026-001
+Patient Name: Ravi Kumar
+UHID: UH12345
+Date of Complaint: 01-09-2026
+Complaint Category: Nursing care
+Complaint Description: Patient reported delay in medication administration.
+Reported By: Patient
+Time of Lodging: 09:30
+AM/PM: AM
+Relationship to Patient: Self
+Relationship Other Details:
+IPD / OPD Number: OPD-2026-001
+Contact Number: 9876543210
+Email Address: ravi.kumar@example.com
+Mode of Receipt: Direct Submission
+Received By Name & Designation: Patient Coordinator
+Investigation Summary: Nurse was occupied in emergency case; delay of 45 minutes.
+Root Cause: Inadequate backup staffing.
+Corrective Action: Reassign backup nurse during peak hours.
+Preventive Action: Update staffing policy and conduct training.
+Responsible Department: Nursing
+Closure Status: Closed
+Closure Date: 03-09-2026
+Quality Reviewer: Quality Manager

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build outputs
+dist/
+web/dist/
+nabh-docs/web/dist/
+nabh-workflow/web/dist/
+prototype/
+
+# Environment and secrets
+.env
+.env.local
+config.properties
+
+# Temp files and cache
+/tmp/
+*.log
+.DS_Store

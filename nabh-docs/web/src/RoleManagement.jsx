@@ -1,0 +1,112 @@
+import { Fragment, useEffect, useState } from "react";
+import { BookOpenCheck, Building2, ChevronDown, Pencil, Plus, Save, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+
+const actions = [{ id: "view", label: "View" }, { id: "edit", label: "Edit" }, { id: "delete", label: "Delete" }, { id: "destroy", label: "Permanently delete" }];
+const groups = {
+  "Administrative & Management": ["Hospital Administrator", "Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator", "Medical Records Officer (MRD)", "Front Office Executive", "Billing Executive"],
+  "Clinical Care": ["Consultant Doctors", "Resident Medical Officer (RMO)", "Nurses", "Anesthesiologist", "Surgeon", "Physiotherapist", "Dietician"],
+  "Emergency & Critical Care": ["Emergency Medical Officer", "Trauma Nurse", "Intensivist", "Critical Care Nurse"],
+  "Diagnostics & Laboratory": ["Lab Technician", "Pathologist", "Radiologist", "Radiology Technician"],
+  "Pharmacy & Medication": ["Pharmacist", "Pharmacy Store Manager", "Clinical Pharmacist"],
+  "Quality, Safety & NABH": ["Infection Control Nurse (ICN)", "Patient Safety Officer", "Safety Officer", "Biomedical Engineer"],
+  "Facility Management & Support": ["Housekeeping Supervisor", "Security Officer", "Maintenance Engineer", "Ward Boy / Patient Transporter"],
+  "Finance, Insurance & TPA": ["Accounts Manager", "TPA Coordinator", "Audit Officer"],
+  "Operation Theatre": ["OT Nurse", "Scrub Nurse", "Circulating Nurse", "OT Technician"],
+  "NABH-Mandated Committees": ["Quality Committee Members", "Infection Control Committee (ICC)", "Pharmacy & Therapeutics Committee (PTC)", "Safety Committee", "Medical Records Committee", "Biomedical Committee"]
+};
+const blankRole = { name: "", documentAccess: {}, permissions: ["view"] };
+function groupRoles(roles) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
+
+export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
+  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || "");
+  async function load() { const [roleResponse, documentResponse, hospitalResponse] = await Promise.all([fetch(`/api/admin/hospitals/${hospitalId}/roles`), fetch("/api/document-matches"), fetch("/api/admin/hospitals")]); if (!roleResponse.ok || !documentResponse.ok || !hospitalResponse.ok) throw new Error("Unable to load role access data."); const loadedRoles = (await roleResponse.json()).roles, loadedDepartments = await documentResponse.json(), hospital = (await hospitalResponse.json()).hospitals.find((item) => item.id === hospitalId); setRoles(loadedRoles); setDepartments(loadedDepartments); setDepartment((current) => current || Object.keys(loadedDepartments)[0] || ""); setSelectedId((current) => loadedRoles.some((role) => role.id === current) ? current : loadedRoles[0]?.id || ""); setLogoPath(hospital?.logoPath || hospitalLogoPath || ""); }
+  useEffect(() => { load().catch((error) => setMessage(error.message)); }, [hospitalId]);
+  useEffect(() => {
+    const button = window.document.createElement("button");
+    button.className = "new-role-button";
+    button.type = "button";
+    button.textContent = "New role";
+    button.addEventListener("click", () => { setSelectedId(""); setDraft(blankRole); setTab("roles"); });
+    window.document.body.appendChild(button);
+    return () => button.remove();
+  }, []);
+  useEffect(() => {
+    if (tab !== "scope") return undefined;
+    const addSearch = (panel, placeholder, onQuery) => {
+      if (!panel) return () => {};
+      const input = window.document.createElement("input");
+      input.className = "context-search";
+      input.type = "search";
+      input.placeholder = placeholder;
+      input.addEventListener("input", () => onQuery(input.value.trim().toLowerCase(), input));
+      panel.querySelector(".panel-heading")?.after(input);
+      return () => input.remove();
+    };
+    const filterRoles = (query) => {
+      window.document.querySelectorAll(".scope-role").forEach((role) => {
+        const groupName = role.closest(".role-group")?.querySelector(".role-group-toggle")?.textContent.toLowerCase() || "";
+        role.style.display = query && !role.textContent.toLowerCase().includes(query) && !groupName.includes(query) ? "none" : "";
+      });
+      window.document.querySelectorAll(".scope-role-list .role-group").forEach((group) => { group.style.display = query && ![...group.querySelectorAll(".scope-role")].some((role) => role.style.display !== "none") ? "none" : ""; });
+    };
+    const chooserCleanup = addSearch(window.document.querySelector(".scope-role-list"), "Search roles", (query, input) => {
+      if (query) {
+        const matchingGroups = grouped.filter(([group, members]) => group.toLowerCase().includes(query) || members.some((role) => role.name.toLowerCase().includes(query)));
+        setOpenGroups((current) => ({ ...current, ...Object.fromEntries(matchingGroups.map(([group]) => [group, true])) }));
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => filterRoles(input.value.trim().toLowerCase())));
+      } else filterRoles(query);
+    });
+    const accessCleanup = addSearch(window.document.querySelector(".scope-editor"), "Search departments or documents", (query, input) => {
+      const matchingDepartments = Object.entries(departments).filter(([name, items]) => name.toLowerCase().includes(query) || items.some((document) => `${document.documentName} ${document.documentId}`.toLowerCase().includes(query)));
+      if (query && matchingDepartments.length) setDepartment(matchingDepartments[0][0]);
+      window.document.querySelectorAll(".department-access-card").forEach((card) => {
+        const name = card.querySelector("strong")?.textContent || "";
+        const matches = !query || name.toLowerCase().includes(query) || (departments[name] || []).some((document) => `${document.documentName} ${document.documentId}`.toLowerCase().includes(query));
+        card.style.display = matches ? "" : "none";
+      });
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.document.querySelectorAll(".scope-picker label").forEach((item) => { item.style.display = input.value.trim() && !item.textContent.toLowerCase().includes(input.value.trim().toLowerCase()) ? "none" : ""; })));
+    });
+    return () => { chooserCleanup(); accessCleanup(); };
+  }, [tab, selectedId]);
+  useEffect(() => {
+    if (tab !== "roles") return undefined;
+    const panel = window.document.querySelector(".grouped-role-list");
+    if (!panel || panel.querySelector(".roles-search")) return undefined;
+    const input = window.document.createElement("input");
+    input.className = "context-search roles-search";
+    input.type = "search";
+    input.placeholder = "Search roles";
+    const filter = () => {
+      const query = input.value.trim().toLowerCase();
+      const matchingGroups = grouped.filter(([group, members]) => group.toLowerCase().includes(query) || members.some((role) => role.name.toLowerCase().includes(query)));
+      if (query) setOpenGroups((current) => ({ ...current, ...Object.fromEntries(matchingGroups.map(([group]) => [group, true])) }));
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        window.document.querySelectorAll(".grouped-role-list .role-row").forEach((role) => {
+          const group = role.closest(".role-group")?.querySelector(".role-group-toggle")?.textContent.toLowerCase() || "";
+          role.style.display = query && !role.textContent.toLowerCase().includes(query) && !group.includes(query) ? "none" : "";
+        });
+        window.document.querySelectorAll(".grouped-role-list .role-group").forEach((group) => { group.style.display = query && ![...group.querySelectorAll(".role-row")].some((role) => role.style.display !== "none") ? "none" : ""; });
+      }));
+    };
+    const handleInput = () => { setRolesQuery(input.value.trim().toLowerCase()); filter(); };
+    input.addEventListener("input", handleInput);
+    panel.before(input);
+    return () => { input.removeEventListener("input", handleInput); input.remove(); };
+  }, [tab, roles]);
+  const selectedRole = roles.find((role) => role.id === selectedId), docs = departments[department] || [], selectedDocs = draft.documentAccess[department] || [], grouped = groupRoles(roles);
+  const visibleRoleGroups = rolesQuery ? grouped.map(([group, members]) => [group, members.filter((role) => group.toLowerCase().includes(rolesQuery) || role.name.toLowerCase().includes(rolesQuery))]).filter(([, members]) => members.length) : grouped;
+  const count = (role) => Object.values(role.documentAccess || {}).flat().length;
+  const complete = (name) => departments[name]?.length > 0 && (draft.documentAccess[name] || []).length === departments[name].length;
+  function choose(role) { setSelectedId(role.id); setDraft({ name: role.name, documentAccess: role.documentAccess || {}, permissions: role.permissions || ["view"] }); }
+  function toggleAction(action) { setDraft((current) => { const permissions = current.permissions.includes(action) ? current.permissions.filter((item) => item !== action) : [...current.permissions, action]; return { ...current, permissions: permissions.some((item) => item !== "view") && !permissions.includes("view") ? ["view", ...permissions] : permissions }; }); }
+  function toggleDocument(id) { setDraft((current) => { const ids = current.documentAccess[department] || []; return { ...current, documentAccess: { ...current.documentAccess, [department]: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id] } }; }); }
+  function toggleDepartment(name) { setDraft((current) => ({ ...current, documentAccess: { ...current.documentAccess, [name]: complete(name) ? [] : departments[name].map((document) => document.id) } })); }
+  async function save(event) { event?.preventDefault(); const response = await fetch(selectedRole ? `/api/admin/hospitals/${hospitalId}/roles/${selectedRole.id}` : `/api/admin/hospitals/${hospitalId}/roles`, { method: selectedRole ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) }); if (!response.ok) return setMessage((await response.json()).error); const result = await response.json(); await load(); setSelectedId(result.role?.id || selectedId); setMessage("Role access saved."); }
+  async function matrix(role, action) { const permissions = (role.permissions || ["view"]).includes(action) ? role.permissions.filter((item) => item !== action) : [...(role.permissions || ["view"]), action]; await fetch(`/api/admin/hospitals/${hospitalId}/roles/${role.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...role, permissions: permissions.some((item) => item !== "view") && !permissions.includes("view") ? ["view", ...permissions] : permissions }) }); await load(); }
+  async function remove(role) { if (!window.confirm(`Remove ${role.name}?`)) return; await fetch(`/api/admin/hospitals/${hospitalId}/roles/${role.id}`, { method: "DELETE" }); await load(); }
+  const isGroupOpen = (group) => (tab === "roles" && rolesQuery) || openGroups[group] === true;
+  const toggleGroup = (group) => setOpenGroups((current) => ({ ...current, [group]: !isGroupOpen(group) }));
+  if (tab === "matrix") return <main className="admin-main"><header><div className="brand">{logoPath ? <img className="hospital-brand-logo" src={logoPath} alt={hospitalName} /> : <Building2 size={48} />}<div><p className="eyebrow">Hospital workspace</p><h1>Access control</h1></div></div><p className="intro">Manage role capabilities and document access.</p></header><section className="access-control"><nav className="access-tabs"><button onClick={() => setTab("roles")}><UsersRound size={16} /> Roles</button><button className="active"><ShieldCheck size={16} /> Permission matrix</button><button onClick={() => setTab("scope")}><BookOpenCheck size={16} /> Document access</button></nav>{message && <p className="access-message">{message}</p>}<section className="users-panel permission-table"><div className="panel-heading"><ShieldCheck size={18} /><h2>Permission matrix</h2></div>{grouped.map(([group, members]) => <section className="matrix-group" key={group}><button className="role-group-toggle" onClick={() => toggleGroup(group)} aria-expanded={isGroupOpen(group)}><span>{group}</span><ChevronDown size={15} /></button>{isGroupOpen(group) && <table><thead><tr><th>Role</th>{actions.map((action) => <th key={action.id}>{action.label}</th>)}<th>Scope</th></tr></thead><tbody>{members.map((role) => <tr key={role.id}><td><strong>{role.name}</strong></td>{actions.map((action) => <td key={action.id}><input type="checkbox" checked={(role.permissions || []).includes(action.id)} onChange={() => matrix(role, action.id)} /></td>)}<td>{count(role)} documents</td></tr>)}</tbody></table>}</section>)}</section></section></main>;
+  const roleCards = visibleRoleGroups.map(([group, members]) => <section className="role-group" key={group}><button className="role-group-toggle" onClick={() => toggleGroup(group)} aria-expanded={isGroupOpen(group)}><span>{group}</span><ChevronDown size={15} /></button>{isGroupOpen(group) && members.map((role) => <article className={`role-row ${role.id === selectedId ? "selected" : ""}`} key={role.id} onClick={() => choose(role)}><div><strong>{role.name}</strong><p>{count(role)} document assignments</p><div className="permission-summary">{actions.map((action) => <span className={role.permissions?.includes(action.id) ? "allowed" : "denied"} key={action.id}>{action.label}</span>)}</div></div><div><button className="icon-button" title="Edit role" onClick={(event) => { event.stopPropagation(); choose(role); }}><Pencil size={15} /></button><button className="icon-button" title="Delete role" onClick={(event) => { event.stopPropagation(); remove(role); }}><Trash2 size={15} /></button></div></article>)}</section>);
+  return <main className="admin-main"><header><div className="brand">{logoPath ? <img className="hospital-brand-logo" src={logoPath} alt={hospitalName} /> : <Building2 size={48} />}<div><p className="eyebrow">Hospital workspace</p><h1>Access control</h1></div></div><p className="intro">Manage role capabilities and document access.</p></header><section className="access-control"><nav className="access-tabs"><button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}><UsersRound size={16} /> Roles</button><button className={tab === "matrix" ? "active" : ""} onClick={() => setTab("matrix")}><ShieldCheck size={16} /> Permission matrix</button><button className={tab === "scope" ? "active" : ""} onClick={() => setTab("scope")}><BookOpenCheck size={16} /> Document access</button></nav>{message && <p className="access-message">{message}</p>}{tab === "roles" && <section className="role-layout"><section className="users-panel"><div className="panel-heading"><UsersRound size={18} /><h2>Roles</h2><button className="icon-button" title="Add role" onClick={() => { setSelectedId(""); setDraft(blankRole); }}><Plus size={17} /></button></div><div className="role-list grouped-role-list">{roleCards}</div></section><form className="users-panel role-form" onSubmit={save}><div className="panel-heading"><ShieldCheck size={18} /><h2>{selectedRole ? "Role details" : "New role"}</h2></div><label className="role-name">Role name<input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} required /></label><fieldset className="permission-matrix"><legend>Allowed actions</legend>{actions.map((action) => <label key={action.id}><input type="checkbox" checked={draft.permissions.includes(action.id)} onChange={() => toggleAction(action.id)} /> {action.label}</label>)}</fieldset><button className="primary-button"><Save size={16} /> Save role</button></form></section>}{tab === "matrix" && <section className="users-panel permission-table"><div className="panel-heading"><ShieldCheck size={18} /><h2>Permission matrix</h2></div><table><thead><tr><th>Role</th>{actions.map((action) => <th key={action.id}>{action.label}</th>)}<th>Scope</th></tr></thead><tbody>{grouped.map(([group, members]) => <Fragment key={group}><tr className="role-group-row"><td colSpan={6}>{group}</td></tr>{members.map((role) => <tr key={role.id}><td><strong>{role.name}</strong></td>{actions.map((action) => <td key={action.id}><input type="checkbox" checked={(role.permissions || []).includes(action.id)} onChange={() => matrix(role, action.id)} /></td>)}<td>{count(role)} documents</td></tr>)}</Fragment>)}</tbody></table></section>}{tab === "scope" && <section className="document-access-layout"><aside className="users-panel scope-role-list"><div className="panel-heading"><UsersRound size={18} /><h2>Choose role</h2></div><div className="role-list grouped-role-list">{grouped.map(([group, members]) => <section className="role-group" key={group}><button className="role-group-toggle" onClick={() => toggleGroup(group)} aria-expanded={isGroupOpen(group)}><span>{group}</span><ChevronDown size={15} /></button>{isGroupOpen(group) && members.map((role) => <button className={`scope-role ${role.id === selectedId ? "selected" : ""}`} key={role.id} onClick={() => choose(role)}><span><strong>{role.name}</strong><small>{count(role)} assigned documents</small></span></button>)}</section>)}</div></aside><section className="users-panel scope-editor">{selectedRole && <><div className="panel-heading"><BookOpenCheck size={18} /><h2>{selectedRole.name}</h2><button className="primary-button" onClick={save}><Save size={15} /> Save access</button></div><div className="department-access-grid">{Object.entries(departments).map(([name, items]) => <button key={name} className={`department-access-card ${department === name ? "selected" : ""}`} onClick={() => setDepartment(name)}><span><strong>{name}</strong><small>{(draft.documentAccess[name] || []).length} of {items.length} selected</small></span><span className={complete(name) ? "department-state complete" : (draft.documentAccess[name] || []).length ? "department-state partial" : "department-state"}>{complete(name) ? "All" : (draft.documentAccess[name] || []).length ? "Partial" : "None"}</span></button>)}</div><section className="department-detail"><div><h3>{department}</h3><p>{selectedDocs.length} of {docs.length} selected</p></div><button className="text-button department-toggle" onClick={() => toggleDepartment(department)}>{complete(department) ? "Clear department" : "Select all in department"}</button></section><fieldset className="document-picker scope-picker"><legend>Individual document access</legend>{docs.map((document) => <label key={document.id}><input type="checkbox" checked={selectedDocs.includes(document.id)} onChange={() => toggleDocument(document.id)} /><span><strong>{document.documentName}</strong><small>{document.documentId}</small></span></label>)}</fieldset></>}</section></section>}</section></main>;
+}

@@ -1,0 +1,1940 @@
+{
+  "Management related": [
+    {
+      "documentName": "Organization statement",
+      "documentId": "JPH/M/D-01/Rev 00"
+    },
+    {
+      "documentName": "Organization chart & department HR PPT",
+      "documentId": "JPH/M/D-02/Rev 00"
+    },
+    {
+      "documentName": "Organization scope of services",
+      "documentId": "JPH/M/D-03/Rev 00"
+    },
+    {
+      "documentName": "Master list- Statutory regulation",
+      "documentId": "JPH/M/D-04/Rev 00"
+    },
+    {
+      "documentName": "Hospital committees",
+      "documentId": "JPH/M/D-05/Rev 00"
+    },
+    {
+      "documentName": "Quality steering committee",
+      "documentId": "JPH/M/D-05C/Rev 00"
+    },
+    {
+      "documentName": "Hospital & patient safety committee",
+      "documentId": "JPH/M/D-05D/Rev 00"
+    },
+    {
+      "documentName": "Ethics committee",
+      "documentId": "JPH/M/D-05E/Rev 00"
+    },
+    {
+      "documentName": "Infection prevention and control committee",
+      "documentId": "JPH/M/D-05F/Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion committee",
+      "documentId": "JPH/M/D-05I/Rev 00"
+    },
+    {
+      "documentName": "External complaint / Vishaka committee",
+      "documentId": "JPH/M/D-05K/Rev 00"
+    },
+    {
+      "documentName": "Pharmocotherapetic committee",
+      "documentId": "JPH/M/D-05L/Rev 00"
+    },
+    {
+      "documentName": "Medical record review & information management committee",
+      "documentId": "JPH/M/D-05M/Rev 00"
+    },
+    {
+      "documentName": "Manpower details",
+      "documentId": "JPH/M/D-07/Rev 00"
+    },
+    {
+      "documentName": "Competency Matrix",
+      "documentId": "JPH/M/D-08/Rev 00"
+    },
+    {
+      "documentName": "Hospital tariff",
+      "documentId": "JPH/M/D-09/Rev 00"
+    },
+    {
+      "documentName": "Patient Rights & responsibilities",
+      "documentId": "JPH/M/D-11/Rev 00"
+    },
+    {
+      "documentName": "Employee HR Rights and Responsibility",
+      "documentId": "JPH/M/D-12/Rev 00"
+    },
+    {
+      "documentName": "Consent forms- Master template",
+      "documentId": "JPH/M/F--01/Rev 00"
+    },
+    {
+      "documentName": "General consent for Admission and Treatment",
+      "documentId": "JPH/M/F--01A/Rev 00"
+    },
+    {
+      "documentName": "Consent for procedures",
+      "documentId": "JPH/M/F--01B/Rev 00"
+    },
+    {
+      "documentName": "Consent form - Vulnerable patients",
+      "documentId": "JPH/M/F--01C/Rev 00"
+    },
+    {
+      "documentName": "High risk consent",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Consent for endoscopy",
+      "documentId": "JPH/M/F--01F/Rev 00"
+    },
+    {
+      "documentName": "Consent for treadmill test (TMT)",
+      "documentId": "JPH/M/F--01G/Rev 00"
+    },
+    {
+      "documentName": "Consent for ICU admission",
+      "documentId": "JPH/M/F--01H/Rev 00"
+    },
+    {
+      "documentName": "Consent for Refusal to treatment",
+      "documentId": "JPH/M/F--01I/Rev 00"
+    },
+    {
+      "documentName": "Consent for use of restrains",
+      "documentId": "JPH/M/F--01J/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "Consent for Blood transfusion",
+      "documentId": "JPH/M/F--01M/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for Administration of Anesthesia",
+      "documentId": "JPH/M/F--01N/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for Administration of Moderate sedation",
+      "documentId": "JPH/M/F--01O/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for surgery",
+      "documentId": "JPH/M/F--01P/Rev 00"
+    },
+    {
+      "documentName": "Consent for Medical termination of pregnancy",
+      "documentId": "JPH/M/F--01Q/Rev 00"
+    },
+    {
+      "documentName": "Consent for sterilization procedure and resterilization operation",
+      "documentId": "JPH/M/F--01R/Rev 00"
+    },
+    {
+      "documentName": "DNR form",
+      "documentId": "JPH/M/F--01S/Rev 00"
+    },
+    {
+      "documentName": "LAMA form",
+      "documentId": "JPH/M/F--01T/Rev 00"
+    },
+    {
+      "documentName": "Consent for Haemodialysis",
+      "documentId": "JPH/M/F--01U/Rev 00"
+    },
+    {
+      "documentName": "Training Plan 2024",
+      "documentId": "JPH/M/D-13/Rev 00"
+    },
+    {
+      "documentName": "NABH policies",
+      "documentId": "JPH/NABH/D-14/Rev 00"
+    },
+    {
+      "documentName": "CQI indicators",
+      "documentId": "JPH/M/D-15/Rev 00"
+    },
+    {
+      "documentName": "Clinical indicators",
+      "documentId": "JPH/M/D-15A/Rev 00"
+    },
+    {
+      "documentName": "Managerial indicators",
+      "documentId": "JPH/M/D-15B/Rev 00"
+    },
+    {
+      "documentName": "Presentations",
+      "documentId": "JPH/M/D-16/Rev 00"
+    },
+    {
+      "documentName": "Employee induction",
+      "documentId": "JPH/M/D-16A/Rev 00"
+    },
+    {
+      "documentName": "NABH orientation",
+      "documentId": "JPH/M/D-16B/Rev 00"
+    },
+    {
+      "documentName": "Emergeny codes",
+      "documentId": "JPH/M/D-17/Rev 00"
+    },
+    {
+      "documentName": "Code Red",
+      "documentId": "JPH/M/D-17A/Rev 00"
+    },
+    {
+      "documentName": "Code Blue",
+      "documentId": "JPH/M/D-17B/Rev 00"
+    },
+    {
+      "documentName": "Code Purple",
+      "documentId": "JPH/M/D-17C/Rev 00"
+    },
+    {
+      "documentName": "Code Black",
+      "documentId": "JPH/M/D-17D/Rev 00"
+    },
+    {
+      "documentName": "Code Pink",
+      "documentId": "JPH/M/D-17E/Rev 00"
+    },
+    {
+      "documentName": "Code Brown",
+      "documentId": "JPH/M/D-17F/Rev 00"
+    },
+    {
+      "documentName": "Hospital infection control manual",
+      "documentId": "JPH/M/D-18/Rev 00"
+    },
+    {
+      "documentName": "Hospital safety manual",
+      "documentId": "JPH/M/D-19/Rev 00"
+    },
+    {
+      "documentName": "Job descriptions",
+      "documentId": "JPH/M/D-20/Rev 00"
+    },
+    {
+      "documentName": "Programs",
+      "documentId": "JPH/M/D-22/Rev 00"
+    },
+    {
+      "documentName": "Hospital infection prevention & control programme",
+      "documentId": "JPH/M/D-22A/Rev 00"
+    },
+    {
+      "documentName": "Quality improvement plan",
+      "documentId": "JPH/M/D-22B/Rev 00"
+    }
+  ],
+  "NABH policies": [
+    {
+      "documentName": "Access, Assessment & Continuity of care (AAC)",
+      "documentId": "JPH/NABH/D-14A/Rev 00"
+    },
+    {
+      "documentName": "Care Of Patients (COP)",
+      "documentId": "JPH/NABH/D-14B/Rev 00"
+    },
+    {
+      "documentName": "Management of Medications (MOM)",
+      "documentId": "JPH/NABH/D-14C/Rev 00"
+    },
+    {
+      "documentName": "Patients Rights & Education (PRE)",
+      "documentId": "JPH/NABH/D-14D/Rev 00"
+    },
+    {
+      "documentName": "Hospital Infection Control (HIC)",
+      "documentId": "JPH/NABH/D-14E/Rev 00"
+    },
+    {
+      "documentName": "Continuous Quality Improvement (CQI)",
+      "documentId": "JPH/NABH/D-14F/Rev 00"
+    },
+    {
+      "documentName": "Responsibilities Of Management (ROM)",
+      "documentId": "JPH/NABH/D-14G/Rev 00"
+    },
+    {
+      "documentName": "Facility Management & Safety (FMS)",
+      "documentId": "JPH/NABH/D-14H/Rev 00"
+    },
+    {
+      "documentName": "Human Resource Management (HRM)",
+      "documentId": "JPH/NABH/D-14I/Rev 00"
+    },
+    {
+      "documentName": "Information Management System (IMS)",
+      "documentId": "JPH/NABH/D-14J/Rev 00"
+    }
+  ],
+  "Quality": [
+    {
+      "documentName": "Quality Manual",
+      "documentId": "JPH/DM/Q/M-01/Rev 00"
+    },
+    {
+      "documentName": "Risk management",
+      "documentId": "JPH/Q/SOP-01/Rev 00"
+    },
+    {
+      "documentName": "Internal complaint management process",
+      "documentId": "JPH/Q/SOP-02/Rev 00"
+    },
+    {
+      "documentName": "Communciation system",
+      "documentId": "JPH/Q/SOP-03/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting Form",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Code Blue event form",
+      "documentId": "JPH/Q/F-02/Rev 00"
+    },
+    {
+      "documentName": "Customer feedback",
+      "documentId": "JPH/Q/F-03/Rev 00"
+    },
+    {
+      "documentName": "Patient feedback - OP",
+      "documentId": "JPH/Q/F-03A/Rev 00"
+    },
+    {
+      "documentName": "Patient feedback - IP",
+      "documentId": "JPH/Q/F-03B/Rev 00"
+    },
+    {
+      "documentName": "Employee feedback",
+      "documentId": "JPH/Q/F-03C/Rev 00"
+    },
+    {
+      "documentName": "Adverse event reporting form",
+      "documentId": "JPH/Q/F-05/Rev 00"
+    },
+    {
+      "documentName": "Emergency codes -mock drill reporting forms",
+      "documentId": "JPH/Q/F-06/Rev 00"
+    },
+    {
+      "documentName": "Code Red",
+      "documentId": "JPH/Q/F-06A/Rev 00"
+    },
+    {
+      "documentName": "Code Blue",
+      "documentId": "JPH/Q/F-06B/Rev 00"
+    },
+    {
+      "documentName": "Code Brown",
+      "documentId": "JPH/Q/F-06C/Rev 00"
+    },
+    {
+      "documentName": "Code Black",
+      "documentId": "JPH/Q/F-06D/Rev 00"
+    },
+    {
+      "documentName": "Code Pink",
+      "documentId": "JPH/Q/F-06E/Rev 00"
+    },
+    {
+      "documentName": "Code Violet",
+      "documentId": "JPH/Q/F-06F/Rev 00"
+    }
+  ],
+  "Nursing dept": [
+    {
+      "documentName": "Nursing manual- Administrative services",
+      "documentId": "JPH/DM/ND/M-01/Rev 00"
+    },
+    {
+      "documentName": "Adminisrative  SOPs",
+      "documentId": "JPH/ND/A/SOP/Rev 00"
+    }
+  ],
+  "A _ E": [
+    {
+      "documentName": "Department Manual - A & E",
+      "documentId": "JPH/DM/AE/M-01/Rev 00"
+    },
+    {
+      "documentName": "Administrative SOPs",
+      "documentId": "JPH/AE/A/SOP/Rev 00"
+    },
+    {
+      "documentName": "Initial assessment form- Doctors",
+      "documentId": "JPH/IPD/F-02/Rev 00"
+    },
+    {
+      "documentName": "Nurses assessment form",
+      "documentId": "JPH/IPD/F-03/Rev 00"
+    },
+    {
+      "documentName": "Doctors progress notes",
+      "documentId": "JPH/IPD/F-04/Rev 00"
+    },
+    {
+      "documentName": "Nurses progress notes",
+      "documentId": "JPH/IPD/F-05/Rev 00"
+    },
+    {
+      "documentName": "Medication chart",
+      "documentId": "JPH/IPD/F-07/Rev 00"
+    },
+    {
+      "documentName": "Radiology Requisition form",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Laboratory Requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Prescription",
+      "documentId": "JPH/OPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "MEWS chart (modified emergency warning signs)",
+      "documentId": "JPH/IPD/F-12/Rev 00"
+    },
+    {
+      "documentName": "Transfer summary",
+      "documentId": "JPH/IPD/F-19/Rev 00"
+    },
+    {
+      "documentName": "Wound certificate",
+      "documentId": "JPH/AE/F-02/Rev 00"
+    },
+    {
+      "documentName": "Code Blue event form",
+      "documentId": "JPH/Q/F-02/Rev 00"
+    },
+    {
+      "documentName": "Consent for procedure",
+      "documentId": "JPH/M/F-01B/Rev 00"
+    },
+    {
+      "documentName": "Consent for refusal of treatment",
+      "documentId": "JPH/M/F-01I/Rev 00"
+    },
+    {
+      "documentName": "High risk consent form",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Consent for transfer",
+      "documentId": "JPH/M/F--01E/Rev 00"
+    },
+    {
+      "documentName": "Consent for Vulnerable patients",
+      "documentId": "JPH/M/F--01C/Rev 00"
+    },
+    {
+      "documentName": "LAMA form",
+      "documentId": "JPH/M/F--01T/Rev 00"
+    },
+    {
+      "documentName": "Police intimation form",
+      "documentId": "JPH/AE/F-03/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Treatment/procedure charge slip",
+      "documentId": "JPH/AE/F-04/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "Medical certificate",
+      "documentId": "JPH/AE/F-05/Rev 00"
+    },
+    {
+      "documentName": "A & E - Admission, transfer & discharge register",
+      "documentId": "JPH/AE/R-01/Rev 00"
+    },
+    {
+      "documentName": "Investigation register",
+      "documentId": "JPH/AE/R-02/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/AE/R-03/Rev 00"
+    },
+    {
+      "documentName": "Laboratory report collection register",
+      "documentId": "JPH/AE/R-04/Rev 00"
+    },
+    {
+      "documentName": "CSSD register",
+      "documentId": "JPH/AE/R-05/Rev 00"
+    },
+    {
+      "documentName": "Linen register",
+      "documentId": "JPH/AE/R-06/Rev 00"
+    },
+    {
+      "documentName": "Equipment movement",
+      "documentId": "JPH/AE/R-07/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/AE/R-08/Rev 00"
+    },
+    {
+      "documentName": "Fumigation Register",
+      "documentId": "JPH/AE/R-09/Rev 00"
+    },
+    {
+      "documentName": "LAMA register",
+      "documentId": "JPH/AE/R-10/Rev 00"
+    },
+    {
+      "documentName": "Brought dead register",
+      "documentId": "JPH/AE/R-11/Rev 00"
+    },
+    {
+      "documentName": "Death register",
+      "documentId": "JPH/AE/R-12/Rev 00"
+    },
+    {
+      "documentName": "Document handover register",
+      "documentId": "JPH/AE/R-13/Rev 00"
+    },
+    {
+      "documentName": "Procedure room register",
+      "documentId": "JPH/AE/R-14/Rev 00"
+    },
+    {
+      "documentName": "MLC register",
+      "documentId": "JPH/AE/R-15/Rev 00"
+    }
+  ],
+  "IPD": [
+    {
+      "documentName": "Department manual- IPD",
+      "documentId": "JPH/DM/IPD/M-01/Rev 00"
+    },
+    {
+      "documentName": "Administrative SOPs",
+      "documentId": "JPH/IPD/SOP/Rev 00"
+    },
+    {
+      "documentName": "Admission checklist",
+      "documentId": "JPH/IPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Initial assessment form- Doctors",
+      "documentId": "JPH/IPD/F-02/Rev 00"
+    },
+    {
+      "documentName": "Nurse assessment form",
+      "documentId": "JPH/IPD/F-03/Rev 00"
+    },
+    {
+      "documentName": "Doctors progress notes",
+      "documentId": "JPH/IPD/F-04/Rev 00"
+    },
+    {
+      "documentName": "Nurses progress notes",
+      "documentId": "JPH/IPD/F-05/Rev 00"
+    },
+    {
+      "documentName": "Prescription",
+      "documentId": "JPH/OPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Vitals sign chart",
+      "documentId": "JPH/IPD/F-06/Rev 00"
+    },
+    {
+      "documentName": "Medication chart",
+      "documentId": "JPH/IPD/F-07/Rev 00"
+    },
+    {
+      "documentName": "Intake Output Chart",
+      "documentId": "JPH/IPD/F-08/Rev 00"
+    },
+    {
+      "documentName": "Diabetic chart",
+      "documentId": "JPH/IPD/F-09/Rev 00"
+    },
+    {
+      "documentName": "Restrain monitoring checklist",
+      "documentId": "JPH/IPD/F-10/Rev 00"
+    },
+    {
+      "documentName": "Pain and fall assessment forms",
+      "documentId": "JPH/IPD/F-11/Rev 00"
+    },
+    {
+      "documentName": "MEWS chart (modified emergency warning signs)",
+      "documentId": "JPH/IPD/F-12/Rev 00"
+    },
+    {
+      "documentName": "Neuro monitoring chart",
+      "documentId": "JPH/IPD/F-13/Rev 00"
+    },
+    {
+      "documentName": "Check list and assessment Gastro procedures",
+      "documentId": "JPH/IPD/F-14/Rev 00"
+    },
+    {
+      "documentName": "Urinary catheter insertion checklist",
+      "documentId": "JPH/IPD/F-15/Rev 00"
+    },
+    {
+      "documentName": "Radiology Requisition form",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Laboratory Requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Drug replacement form",
+      "documentId": "JPH/IPD/F-16/Rev 00"
+    },
+    {
+      "documentName": "Code Blue event form",
+      "documentId": "JPH/Q/F-02/Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion monioritng form",
+      "documentId": "JPH/IPD/F-17/Rev 00"
+    },
+    {
+      "documentName": "Requisition for blood components",
+      "documentId": "JPH/IPD/F-18/Rev 00"
+    },
+    {
+      "documentName": "Transfer summary",
+      "documentId": "JPH/IPD/F-19/Rev 00"
+    },
+    {
+      "documentName": "Discharge summary",
+      "documentId": "JPH/IPD/F-20/Rev 00"
+    },
+    {
+      "documentName": "Discharge checklist",
+      "documentId": "JPH/IPD/F-21/Rev 00"
+    },
+    {
+      "documentName": "Discharge clearance form",
+      "documentId": "JPH/IPD/F-22/Rev 00"
+    },
+    {
+      "documentName": "Discharge slip",
+      "documentId": "JPH/IPD/F-23/Rev 00"
+    },
+    {
+      "documentName": "General Consent form- Admission and treatment",
+      "documentId": "JPH/M/F--01A/Rev 00"
+    },
+    {
+      "documentName": "Consent for procedure",
+      "documentId": "JPH/M/F--01B/Rev 00"
+    },
+    {
+      "documentName": "Consent for refusal of treatment",
+      "documentId": "JPH/M/F--01I/Rev 00"
+    },
+    {
+      "documentName": "High risk consent form",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Consent for transfer",
+      "documentId": "JPH/M/F--01E/Rev 00"
+    },
+    {
+      "documentName": "Consent for endoscopy",
+      "documentId": "JPH/M/F--01F/Rev 00"
+    },
+    {
+      "documentName": "Consent for TMT",
+      "documentId": "JPH/M/F--01G/Rev 00"
+    },
+    {
+      "documentName": "Consent for Vulnerable patients",
+      "documentId": "JPH/M/F--01C/Rev 00"
+    },
+    {
+      "documentName": "Consent for Blood transfusion",
+      "documentId": "JPH/M/F-01M/Rev 00"
+    },
+    {
+      "documentName": "LAMA form",
+      "documentId": "JPH/M/F--01T/Rev 00"
+    },
+    {
+      "documentName": "Do not resuscitate (DNR) form",
+      "documentId": "JPH/M/F--01S/Rev 00"
+    },
+    {
+      "documentName": "Consent for Haemodialysis",
+      "documentId": "JPH/M/F--01U/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "Death intimation form",
+      "documentId": "JPH/IPD/F-24/Rev 00"
+    },
+    {
+      "documentName": "Activity chart",
+      "documentId": "JPH/IPD/F-25/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "IPD feedback form",
+      "documentId": "JPH/IPD/F-26/Rev 00"
+    },
+    {
+      "documentName": "Medical Records checklist",
+      "documentId": "JPH/MRD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Financial counselling form",
+      "documentId": "JPH/IPD/F-27/Rev 00"
+    },
+    {
+      "documentName": "Financial counselling for surgery",
+      "documentId": "JPH/IPD/F-28/Rev 00"
+    },
+    {
+      "documentName": "Infection control form/surgical site infection checklist",
+      "documentId": "JPH/IPD/F-29/Rev 00"
+    },
+    {
+      "documentName": "Ventilator assocaited pneumonia preventon bundle checklist",
+      "documentId": "JPH/IPD/F-30/Rev 00"
+    },
+    {
+      "documentName": "Broaders 'Q' scale",
+      "documentId": "JPH/IPD/F-31/Rev 00"
+    },
+    {
+      "documentName": "Peripheral IV line checklsit",
+      "documentId": "JPH/IPD/F-32/Rev 00"
+    },
+    {
+      "documentName": "Family counselling record",
+      "documentId": "JPH/IPD/F-33/Rev 00"
+    },
+    {
+      "documentName": "GRBS usage",
+      "documentId": "JPH/IPD/F-34/Rev 00"
+    },
+    {
+      "documentName": "Checklist for prevention of cathether asscoaited UTI (CAUTI)",
+      "documentId": "JPH/IPD/F-35/Rev 00"
+    },
+    {
+      "documentName": "Surgical safety checklist",
+      "documentId": "JPH/OT/F-01/Rev 00"
+    },
+    {
+      "documentName": "Referral form",
+      "documentId": "JPH/IPD/F-36/Rev 00"
+    },
+    {
+      "documentName": "Admission, discharge & transfer  register",
+      "documentId": "JPH/IPD/R-01/Rev 00"
+    },
+    {
+      "documentName": "Investigation register",
+      "documentId": "JPH/IPD/R-02/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/IPD/R-03/Rev 00"
+    },
+    {
+      "documentName": "CSSD register",
+      "documentId": "JPH/IPD/R-04/Rev 00"
+    },
+    {
+      "documentName": "Laundry movement register",
+      "documentId": "JPH/IPD/R-05/Rev 00"
+    },
+    {
+      "documentName": "Equipment movement",
+      "documentId": "JPH/IPD/R-06/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/IPD/R-07/Rev 00"
+    },
+    {
+      "documentName": "Fumigation register",
+      "documentId": "JPH/IPD/R-08/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/IPD/R-09/Rev 00"
+    }
+  ],
+  "OPD": [
+    {
+      "documentName": "Department manual- OPD department",
+      "documentId": "JPH/DM/OPD/M-01/Rev 00"
+    },
+    {
+      "documentName": "Policy on Physician sample management",
+      "documentId": "JPH/OPD/SOPs/Rev 00"
+    },
+    {
+      "documentName": "Prescription",
+      "documentId": "JPH/OPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "OPD initial assessmnet form",
+      "documentId": "JPH/OPD/F-02/Rev 00"
+    },
+    {
+      "documentName": "Laboratory requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Radiology requisition form",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting Form",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "OPD patient register",
+      "documentId": "JPH/OPD/R-01/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/OPD/R-02/Rev 00"
+    }
+  ],
+  "Front office": [
+    {
+      "documentName": "Department manual- Front office department",
+      "documentId": "JPH/DM/FO/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/FO/SOP/Rev 00"
+    },
+    {
+      "documentName": "Registration form",
+      "documentId": "JPH/FO/F-01/Rev 00"
+    },
+    {
+      "documentName": "OPD Feed back form",
+      "documentId": "JPH/FO/F-02/Rev 00"
+    },
+    {
+      "documentName": "Incident report form",
+      "documentId": "JPH/FO/F-03/Rev 00"
+    },
+    {
+      "documentName": "OPD billing register",
+      "documentId": "JPH/FO/R-01/Rev 00"
+    },
+    {
+      "documentName": "Enquiry register",
+      "documentId": "JPH/FO/R-02/Rev 00"
+    },
+    {
+      "documentName": "Compliant register",
+      "documentId": "JPH/FO/R-03/Rev 00"
+    },
+    {
+      "documentName": "Cash handover book",
+      "documentId": "JPH/FO/R-04/Rev 00"
+    },
+    {
+      "documentName": "Petty cash book",
+      "documentId": "JPH/FO/R-05/Rev 00"
+    },
+    {
+      "documentName": "IP billing register",
+      "documentId": "JPH/FO/R-06/Rev 00"
+    },
+    {
+      "documentName": "Manual bill receipt book book",
+      "documentId": "JPH/FO/R-07/Rev 00"
+    },
+    {
+      "documentName": "Hand-over register",
+      "documentId": "JPH/FO/R-08/Rev 00"
+    }
+  ],
+  "OT": [
+    {
+      "documentName": "Department manual- OT department",
+      "documentId": "JPH/DM/OT/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/OT/SOP/Rev 00"
+    },
+    {
+      "documentName": "Surgical Safety Checklist",
+      "documentId": "JPH/OT/F-01/Rev 00"
+    },
+    {
+      "documentName": "Pre operative check list",
+      "documentId": "JPH/OT/F-02/Rev 00"
+    },
+    {
+      "documentName": "PAC form",
+      "documentId": "JPH/OT/F-03/Rev 00"
+    },
+    {
+      "documentName": "Anaesthsia monitoring form",
+      "documentId": "JPH/OT/F-04/Rev 00"
+    },
+    {
+      "documentName": "Anaesthesia record",
+      "documentId": "JPH/OT/F-05/Rev 00"
+    },
+    {
+      "documentName": "Operation record",
+      "documentId": "JPH/OT/F-06/Rev 00"
+    },
+    {
+      "documentName": "Post operative monitoring form",
+      "documentId": "JPH/OT/F-07/Rev 00"
+    },
+    {
+      "documentName": "OT instrument count checklist",
+      "documentId": "JPH/OT/F-08/Rev 00"
+    },
+    {
+      "documentName": "MEWS chart (modified emergency warning signs)",
+      "documentId": "JPH/IPD/F-12/Rev 00"
+    },
+    {
+      "documentName": "Room temperature and humidity monitoring checklist",
+      "documentId": "JPH/OT/F-09/ Rev 00"
+    },
+    {
+      "documentName": "Histopathology requisition form",
+      "documentId": "JPH/OT/F-10/ Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion monioritng form",
+      "documentId": "JPH/IPD/F-17/Rev 00"
+    },
+    {
+      "documentName": "Requisition for blood components",
+      "documentId": "JPH/IPD/F-18/Rev 00"
+    },
+    {
+      "documentName": "Consent for Blood transfusion",
+      "documentId": "JPH/M/F--01M/Rev 00"
+    },
+    {
+      "documentName": "High risk consent form",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for Administration of Anesthesia",
+      "documentId": "JPH/M/F--01N/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for surgery",
+      "documentId": "JPH/M/F--01P/Rev 00"
+    },
+    {
+      "documentName": "Informed consent for Administration of Moderate sedation",
+      "documentId": "JPH/M/F--01O/Rev 00"
+    },
+    {
+      "documentName": "Consent for Medical termination of pregnancy",
+      "documentId": "JPH/M/F--01Q/Rev 00"
+    },
+    {
+      "documentName": "Consent for sterilization procedure and resterilization operation",
+      "documentId": "JPH/M/F--01R/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting form",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "OT register",
+      "documentId": "JPH/OT/R-01/Rev 00"
+    },
+    {
+      "documentName": "Equipment register",
+      "documentId": "JPH/OT/R-02/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/OT/R-03/Rev 00"
+    },
+    {
+      "documentName": "Tissue disposal register",
+      "documentId": "JPH/OT/R-04/Rev 00"
+    },
+    {
+      "documentName": "Equipment movement register",
+      "documentId": "JPH/OT/R-05/Rev 00"
+    },
+    {
+      "documentName": "OT swab culture file",
+      "documentId": "JPH/OT/R-06/Rev 00"
+    }
+  ],
+  "ICU": [
+    {
+      "documentName": "Department manual- ICU",
+      "documentId": "JPH/DM/ICU/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/ICU/SOP/Rev 00"
+    },
+    {
+      "documentName": "Initial assessment form- Doctors",
+      "documentId": "JPH/IPD/F-02/Rev 00"
+    },
+    {
+      "documentName": "Initial assessment form- Nurses",
+      "documentId": "JPH/IPD/F-03/Rev 00"
+    },
+    {
+      "documentName": "Doctors progress notes",
+      "documentId": "JPH/IPD/F-04/Rev 00"
+    },
+    {
+      "documentName": "Nurses progress notes",
+      "documentId": "JPH/IPD/F-05/Rev 00"
+    },
+    {
+      "documentName": "Prescription form",
+      "documentId": "JPH/OPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Intake Output Chart",
+      "documentId": "JPH/IPD/F-08/Rev 00"
+    },
+    {
+      "documentName": "Diabetic chart",
+      "documentId": "JPH/IPD/F-09/Rev 00"
+    },
+    {
+      "documentName": "Restrain monitoring form",
+      "documentId": "JPH/IPD/F-10/Rev 00"
+    },
+    {
+      "documentName": "Pain and fall assessment forms",
+      "documentId": "JPH/IPD/F-11/Rev 00"
+    },
+    {
+      "documentName": "Medication chart",
+      "documentId": "JPH/IPD/F-07/Rev 00"
+    },
+    {
+      "documentName": "Code Blue event form",
+      "documentId": "JPH/Q/F-02/Rev 00"
+    },
+    {
+      "documentName": "MEWS chart (modified emergency warning signs)",
+      "documentId": "JPH/IPD/F-12/Rev 00"
+    },
+    {
+      "documentName": "Vitals sign chart",
+      "documentId": "JPH/IPD/F-06/Rev 00"
+    },
+    {
+      "documentName": "Neuro monitoring chart",
+      "documentId": "JPH/IPD/F-13/Rev 00"
+    },
+    {
+      "documentName": "Urinary catheter insertion checklist",
+      "documentId": "JPH/ND/F-13/Rev 00"
+    },
+    {
+      "documentName": "Check list and assessment Gastro procedures",
+      "documentId": "JPH/IPD/F-14/Rev 00"
+    },
+    {
+      "documentName": "Room temperature and humidity monitoring checklist",
+      "documentId": "JPH/OT/F-08/Rev 00"
+    },
+    {
+      "documentName": "Radiology Requisition slip",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Laboratory Requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion monioritng form",
+      "documentId": "JPH/IPD/F-17/Rev 00"
+    },
+    {
+      "documentName": "Requisition for blood components",
+      "documentId": "JPH/IPD/F-18/Rev 00"
+    },
+    {
+      "documentName": "Activity chart",
+      "documentId": "JPH/IPD/F-25/Rev 00"
+    },
+    {
+      "documentName": "Drug replacement form",
+      "documentId": "JPH/IPD/F-16/Rev 00"
+    },
+    {
+      "documentName": "Histopathology request form",
+      "documentId": "JPH/OT/F-10/ Rev 00"
+    },
+    {
+      "documentName": "Death Intimation form",
+      "documentId": "JPH/IPD/F-24/Rev 00"
+    },
+    {
+      "documentName": "Medical Records checklist",
+      "documentId": "JPH/MRD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Consent for ICU admission",
+      "documentId": "JPH/M/F--01H/Rev 00"
+    },
+    {
+      "documentName": "Consent for procedure",
+      "documentId": "JPH/M/F--01B/Rev 00"
+    },
+    {
+      "documentName": "Consent for refusal of treatment",
+      "documentId": "JPH/M/F--01I/Rev 00"
+    },
+    {
+      "documentName": "High risk consent form",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Consent for transfer",
+      "documentId": "JPH/M/F--01E/Rev 00"
+    },
+    {
+      "documentName": "Consent for TMT",
+      "documentId": "JPH/M/F--01G/Rev 00"
+    },
+    {
+      "documentName": "Consent for Vulnerable patients",
+      "documentId": "JPH/M/F--01C/Rev 00"
+    },
+    {
+      "documentName": "Consent for Blood transfusion",
+      "documentId": "JPH/M/F--01M/Rev 00"
+    },
+    {
+      "documentName": "LAMA form",
+      "documentId": "JPH/M/F--01T/Rev 00"
+    },
+    {
+      "documentName": "Do not resuscitate (DNR) form",
+      "documentId": "JPH/M/F--01S/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "Cathether & tubing misconnection monitoring checklist",
+      "documentId": "JPH/ICU/F-01/Rev 00"
+    },
+    {
+      "documentName": "Admission and Discharge register",
+      "documentId": "JPH/ICU/R-01/Rev 00"
+    },
+    {
+      "documentName": "Investigation register",
+      "documentId": "JPH/ICU/R-02/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/ICU/R-03/Rev 00"
+    },
+    {
+      "documentName": "Linen record book",
+      "documentId": "JPH/ICU/R-04/Rev 00"
+    },
+    {
+      "documentName": "Equipment movement register",
+      "documentId": "JPH/ICU/R-05/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/ICU/R-06/Rev 00"
+    },
+    {
+      "documentName": "MRD register",
+      "documentId": "JPH/ICU/R-07/Rev 00"
+    },
+    {
+      "documentName": "Fumigation register",
+      "documentId": "JPH/ICU/R-08/Rev 00"
+    },
+    {
+      "documentName": "Death register",
+      "documentId": "JPH/ICU/R-09/Rev 00"
+    },
+    {
+      "documentName": "CSSD register",
+      "documentId": "JPH/ICU/R-10/Rev 00"
+    }
+  ],
+  "OBG": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/OBG/M-01/Rev 00"
+    },
+    {
+      "documentName": "Gynaec case record",
+      "documentId": "JPH/OBG/F-01/Rev 00"
+    },
+    {
+      "documentName": "Nurse assessment form",
+      "documentId": "JPH/IPD/F-03/Rev 00"
+    },
+    {
+      "documentName": "Doctors progress notes",
+      "documentId": "JPH/IPD/F-04/Rev 00"
+    },
+    {
+      "documentName": "Nurses progress notes",
+      "documentId": "JPH/IPD/F-05/Rev 00"
+    },
+    {
+      "documentName": "Prescription form",
+      "documentId": "JPH/OPD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Intake Output Chart",
+      "documentId": "JPH/IPD/F-08/Rev 00"
+    },
+    {
+      "documentName": "Diabetic chart",
+      "documentId": "JPH/IPD/F-09/Rev 00"
+    },
+    {
+      "documentName": "Pain and fall assessment forms",
+      "documentId": "JPH/IPD/F-11/Rev 00"
+    },
+    {
+      "documentName": "Medication chart",
+      "documentId": "JPH/IPD/F-07/Rev 00"
+    },
+    {
+      "documentName": "MEWS chart (modified emergency warning signs)",
+      "documentId": "JPH/IPD/F-12/Rev 00"
+    },
+    {
+      "documentName": "Vitals sign chart",
+      "documentId": "JPH/IPD/F-06/Rev 00"
+    },
+    {
+      "documentName": "Partograph",
+      "documentId": "JPH/OBG/F-02/Rev 00"
+    },
+    {
+      "documentName": "Preclampsia monitoring chart",
+      "documentId": "JPH/OBG/F-03/Rev 00"
+    },
+    {
+      "documentName": "Labour monitoring chart",
+      "documentId": "JPH/OBG/F-04/Rev 00"
+    },
+    {
+      "documentName": "Fetal kick count checklist",
+      "documentId": "JPH/OBG/F-05/Rev 00"
+    },
+    {
+      "documentName": "Radiology Requisition slip",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Laboratory Requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion monioritng form",
+      "documentId": "JPH/IPD/F-17/Rev 00"
+    },
+    {
+      "documentName": "Requisition for blood components",
+      "documentId": "JPH/IPD/F-18/Rev 00"
+    },
+    {
+      "documentName": "Activity chart",
+      "documentId": "JPH/IPD/F-25/Rev 00"
+    },
+    {
+      "documentName": "Code Blue event form",
+      "documentId": "JPH/Q/F-02/Rev 00"
+    },
+    {
+      "documentName": "Consent for procedure",
+      "documentId": "JPH/M/F--01B/Rev 00"
+    },
+    {
+      "documentName": "Consent for refusal of treatment",
+      "documentId": "JPH/M/F--01I/Rev 00"
+    },
+    {
+      "documentName": "High risk consent form",
+      "documentId": "JPH/M/F--01D/Rev 00"
+    },
+    {
+      "documentName": "Consent for transfer",
+      "documentId": "JPH/M/F--01E/Rev 00"
+    },
+    {
+      "documentName": "Consent for Vulnerable patients",
+      "documentId": "JPH/M/F--01C/Rev 00"
+    },
+    {
+      "documentName": "LAMA form",
+      "documentId": "JPH/M/F--01T/Rev 00"
+    },
+    {
+      "documentName": "Consent for Blood transfusion",
+      "documentId": "JPH/M/F--01M/Rev 00"
+    },
+    {
+      "documentName": "Consent for HIV test",
+      "documentId": "JPH/M/F--01K/Rev 00"
+    },
+    {
+      "documentName": "Consent for Medical termination of pregnancy",
+      "documentId": "JPH/M/F--01Q/Rev 00"
+    },
+    {
+      "documentName": "Consent for sterilization procedure and resterilization operation",
+      "documentId": "JPH/M/F--01R/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Peri natal monitoring form",
+      "documentId": "JPH/OBG/F-06/Rev 00"
+    },
+    {
+      "documentName": "Post natal moniotirng form",
+      "documentId": "JPH/OBG/F-07/Rev 00"
+    },
+    {
+      "documentName": "Birth register",
+      "documentId": "JPH/OBG/R-01/Rev 00"
+    },
+    {
+      "documentName": "MTP register",
+      "documentId": "JPH/OBG/R-02/Rev 00"
+    },
+    {
+      "documentName": "Equipment movement register",
+      "documentId": "JPH/OBG/R-03/Rev 00"
+    },
+    {
+      "documentName": "CSSD register",
+      "documentId": "JPH/OBG/R-04/Rev 00"
+    },
+    {
+      "documentName": "MRD register",
+      "documentId": "JPH/OBG/R-05/Rev 00"
+    },
+    {
+      "documentName": "Fumigation register",
+      "documentId": "JPH/OBG/R-06/Rev 00"
+    },
+    {
+      "documentName": "Linen register",
+      "documentId": "JPH/OBG/R-07/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/OBG/R-08/Rev 00"
+    },
+    {
+      "documentName": "Sample dispatch register",
+      "documentId": "JPH/OBG/R-09/Rev 00"
+    },
+    {
+      "documentName": "Tissue disposal register",
+      "documentId": "JPH/OBG/R-10/Rev 00"
+    }
+  ],
+  "Paediatrics": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/PD/M-01/Rev 00"
+    },
+    {
+      "documentName": "IV line placement",
+      "documentId": "JPH/PD/SOP-1/Rev 00"
+    },
+    {
+      "documentName": "Discharge procedure",
+      "documentId": "JPH/PD/SOP-4/Rev 00"
+    },
+    {
+      "documentName": "Endotracheal intubation",
+      "documentId": "JPH/PD/SOP-5/Rev 00"
+    },
+    {
+      "documentName": "Immunization",
+      "documentId": "JPH/PD/SOP-6/Rev 00"
+    },
+    {
+      "documentName": "Lumbar puncture",
+      "documentId": "JPH/PD/SOP-8/Rev 00"
+    },
+    {
+      "documentName": "Eye care",
+      "documentId": "JPH/PD/SOP-9/Rev 00"
+    },
+    {
+      "documentName": "Care of normal newborn",
+      "documentId": "JPH/PD/SOP-10/Rev 00"
+    },
+    {
+      "documentName": "Oral and nasal suctioning",
+      "documentId": "JPH/PD/SOP-13/Rev 00"
+    },
+    {
+      "documentName": "Communication physician and staff",
+      "documentId": "JPH/PD/SOP-15/Rev 00"
+    },
+    {
+      "documentName": "Blood transfusion",
+      "documentId": "JPH/PD/SOP-17/Rev 00"
+    },
+    {
+      "documentName": "Care of distressed infant in OT/LR",
+      "documentId": "JPH/PD/SOP-18/Rev 00"
+    },
+    {
+      "documentName": "Drawing blood from heel stick",
+      "documentId": "JPH/PD/SOP-19/Rev 00"
+    },
+    {
+      "documentName": "Baby bath",
+      "documentId": "JPH/PD/SOP-20/Rev 00"
+    },
+    {
+      "documentName": "Newborn with jaundice",
+      "documentId": "JPH/PD/SOP-21/Rev 00"
+    },
+    {
+      "documentName": "Umbilical catheterization",
+      "documentId": "JPH/PD/SOP-22/Rev 00"
+    },
+    {
+      "documentName": "Weighing of infants",
+      "documentId": "JPH/PD/SOP-24/Rev 00"
+    },
+    {
+      "documentName": "Assisting for chest tube insertion",
+      "documentId": "JPH/PD/SOP-25/Rev 00"
+    },
+    {
+      "documentName": "Orogastric tube placement for neonate",
+      "documentId": "JPH/PD/SOP-26/Rev 00"
+    },
+    {
+      "documentName": "Care of umbilical cord",
+      "documentId": "JPH/PD/SOP-27/Rev 00"
+    },
+    {
+      "documentName": "Recording of axillary temperature",
+      "documentId": "JPH/PD/SOP-28/Rev 00"
+    },
+    {
+      "documentName": "Care of dead baby corps",
+      "documentId": "JPH/PD/SOP-29/Rev 00"
+    },
+    {
+      "documentName": "Discharge against medical advice",
+      "documentId": "JPH/PD/SOP-30/Rev 00"
+    },
+    {
+      "documentName": "Drug calculation",
+      "documentId": "JPH/PD/SOP-31/Rev 00"
+    },
+    {
+      "documentName": "Identification of mother & newborn",
+      "documentId": "JPH/PD/SOP-32/Rev 00"
+    },
+    {
+      "documentName": "Infant and parent bonding",
+      "documentId": "JPH/PD/SOP-33/Rev 00"
+    },
+    {
+      "documentName": "Laboratory investigations",
+      "documentId": "JPH/PD/SOP-34/Rev 00"
+    },
+    {
+      "documentName": "Nebulization",
+      "documentId": "JPH/PD/SOP-35/Rev 00"
+    },
+    {
+      "documentName": "Oxygen administration",
+      "documentId": "JPH/PD/SOP-36/Rev 00"
+    },
+    {
+      "documentName": "Transport of newborn to NICU",
+      "documentId": "JPH/PD/SOP-37/Rev 00"
+    },
+    {
+      "documentName": "Care of the infant of group B streptococcus positive mother",
+      "documentId": "JPH/PD/SOP-38/Rev 00"
+    },
+    {
+      "documentName": "Ultrasound head",
+      "documentId": "JPH/PD/SOP-39/Rev 00"
+    },
+    {
+      "documentName": "Skin care of very low birth weight baby",
+      "documentId": "JPH/PD/SOP-40/Rev 00"
+    },
+    {
+      "documentName": "Paadiatric assessment form",
+      "documentId": "JPH/P/F-01/Rev 01"
+    }
+  ],
+  "Clinical lab": [
+    {
+      "documentName": "Department manual- Clinical Laboratory department",
+      "documentId": "JPH/DM/CL/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/CL/SOP/Rev 00"
+    },
+    {
+      "documentName": "Laboratory requisition form",
+      "documentId": "JPH/CL/F-01/Rev 00"
+    },
+    {
+      "documentName": "Incident reporting form",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Sample inward register",
+      "documentId": "JPH/CL/R-01/Rev 00"
+    },
+    {
+      "documentName": "Phlebotomy register",
+      "documentId": "JPH/CL/R-02/Rev 00"
+    },
+    {
+      "documentName": "Report dispatch register",
+      "documentId": "JPH/CL/R-03/Rev 00"
+    },
+    {
+      "documentName": "Ward register",
+      "documentId": "JPH/CL/R-04/Rev 00"
+    },
+    {
+      "documentName": "Critical value reporting register",
+      "documentId": "JPH/CL/R-05/Rev 00"
+    },
+    {
+      "documentName": "Stock register",
+      "documentId": "JPH/CL/R-06/Rev 00"
+    },
+    {
+      "documentName": "Sample rejection register",
+      "documentId": "JPH/CL/R-07/Rev 00"
+    },
+    {
+      "documentName": "Equipment register",
+      "documentId": "JPH/CL/R-08/Rev 00"
+    }
+  ],
+  "Radiology": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/R/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/R/SOP/Rev 00"
+    },
+    {
+      "documentName": "Radiology requistion form",
+      "documentId": "JPH/R/F-01/Rev 00"
+    },
+    {
+      "documentName": "Incident report form",
+      "documentId": "JPH/Q/F-01/Rev 00"
+    },
+    {
+      "documentName": "Inventory register",
+      "documentId": "JPH/R/R-01/Rev 00"
+    },
+    {
+      "documentName": "Equipment calibration register",
+      "documentId": "JPH/R/R-02/Rev 00"
+    },
+    {
+      "documentName": "Equipment downtime register",
+      "documentId": "JPH/R/R-03/Rev 00"
+    },
+    {
+      "documentName": "Monthly incident report register",
+      "documentId": "JPH/R/R-04/Rev 00"
+    },
+    {
+      "documentName": "Stock register",
+      "documentId": "JPH/R/R-05/Rev 00"
+    }
+  ],
+  "Dialysis": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/D/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/D/SOP/Rev 00"
+    }
+  ],
+  "HR ": [
+    {
+      "documentName": "Department manual- HR department",
+      "documentId": "JPH/DM/HR/M-01/Rev 00"
+    },
+    {
+      "documentName": "Man power planning document",
+      "documentId": "JPH/M/D-07/Rev 00"
+    },
+    {
+      "documentName": "Competency matrix",
+      "documentId": "JPH/M/D-08/Rev 00"
+    },
+    {
+      "documentName": "Employee HR Rights and Responsibility",
+      "documentId": "JPH/M/D-12/Rev 00"
+    },
+    {
+      "documentName": "Personal matrix",
+      "documentId": "JPH/HR/D-01/Rev 00"
+    },
+    {
+      "documentName": "Appointment letter",
+      "documentId": "JPH/HR/F-04/Rev 00"
+    },
+    {
+      "documentName": "Credential and previlges form- Medical staff",
+      "documentId": "JPH/HR/F-06/Rev 00"
+    },
+    {
+      "documentName": "Credential and previlges form- Nurses",
+      "documentId": "JPH/HR/F-07/Rev 00"
+    },
+    {
+      "documentName": "Credential and previlges form- Allied staff",
+      "documentId": "JPH/HR/F-08/Rev 00"
+    },
+    {
+      "documentName": "Employee vaccination form",
+      "documentId": "JPH/HR/F-09/Rev 00"
+    },
+    {
+      "documentName": "Attendance & Leave records",
+      "documentId": "JPH/HR/F-10/Rev 00"
+    },
+    {
+      "documentName": "Employee training summary",
+      "documentId": "JPH/HR/F-13/Rev 00"
+    },
+    {
+      "documentName": "Training evaluation",
+      "documentId": "JPH/HR/F-15/Rev 00"
+    },
+    {
+      "documentName": "Training feedback form",
+      "documentId": "JPH/HR/F-16/Rev 00"
+    },
+    {
+      "documentName": "Confirmation of probation",
+      "documentId": "JPH/HR/F-17/Rev 00"
+    },
+    {
+      "documentName": "Appraisal form",
+      "documentId": "JPH/HR/F-18/Rev 00"
+    },
+    {
+      "documentName": "Salary revision letter",
+      "documentId": "JPH/HR/F-19/Rev 00"
+    },
+    {
+      "documentName": "Employee feed back form",
+      "documentId": "JPH/HR/F-20/Rev 00"
+    },
+    {
+      "documentName": "Employee warning letter",
+      "documentId": "JPH/HR/F-21/Rev 00"
+    },
+    {
+      "documentName": "Employee relieving letter",
+      "documentId": "JPH/HR/F-23/Rev 00"
+    },
+    {
+      "documentName": "Experience letter",
+      "documentId": "JPH/HR/F-24/Rev 00"
+    },
+    {
+      "documentName": "Exit interview form",
+      "documentId": "JPH/HR/F-25/Rev 00"
+    }
+  ],
+  "Purchase": [
+    {
+      "documentName": "Department manual- Purchase department",
+      "documentId": "JPH/DM/P/M-01/Rev 00"
+    },
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/P/SOP/Rev 00"
+    },
+    {
+      "documentName": "Vendor registration form",
+      "documentId": "JPH/P/F-01/Rev 00"
+    },
+    {
+      "documentName": "Vendor evaluation form",
+      "documentId": "JPH/P/F-02/Rev 00"
+    },
+    {
+      "documentName": "GRN receipt",
+      "documentId": "JPH/P/F-03/Rev 00"
+    },
+    {
+      "documentName": "Inventory verification form",
+      "documentId": "JPH/P/F-04/Rev 00"
+    },
+    {
+      "documentName": "Stock transfer register",
+      "documentId": "JPH/P/R-01/Rev 00"
+    },
+    {
+      "documentName": "AMC register",
+      "documentId": "JPH/P/R-02/Rev 00"
+    },
+    {
+      "documentName": "Goods receipt register",
+      "documentId": "JPH/P/R-03/Rev 00"
+    },
+    {
+      "documentName": "Goods rejection register",
+      "documentId": "JPH/P/R-04/Rev 00"
+    },
+    {
+      "documentName": "Material issue register",
+      "documentId": "JPH/P/R-05/Rev 00"
+    },
+    {
+      "documentName": "P R status register",
+      "documentId": "JPH/P/R-06/Rev 00"
+    },
+    {
+      "documentName": "Physical verification register",
+      "documentId": "JPH/P/R-07/Rev 00"
+    }
+  ],
+  "Accounts": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/A/M-01/Rev 00"
+    }
+  ],
+  "Pharmacy": [
+    {
+      "documentName": "Department manual",
+      "documentId": "JPH/DM/PH/M-01/Rev 00"
+    },
+    {
+      "documentName": "Drug replacement form",
+      "documentId": "JPH/PH/F-01/Rev 00"
+    },
+    {
+      "documentName": "Prodcut compliant form",
+      "documentId": "JPH/PH/F-02/Rev 00"
+    },
+    {
+      "documentName": "Stock issue note",
+      "documentId": "JPH/PH/F-03/Rev 00"
+    },
+    {
+      "documentName": "Stock order form",
+      "documentId": "JPH/PH/F-04/Rev 00"
+    },
+    {
+      "documentName": "Consignement receipt note",
+      "documentId": "JPH/PH/F-05/Rev 00"
+    },
+    {
+      "documentName": "Goods received note",
+      "documentId": "JPH/PH/F-06/Rev 00"
+    },
+    {
+      "documentName": "Adverse reaction form",
+      "documentId": "JPH/PH/F-07/Rev 00"
+    },
+    {
+      "documentName": "Product recall form",
+      "documentId": "JPH/PH/F-08/Rev 00"
+    },
+    {
+      "documentName": "Prodcut summary label",
+      "documentId": "JPH/PH/F-09/Rev 00"
+    },
+    {
+      "documentName": "Physcial stock verification",
+      "documentId": "JPH/PH/R-01/Rev 00"
+    },
+    {
+      "documentName": "Stock report",
+      "documentId": "JPH/PH/R-02/Rev 00"
+    },
+    {
+      "documentName": "Stock variance report",
+      "documentId": "JPH/PH/R-03/Rev 00"
+    },
+    {
+      "documentName": "Stock replacement",
+      "documentId": "JPH/PH/R-04/Rev 00"
+    },
+    {
+      "documentName": "Stock expirty report",
+      "documentId": "JPH/PH/R-05/Rev 00"
+    },
+    {
+      "documentName": "Monthly report",
+      "documentId": "JPH/PH/R-06/Rev 00"
+    }
+  ],
+  "MRD": [
+    {
+      "documentName": "Medical records department manual",
+      "documentId": "JPH/DM/MRD/M-01/Rev 00"
+    },
+    {
+      "documentName": "Medical Records checklist",
+      "documentId": "JPH/MRD/F-01/Rev 00"
+    },
+    {
+      "documentName": "Medical record review check lsit",
+      "documentId": "JPH/MRD/F-02/Rev 00"
+    }
+  ],
+  "Housekeeping": [
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/HK/SOP/Rev 00"
+    }
+  ],
+  "Security": [
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/S/SOP/Rev 00"
+    }
+  ],
+  "Facility & safety": [
+    {
+      "documentName": "Department Manual - Hospital safety",
+      "documentId": "JPH/DM/HS/M-01/Rev 00"
+    },
+    {
+      "documentName": "Facility inspection check list",
+      "documentId": "JPH/HS/F-01/Rev 00"
+    },
+    {
+      "documentName": "Furniture inspection checklist",
+      "documentId": "JPH/HS/F-02/Rev 00"
+    },
+    {
+      "documentName": "Housekeeping checklist",
+      "documentId": "JPH/HS/F-03/Rev 00"
+    },
+    {
+      "documentName": "Generator checklist",
+      "documentId": "JPH/HS/F-04/Rev 00"
+    },
+    {
+      "documentName": "UPS checklist",
+      "documentId": "JPH/HS/F-05/Rev 00"
+    },
+    {
+      "documentName": "AMC log register",
+      "documentId": "JPH/HS/R-01/Rev 00"
+    },
+    {
+      "documentName": "Water maintenance log sheet",
+      "documentId": "JPH/HS/R-02/Rev 00"
+    },
+    {
+      "documentName": "PMS schedule record",
+      "documentId": "JPH/HS/R-03/Rev 00"
+    },
+    {
+      "documentName": "DG running details",
+      "documentId": "JPH/HS/R-04/Rev 00"
+    },
+    {
+      "documentName": "Plant room register",
+      "documentId": "JPH/HS/R-05/Rev 00"
+    }
+  ],
+  "CSSD": [
+    {
+      "documentName": "CSSD manual",
+      "documentId": "JPH/DM/CSSD/M-01/Rev 00"
+    },
+    {
+      "documentName": "List of single use devices",
+      "documentId": "JPH/CSSD/F-01/ Rev 00"
+    }
+  ],
+  "Linen & laundry": [
+    {
+      "documentName": "STANDARD OPERATING PROTOCOLS",
+      "documentId": "JPH/LL/SOP/Rev 00"
+    }
+  ]
+}

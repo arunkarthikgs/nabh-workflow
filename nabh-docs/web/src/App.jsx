@@ -1,0 +1,993 @@
+import { useEffect, useMemo, useState, Fragment } from "react";
+import { Building2, FileSearch, FolderOpen, Search, ArrowUp, ArrowDown, Pencil, History, Check, X, Eye, Download, Upload, Users, X as Close, ClipboardList, FilePenLine, RefreshCw, Save, RotateCcw, Calendar, Filter } from "lucide-react";
+import hospitalLogo from "./assets/logo.png";
+import AdminWorkspace from "./AdminWorkspace.jsx";
+import LoginGate from "./LoginGate.jsx";
+import SuperAdminWorkspace from "./SuperAdminWorkspace.jsx";
+import TemplateLibrary from "./TemplateLibrary.jsx";
+import RoleManagement from "./RoleManagement.jsx";
+
+const CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 };
+
+function confidenceClass(confidence) {
+  return `badge badge-${confidence}`;
+}
+
+function toFileUrl(filePath) {
+  return `file://${filePath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function docKey(doc) {
+  return doc.id;
+}
+
+function isAacPolicy(doc) {
+  return doc.documentId === "JPH/NABH/D-14A/Rev 00";
+}
+
+function isApprovedDocument(doc) {
+  if (!doc) return false;
+  if (doc.approved === true) return true;
+  if (doc.approved === false) return false;
+  if (Array.isArray(doc.history) && doc.history.length > 0) {
+    return doc.history.some((entry) => entry.action && entry.action !== "matched" && entry.action !== "template baseline");
+  }
+  return Boolean(doc.version && doc.version > 1);
+}
+
+function readUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    department: params.get("dept") || null,
+    departmentFilter: params.get("deptq") || "",
+    documentSearch: params.get("q") || "",
+    confidenceFilter: params.get("conf") || "all",
+    onlyInactive: params.get("onlyInactive") === "1",
+    sortColumn: params.get("sort") || null,
+    sortDirection: params.get("dir") || "asc"
+  };
+}
+
+function documentDraft(doc) {
+  return doc.content || `${doc.documentName}\n\nDocument ID: ${doc.documentId}\n\nThis is an editable prototype preview of the source ${doc.matchedFilePath?.match(/\.[^.]+$/)?.[0].toUpperCase() || "document"}.\n\nUse this workspace to draft changes, then check in a new controlled version.`;
+}
+
+function OnlyOfficeEditor({ document, department, onClose }) {
+  const [editorName, setEditorName] = useState("");
+  const [checkInNote, setCheckInNote] = useState("");
+  const [config, setConfig] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const editorId = `onlyoffice-editor-${document.id}`;
+
+  useEffect(() => {
+    if (!config) return undefined;
+    const scriptId = "onlyoffice-docs-api";
+    const initialize = () => {
+      if (!window.DocsAPI) { setError("OnlyOffice editor API could not be loaded."); return; }
+      const editor = new window.DocsAPI.DocEditor(editorId, {
+        ...config.config,
+        events: {
+          onDocumentStateChange: (event) => {
+            if (saving && !event.data) onClose();
+          },
+          onRequestClose: onClose
+        }
+      });
+      window[editorId] = editor;
+    };
+    let script = window.document.getElementById(scriptId);
+    if (script) initialize();
+    else {
+      script = window.document.createElement("script");
+      script.id = scriptId;
+      script.src = `${config.documentServerUrl}/web-apps/apps/api/documents/api.js`;
+      script.onload = initialize;
+      script.onerror = () => setError("Unable to load OnlyOffice. Check ONLYOFFICE_DOCUMENT_SERVER_URL.");
+      window.document.head.appendChild(script);
+    }
+    return () => { window[editorId]?.destroyEditor?.(); delete window[editorId]; };
+  }, [config, editorId, onClose, saving]);
+
+  async function openEditor() {
+    if (!editorName.trim()) { setError("Enter the editor name before opening the controlled document."); return; }
+    try {
+      const response = await fetch(`/api/documents/${encodeURIComponent(department)}/${encodeURIComponent(document.id)}/onlyoffice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editor: editorName.trim(), checkInNote: checkInNote.trim() || "Inline document update" })
+      });
+      const responseText = await response.text();
+      let result;
+      try { result = JSON.parse(responseText); } catch { throw new Error(responseText || "The document service returned an invalid response."); }
+      if (!response.ok) throw new Error(result.error || "Unable to open OnlyOffice.");
+      setConfig(result);
+    } catch (err) { setError(err.message); }
+  }
+
+  return <div className="preview-backdrop" role="presentation" onClick={onClose}><section className="document-editor-dialog onlyoffice-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${document.documentName}`} onClick={(event) => event.stopPropagation()}><div className="preview-header"><div><p className="eyebrow">Controlled document editor</p><h2>{document.documentName}</h2><p className="editor-file-name">{document.relativeFilePath || document.matchedFilePath}</p></div><button className="icon-button" title="Close editor" onClick={onClose}><Close size={18} /></button></div>{!config ? <div className="onlyoffice-setup"><p>Open this controlled file in OnlyOffice. Saving in the editor creates the next immutable version and audit event.</p><label>Edited by<input value={editorName} onChange={(event) => setEditorName(event.target.value)} placeholder="Name or initials" /></label><label>Check-in note<input value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Describe this revision" /></label>{error && <p className="status error">{error}</p>}<button className="primary-button" onClick={openEditor}><FilePenLine size={16} /> Open in OnlyOffice</button></div> : <><div id={editorId} className="onlyoffice-frame" />{error && <p className="status error">{error}</p>}<div className="checkin-panel"><span>Save your changes in OnlyOffice, then check in the controlled version.</span><button className="primary-button" onClick={() => { setSaving(true); window[editorId]?.requestSave?.(); }}><Save size={16} /> {saving ? "Saving..." : "Save and check in"}</button></div></>}</section></div>;
+}
+
+function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permissions, onCheckIn }) {
+  const initialUrlState = useMemo(readUrlState, []);
+  const [departments, setDepartments] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [error, setError] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState(initialUrlState.departmentFilter);
+  const [documentSearch, setDocumentSearch] = useState(initialUrlState.documentSearch);
+  const [confidenceFilter, setConfidenceFilter] = useState(initialUrlState.confidenceFilter);
+  const [onlyInactive, setOnlyInactive] = useState(initialUrlState.onlyInactive);
+  const [sortColumn, setSortColumn] = useState(initialUrlState.sortColumn);
+  const [sortDirection, setSortDirection] = useState(initialUrlState.sortDirection);
+  const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [previewAacPolicy, setPreviewAacPolicy] = useState(false);
+  const [openDocument, setOpenDocument] = useState(null);
+  const [documentContent, setDocumentContent] = useState("");
+  const [checkInNote, setCheckInNote] = useState("");
+  const [checkInEditor, setCheckInEditor] = useState("");
+  const [syncingTemplates, setSyncingTemplates] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [repositoryStatus, setRepositoryStatus] = useState(null);
+  const [approvalDocument, setApprovalDocument] = useState(null);
+  const [approvalFile, setApprovalFile] = useState(null);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [approvalError, setApprovalError] = useState("");
+  const [approving, setApproving] = useState(false);
+  const canEdit = permissions.includes("edit");
+
+  useEffect(() => {
+    fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`)
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Unable to check the hospital document repository.");
+        return result;
+      })
+      .then((data) => {
+        setRepositoryStatus(data);
+        if (!data.repository.exists) return null;
+        return fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`).then(async (response) => {
+          const result = await response.json();
+          if (response.status === 404) {
+            setRepositoryStatus({ repository: { mode: result.repository?.mode || "r2", exists: false, status: "missing", ...result.repository }, job: null });
+            return null;
+          }
+          if (!response.ok) throw new Error(result.error || "Unable to load the hospital document repository.");
+          return result;
+        });
+      })
+      .then((data) => {
+        if (!data) return;
+        setDepartments(data.departments);
+        const wanted = initialUrlState.department;
+        setSelected(wanted && data.departments[wanted] ? wanted : Object.keys(data.departments)[0] || null);
+      })
+      .catch((err) => setError(err.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hospitalId, initialUrlState.department]);
+
+  // Keep the URL query string in sync so a view can be bookmarked/shared and survives a refresh.
+  useEffect(() => {
+    if (!departments) return;
+    const params = new URLSearchParams();
+    if (selected) params.set("dept", selected);
+    if (departmentFilter) params.set("deptq", departmentFilter);
+    if (documentSearch) params.set("q", documentSearch);
+    if (confidenceFilter !== "all") params.set("conf", confidenceFilter);
+    if (onlyInactive) params.set("onlyInactive", "1");
+    if (sortColumn) { params.set("sort", sortColumn); params.set("dir", sortDirection); }
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  }, [departments, selected, departmentFilter, documentSearch, confidenceFilter, onlyInactive, sortColumn, sortDirection]);
+
+  useEffect(() => {
+    setSelectedKeys(new Set());
+  }, [selected]);
+
+  const documents = useMemo(() => (selected && departments ? departments[selected] : []), [selected, departments]);
+
+  const filteredDepartments = useMemo(() => {
+    if (!departments) return [];
+    const query = departmentFilter.trim().toLowerCase();
+    return Object.entries(departments).filter(([department]) => department.toLowerCase().includes(query));
+  }, [departments, departmentFilter]);
+
+  const confidenceCounts = useMemo(() => {
+    const counts = { all: documents.length, high: 0, medium: 0, low: 0 };
+    for (const doc of documents) counts[doc.confidence]++;
+    return counts;
+  }, [documents]);
+
+  const filteredDocuments = useMemo(() => {
+    const query = documentSearch.trim().toLowerCase();
+    let result = documents;
+    if (confidenceFilter !== "all") result = result.filter((doc) => doc.confidence === confidenceFilter);
+    if (onlyInactive) result = result.filter((doc) => !doc.active);
+    if (query) {
+      result = result.filter(
+        (doc) =>
+          doc.documentName.toLowerCase().includes(query) ||
+          doc.documentId.toLowerCase().includes(query) ||
+          (doc.matchedFilePath || "").toLowerCase().includes(query)
+      );
+    }
+    if (sortColumn) {
+      const direction = sortDirection === "desc" ? -1 : 1;
+      result = [...result].sort((a, b) => {
+        if (sortColumn === "confidence") return (CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]) * direction;
+        return a.documentId.localeCompare(b.documentId) * direction;
+      });
+    }
+    return result;
+  }, [documents, documentSearch, confidenceFilter, onlyInactive, sortColumn, sortDirection]);
+
+  const totals = useMemo(() => {
+    if (!departments) return null;
+    const counts = { departments: Object.keys(departments).length, documents: 0, high: 0, medium: 0, low: 0, active: 0, inactive: 0 };
+    for (const docs of Object.values(departments)) {
+      counts.documents += docs.length;
+      for (const doc of docs) {
+        counts[doc.confidence]++;
+        counts[doc.active ? "active" : "inactive"]++;
+      }
+    }
+    return counts;
+  }, [departments]);
+
+  const departmentTotals = useMemo(() => {
+    const active = documents.filter((doc) => doc.active).length;
+    return { active, inactive: documents.length - active };
+  }, [documents]);
+
+  function persistActive(doc, nextActive) {
+    fetch(`/api/document-matches/${encodeURIComponent(selected)}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: doc.id, active: nextActive })
+    }).catch((err) => setError(err.message));
+  }
+
+  function toggleActive(doc) {
+    const nextActive = !doc.active;
+    setDepartments((current) => ({
+      ...current,
+      [selected]: current[selected].map((d) => (d === doc ? { ...d, active: nextActive } : d))
+    }));
+    persistActive(doc, nextActive);
+  }
+
+  function setSort(column) {
+    if (sortColumn !== column) { setSortColumn(column); setSortDirection("asc"); return; }
+    if (sortDirection === "asc") { setSortDirection("desc"); return; }
+    setSortColumn(null);
+    setSortDirection("asc");
+  }
+
+  function toggleSelectAll() {
+    setSelectedKeys((current) => {
+      if (filteredDocuments.every((doc) => current.has(docKey(doc)))) return new Set();
+      return new Set(filteredDocuments.map(docKey));
+    });
+  }
+
+  function toggleSelectOne(doc) {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      const key = docKey(doc);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function bulkSetActive(nextActive) {
+    const targets = documents.filter((doc) => selectedKeys.has(docKey(doc)));
+    setDepartments((current) => ({
+      ...current,
+      [selected]: current[selected].map((d) => (selectedKeys.has(docKey(d)) ? { ...d, active: nextActive } : d))
+    }));
+    for (const doc of targets) persistActive(doc, nextActive);
+    setSelectedKeys(new Set());
+  }
+
+  async function syncNewTemplates() {
+    setSyncingTemplates(true);
+    setSyncMessage("");
+    try {
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/sync`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to sync new templates.");
+      setSyncMessage("Template sync started. Existing client files will not be changed.");
+      const poll = async () => {
+        const statusResponse = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`);
+        const status = await statusResponse.json();
+        setRepositoryStatus(status);
+        if (status.job?.status === "running") { window.setTimeout(poll, 1500); return; }
+        setSyncingTemplates(false);
+        if (status.job?.status === "complete") {
+          setSyncMessage(`${status.job.copied} new template${status.job.copied === 1 ? "" : "s"} added. Existing client files were not changed.`);
+          window.location.reload();
+        } else if (status.job?.status === "failed") setSyncMessage(status.job.error || "Template sync failed.");
+      };
+      window.setTimeout(poll, 500);
+    } catch (syncError) {
+      setSyncMessage(syncError.message);
+      setSyncingTemplates(false);
+    }
+  }
+
+  const allFilteredSelected = filteredDocuments.length > 0 && filteredDocuments.every((doc) => selectedKeys.has(docKey(doc)));
+
+  function sortIndicator(column) {
+    if (sortColumn !== column) return null;
+    return sortDirection === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />;
+  }
+
+  function startEdit(doc) {
+    setEditingId(doc.id);
+    setEditDraft({ documentName: doc.documentName, documentId: doc.documentId, matchedFilePath: doc.matchedFilePath || "" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  function checkInEdit(doc) {
+    const editor = window.prompt("Your name or initials, to record who made this change:");
+    if (!editor || !editor.trim()) return;
+
+    fetch(`/api/document-matches/${encodeURIComponent(selected)}/edit`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: doc.id, editor: editor.trim(), fields: editDraft })
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to save changes.");
+        return response.json();
+      })
+      .then((result) => {
+        setDepartments((current) => ({
+          ...current,
+          [selected]: current[selected].map((d) => (d.id === doc.id ? result.document : d))
+        }));
+        setEditingId(null);
+        setEditDraft(null);
+      })
+      .catch((err) => setError(err.message));
+  }
+
+  function toggleHistory(id) {
+    setExpandedHistoryId((current) => (current === id ? null : id));
+  }
+
+  function startDocumentEdit(doc) {
+    setOpenDocument(doc);
+    setDocumentContent(documentDraft(doc));
+    setCheckInNote("");
+    setCheckInEditor("");
+  }
+
+  function checkInDocument() {
+    if (!checkInEditor.trim()) { setError("Editor name is required to check in a document."); return; }
+    const currentlyApproved = isApprovedDocument(openDocument);
+    const nextVersion = currentlyApproved ? (openDocument.version || 1) + 1 : 1;
+    const timestamp = new Date().toISOString();
+    const fields = { content: documentContent };
+    fetch(`/api/document-matches/${encodeURIComponent(selected)}/edit`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: openDocument.id, editor: checkInEditor.trim(), fields })
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to check in the document.");
+        return response.json();
+      })
+      .then((result) => {
+        const document = result.document ? { ...result.document, approved: true } : { ...openDocument, content: documentContent, version: nextVersion, approved: true, history: [...(openDocument.history || []).filter((h) => h.action !== "matched"), { version: nextVersion, timestamp, editor: checkInEditor.trim(), action: "document check-in", changes: { content: { from: currentlyApproved ? "Previous version" : "Draft", to: checkInNote.trim() || "Content updated" } } }] };
+        setDepartments((current) => ({ ...current, [selected]: current[selected].map((item) => item.id === document.id ? document : item) }));
+        onCheckIn({ id: `${document.id}-${nextVersion}`, documentName: document.documentName, documentId: document.documentId, department: selected, version: document.version || nextVersion, editor: checkInEditor.trim(), note: checkInNote.trim() || "Content updated", timestamp });
+        setOpenDocument(null);
+      })
+      .catch((err) => setError(err.message));
+  }
+
+  async function approveUpload() {
+    if (!approvalFile) { setApprovalError("Select the updated document file."); return; }
+    setApproving(true);
+    setApprovalError("");
+    try {
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/approve`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-Document-Id": approvalDocument.documentId,
+          "X-Document-Name": approvalDocument.documentName,
+          "X-Department": selected,
+          "X-Document-Path": approvalDocument.relativeFilePath,
+          "X-File-Name": approvalFile.name,
+          "X-Approved-By": hospitalName || "Hospital Administrator",
+          "X-Approval-Note": approvalNote.trim()
+        },
+        body: await approvalFile.arrayBuffer()
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to approve document version.");
+      const nextVer = result.document?.currentVersion || (isApprovedDocument(approvalDocument) ? (approvalDocument.version || 1) + 1 : 1);
+      setDepartments((current) => ({ ...current, [selected]: current[selected].map((document) => document.id === approvalDocument.id ? { ...document, version: nextVer, approved: true, history: result.document?.history || document.history } : document) }));
+      setApprovalDocument(null);
+      setApprovalFile(null);
+      setApprovalNote("");
+    } catch (uploadError) { setApprovalError(uploadError.message); }
+    finally { setApproving(false); }
+  }
+
+  if (repositoryStatus && !repositoryStatus.repository.exists) return <main><header><div className="brand"><img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} /><div><p className="eyebrow">NABH document workspace</p><h1>{hospitalName} documents</h1></div></div><p className="intro">Your hospital document repository is not initialized.</p></header><section className="document-panel repository-empty"><FolderOpen size={28} /><h2>Document repository</h2><p>Sync the current global templates to create this hospital's private document folder. Existing hospital files are never overwritten.</p><button className="primary-button" type="button" disabled={syncingTemplates} onClick={syncNewTemplates}><RefreshCw size={16} /> {syncingTemplates ? "Syncing templates..." : "Sync templates"}</button>{syncMessage && <p className="access-message">{syncMessage}</p>}</section></main>;
+
+  return (
+    <main>
+      <header>
+        <div className="brand">
+          <img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "Janapriya Hospital"} />
+          <div>
+            <p className="eyebrow">NABH document workspace</p>
+            <h1>{hospitalName ? `${hospitalName} documents` : "Master List of Documents"}</h1>
+          </div>
+        </div>
+        {totals && (
+          <p className="intro">
+            {totals.departments} departments &middot; {totals.documents} documents &middot; {totals.high} high-confidence &middot; {totals.medium} medium &middot; {totals.low} flagged &middot; <span className="active-count">{totals.active} active</span> &middot; <span className="inactive-count">{totals.inactive} inactive</span>
+          </p>
+        )}
+      </header>
+
+      {error && <p className="status error">{error}</p>}
+
+      {departments && (
+        <div className="layout">
+          <nav className="department-list">
+            <label className="filter-box">
+              <Search size={14} />
+              <input
+                type="text"
+                placeholder="Filter departments"
+                value={departmentFilter}
+                onChange={(event) => setDepartmentFilter(event.target.value)}
+              />
+            </label>
+            {filteredDepartments.map(([department, docs]) => {
+              const activeCount = docs.filter((doc) => doc.active).length;
+              return (
+                <button
+                  key={department}
+                  className={department === selected ? "active" : ""}
+                  onClick={() => setSelected(department)}
+                >
+                  <FolderOpen size={16} />
+                  <span>{department}</span>
+                  <span className="count-pill count-pill-active">{activeCount}</span>
+                  <span className="count-pill count-pill-inactive">{docs.length - activeCount}</span>
+                </button>
+              );
+            })}
+            {filteredDepartments.length === 0 && <p className="empty">No departments match.</p>}
+          </nav>
+
+          <section className="document-panel">
+            <div className="panel-heading">
+              <FileSearch size={18} />
+              <h2>{selected}</h2>
+              <span className="count">{filteredDocuments.length} of {documents.length} document(s)</span>
+              <span className="active-count">{departmentTotals.active} active</span>
+              <span className="inactive-count">{departmentTotals.inactive} inactive</span>
+            </div>
+            <label className="filter-box document-search">
+              <Search size={14} />
+              <input
+                type="text"
+                placeholder="Search by document name, ID, or matched file"
+                value={documentSearch}
+                onChange={(event) => setDocumentSearch(event.target.value)}
+              />
+            </label>
+
+            <div className="toolbar">
+              <div className="confidence-chips">
+                {["all", "high", "medium", "low"].map((level) => (
+                  <button
+                    key={level}
+                    className={`chip ${level === confidenceFilter ? "chip-active" : ""}`}
+                    onClick={() => setConfidenceFilter(level)}
+                  >
+                    {level === "all" ? "All" : level.charAt(0).toUpperCase() + level.slice(1)} ({confidenceCounts[level]})
+                  </button>
+                ))}
+              </div>
+              <label className="only-inactive">
+                <input type="checkbox" checked={onlyInactive} onChange={(event) => setOnlyInactive(event.target.checked)} />
+                Show only inactive
+              </label>
+              <button className="primary-button" type="button" disabled={syncingTemplates} onClick={syncNewTemplates}><RefreshCw size={16} /> {syncingTemplates ? "Syncing templates..." : "Sync new templates"}</button>
+            </div>
+
+            {syncMessage && <p className="access-message">{syncMessage}</p>}
+
+            {selectedKeys.size > 0 && (
+              <div className="bulk-bar">
+                <span>{selectedKeys.size} selected</span>
+                <button onClick={() => bulkSetActive(true)}>Mark Active</button>
+                <button onClick={() => bulkSetActive(false)}>Mark Inactive</button>
+                <button className="bulk-clear" onClick={() => setSelectedKeys(new Set())}>Clear</button>
+              </div>
+            )}
+
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} />
+                  </th>
+                  <th>Active</th>
+                  <th className="sortable" onClick={() => setSort("documentId")}>Document ID {sortIndicator("documentId")}</th>
+                  <th>Document Name</th>
+                  <th>Matched File</th>
+                  <th className="sortable" onClick={() => setSort("confidence")}>Confidence {sortIndicator("confidence")}</th>
+                  <th>Version</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDocuments.map((doc) => {
+                  const isEditing = editingId === doc.id;
+                  return (
+                  <Fragment key={docKey(doc)}>
+                    <tr className={doc.active ? "doc-active" : "doc-inactive"}>
+                      <td>
+                        <input type="checkbox" checked={selectedKeys.has(docKey(doc))} onChange={() => toggleSelectOne(doc)} />
+                      </td>
+                      <td>
+                        {canEdit && <button
+                          type="button"
+                          role="switch"
+                          aria-checked={doc.active}
+                          className={`toggle-switch ${doc.active ? "toggle-on" : "toggle-off"}`}
+                          onClick={() => toggleActive(doc)}
+                        >
+                          <span className="toggle-thumb" />
+                        </button>}
+                        <span className={`toggle-label ${doc.active ? "status-active" : "status-inactive"}`}>
+                          {doc.active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="mono">
+                        {isEditing ? (
+                          <input
+                            className="edit-input"
+                            value={editDraft.documentId}
+                            onChange={(event) => setEditDraft((current) => ({ ...current, documentId: event.target.value }))}
+                          />
+                        ) : (
+                          doc.documentId
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            className="edit-input"
+                            value={editDraft.documentName}
+                            onChange={(event) => setEditDraft((current) => ({ ...current, documentName: event.target.value }))}
+                          />
+                        ) : (
+                          doc.documentName
+                        )}
+                      </td>
+                      <td className="file-cell" title={doc.matchedFilePath || ""}>
+                        {isEditing ? (
+                          <input
+                            className="edit-input"
+                            value={editDraft.matchedFilePath}
+                            onChange={(event) => setEditDraft((current) => ({ ...current, matchedFilePath: event.target.value }))}
+                          />
+                        ) : doc.matchedFilePath ? (
+                          <span>{(doc.relativeFilePath || doc.matchedFilePath).split("/").pop()}</span>
+                        ) : (
+                          <span className="no-match">No file matched</span>
+                        )}
+                        {!isEditing && doc.reusedAcrossDocuments && <span className="reused"> (reused x{doc.reusedAcrossDocuments})</span>}
+                        {!isEditing && isAacPolicy(doc) && (
+                          <span className="policy-actions">
+                            <button className="icon-button" title="Preview AAC policy" onClick={() => setPreviewAacPolicy(true)}><Eye size={14} /></button>
+                            <a className="icon-button" href="/api/documents/aac-policy/download" title="Download modified AAC policy Word document"><Download size={14} /></a>
+                          </span>
+                        )}
+                        {canEdit && !isEditing && doc.matchedFilePath && <button className="icon-button document-edit-button" title="Open and edit document" onClick={() => startDocumentEdit(doc)}><FilePenLine size={14} /></button>}
+                        {canEdit && doc.relativeFilePath && <button className="icon-button document-edit-button" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={14} /></button>}
+                      </td>
+                      <td>
+                        <span className={confidenceClass(doc.confidence)}>{doc.confidence}</span>
+                      </td>
+                      <td className="version-cell">
+                        {isEditing ? (
+                          <span className="edit-actions">
+                            <button className="icon-button check" title="Check in" onClick={() => checkInEdit(doc)}><Check size={14} /></button>
+                            <button className="icon-button cancel" title="Cancel" onClick={cancelEdit}><X size={14} /></button>
+                          </span>
+                        ) : (
+                          <span className="version-actions">
+                            {isApprovedDocument(doc) ? (
+                              <button className="version-badge" title="View history" onClick={() => toggleHistory(doc.id)}>
+                                <History size={12} /> v{doc.version || 1}
+                              </button>
+                            ) : (
+                              <span className="unapproved-tag" title="Not yet approved">Not approved</span>
+                            )}
+                            {canEdit && <button className="icon-button" title="Edit" onClick={() => startEdit(doc)}><Pencil size={14} /></button>}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    {expandedHistoryId === doc.id && isApprovedDocument(doc) && (
+                      <tr className="history-row">
+                        <td colSpan={7}>
+                          <table className="history-table">
+                            <thead>
+                              <tr><th>Version</th><th>When</th><th>By</th><th>Action</th><th>Changes</th><th>File</th></tr>
+                            </thead>
+                            <tbody>
+                              {[...(doc.history || [])].reverse().map((entry) => (
+                                <tr key={entry.version}>
+                                  <td>v{entry.version}</td>
+                                  <td>{new Date(entry.timestamp || entry.createdAt).toLocaleString()}</td>
+                                  <td>{entry.approvedBy || entry.editor || "System"}</td>
+                                  <td>{entry.action}</td>
+                                  <td>
+                                    {Object.keys(entry.changes || {}).length === 0
+                                      ? "-"
+                                      : Object.entries(entry.changes).map(([field, change]) => (
+                                          <div key={field}>
+                                            <strong>{field}:</strong> "{change.from}" &rarr; "{change.to}"
+                                          </div>
+                                        ))}
+                                  </td>
+                                    <td>{entry.objectKey && <span className="version-actions"><a className="icon-button" href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version/preview?key=${encodeURIComponent(entry.objectKey)}`} target="_blank" rel="noopener noreferrer" title={`Preview v${entry.version} as PDF`}><Eye size={14} /></a><a className="icon-button" href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version/download?key=${encodeURIComponent(entry.objectKey)}`} title={`Download v${entry.version}`}><Download size={14} /></a></span>}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                  );
+                })}
+                {filteredDocuments.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="empty">No documents match your filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
+        </div>
+      )}
+      {previewAacPolicy && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setPreviewAacPolicy(false)}>
+          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label="AAC policy preview" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div><p className="eyebrow">Original document preview</p><h2>AAC Policy</h2></div>
+              <div className="preview-actions">
+                <a className="download-button" href="/api/documents/aac-policy/download"><Download size={16} /> Download matching Word document</a>
+                <button className="icon-button" title="Close preview" onClick={() => setPreviewAacPolicy(false)}><Close size={18} /></button>
+              </div>
+            </div>
+            <iframe className="policy-preview" src="/api/documents/aac-policy/preview" title="AAC policy PDF preview" />
+          </section>
+        </div>
+      )}
+      {openDocument && (window.location.protocol === "file:" ? (
+        <div className="preview-backdrop" role="presentation" onClick={() => setOpenDocument(null)}>
+          <section className="document-editor-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${openDocument.documentName}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header"><div><p className="eyebrow">Controlled document editor</p><h2>{openDocument.documentName}</h2><p className="editor-file-name">{openDocument.relativeFilePath || openDocument.matchedFilePath}</p></div><button className="icon-button" title="Close editor" onClick={() => setOpenDocument(null)}><Close size={18} /></button></div>
+            <div className="editor-toolbar"><span>File</span><span>Edit</span><span>Insert</span><span>Format</span><span>Review</span><span className="editor-mode">Editing prototype</span></div>
+            <textarea className="document-editor" value={documentContent} onChange={(event) => setDocumentContent(event.target.value)} aria-label="Document content" />
+            <div className="checkin-panel"><label>Edited by<input value={checkInEditor} onChange={(event) => setCheckInEditor(event.target.value)} placeholder="Name or initials" /></label><label>Check-in note<input value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Describe this revision" /></label><button className="primary-button" onClick={checkInDocument}><Save size={16} /> Check in v{isApprovedDocument(openDocument) ? (openDocument.version || 1) + 1 : 1}</button></div>
+          </section>
+        </div>
+      ) : <OnlyOfficeEditor document={openDocument} department={selected} onClose={() => setOpenDocument(null)} />)}
+      {approvalDocument && <div className="preview-backdrop" role="presentation" onClick={() => !approving && setApprovalDocument(null)}><section className="document-editor-dialog approval-dialog" role="dialog" aria-modal="true" aria-label={`Approve new version of ${approvalDocument.documentName}`} onClick={(event) => event.stopPropagation()}><div className="preview-header"><div><p className="eyebrow">Controlled document approval</p><h2>{approvalDocument.documentName}</h2><p className="editor-file-name">{isApprovedDocument(approvalDocument) ? `Current version v${approvalDocument.version || 1}` : "Not yet approved"}</p></div><button className="icon-button" title="Close" disabled={approving} onClick={() => setApprovalDocument(null)}><Close size={18} /></button></div><div className="onlyoffice-setup"><label>Updated file<input type="file" accept=".docx,.xlsx,.pptx" onChange={(event) => setApprovalFile(event.target.files[0] || null)} /></label>{approvalFile && <p className="editor-file-name">{approvalFile.name}</p>}<label>Approval note<input value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>{approvalError && <p className="status error">{approvalError}</p>}<button className="primary-button" disabled={approving} onClick={approveUpload}><Check size={16} /> {approving ? "Approving..." : `Approve version v${isApprovedDocument(approvalDocument) ? (approvalDocument.version || 1) + 1 : 1}`}</button></div></section></div>}
+    </main>
+  );
+}
+
+const CODE_TO_DEPARTMENT = {
+  R: "Radiology",
+  RAD: "Radiology",
+  M: "Management related",
+  NABH: "NABH policies",
+  Q: "Quality",
+  ND: "Nursing dept",
+  AE: "A _ E",
+  IPD: "IPD",
+  OPD: "OPD",
+  FO: "Front office",
+  OT: "OT",
+  ICU: "ICU",
+  OBG: "OBG",
+  PD: "Paediatrics",
+  P: "Paediatrics",
+  CL: "Clinical lab",
+  D: "Dialysis",
+  HR: "HR ",
+  PUR: "Purchase",
+  ACC: "Accounts",
+  A: "Accounts",
+  PH: "Pharmacy",
+  MRD: "MRD",
+  HK: "Housekeeping",
+  S: "Security",
+  HS: "Facility & safety",
+  CSSD: "CSSD",
+  LL: "Linen & laundry"
+};
+
+function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
+  const [query, setQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [selectedAction, setSelectedAction] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [serverEntries, setServerEntries] = useState([]);
+
+  useEffect(() => {
+    fetch(hospitalId ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit` : "/api/document-audit")
+      .then((response) => (response.ok ? response.json() : { entries: [] }))
+      .then((result) => setServerEntries(result.entries || []))
+      .catch(() => setServerEntries([]));
+  }, [hospitalId]);
+
+  const auditEntries = serverEntries.length ? serverEntries : entries;
+
+  const getEntryDepartment = (entry) => {
+    const isGeneric = (val) => !val || val.trim().toLowerCase() === "department wise documents";
+
+    if (!isGeneric(entry.department)) {
+      return entry.department.trim();
+    }
+
+    if (entry.documentId) {
+      const parts = entry.documentId.split("/");
+      for (let i = 1; i < parts.length; i++) {
+        const code = parts[i].trim().toUpperCase();
+        if (CODE_TO_DEPARTMENT[code]) {
+          return CODE_TO_DEPARTMENT[code];
+        }
+      }
+    }
+
+    const pathStr = entry.templatePath || entry.relativePath || entry.matchedFilePath || "";
+    if (pathStr && pathStr.includes("/")) {
+      const parts = pathStr.split("/");
+      for (const segment of parts) {
+        const trimmed = segment.trim();
+        if (!isGeneric(trimmed) && trimmed !== "Manuals" && trimmed !== "SOPs" && trimmed !== "Forms" && trimmed !== "Registers" && trimmed !== "HR letters") {
+          return trimmed;
+        }
+      }
+    }
+
+    return isGeneric(entry.department) ? "" : (entry.department || "");
+  };
+
+  const departments = useMemo(() => {
+    const map = new Map();
+    auditEntries.forEach((entry) => {
+      const dept = getEntryDepartment(entry);
+      if (dept) {
+        const upper = dept.toUpperCase();
+        if (!map.has(upper)) map.set(upper, dept);
+      }
+    });
+    return Array.from(map.values()).sort();
+  }, [auditEntries]);
+
+  const actions = useMemo(() => {
+    const set = new Set();
+    auditEntries.forEach((entry) => {
+      if (entry.action) set.add(entry.action);
+    });
+    return Array.from(set).sort();
+  }, [auditEntries]);
+
+  const visibleEntries = useMemo(() => {
+    return auditEntries.filter((entry) => {
+      const entryDept = getEntryDepartment(entry);
+      const entryAction = entry.action || "approved upload";
+      const entryUser = entry.approvedBy || entry.editor || "System";
+      const entryNote = entry.note || "";
+      const entryHash = entry.fileHash || entry.nextHash || "";
+
+      if (query.trim()) {
+        const text = `${entry.documentName || ""} ${entry.documentId || ""} ${entryDept} ${entryUser} ${entryAction} ${entryNote} ${entryHash}`.toLowerCase();
+        if (!text.includes(query.toLowerCase().trim())) return false;
+      }
+
+      if (selectedDepartment !== "all" && entryDept.toUpperCase() !== selectedDepartment.toUpperCase()) {
+        return false;
+      }
+
+      if (selectedAction !== "all" && entryAction.toLowerCase() !== selectedAction.toLowerCase()) {
+        return false;
+      }
+
+      if (entry.timestamp) {
+        const entryDate = new Date(entry.timestamp);
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (entryDate < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (entryDate > end) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [auditEntries, query, selectedDepartment, selectedAction, startDate, endDate]);
+
+  const hasActiveFilters = query || selectedDepartment !== "all" || selectedAction !== "all" || startDate || endDate;
+
+  const handleResetFilters = () => {
+    setQuery("");
+    setSelectedDepartment("all");
+    setSelectedAction("all");
+    setStartDate("");
+    setEndDate("");
+  };
+
+  return (
+    <main>
+      <header>
+        <div className="brand">
+          <img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} />
+          <div>
+            <p className="eyebrow">Governance workspace</p>
+            <h1>Document audit log</h1>
+          </div>
+        </div>
+        <p className="intro">Immutable approval and version history for this hospital repository.</p>
+      </header>
+      <section className="document-panel">
+        <div className="panel-heading">
+          <ClipboardList size={18} />
+          <h2>Approval activity</h2>
+          <span className="count">{visibleEntries.length} entries</span>
+        </div>
+        <div className="audit-filters-bar">
+          <label className="filter-box document-search audit-search-box">
+            <Search size={14} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search document name, ID, approver, note, or hash..."
+            />
+          </label>
+          <div className="audit-filter-controls">
+            <div className="audit-filter-item">
+              <label className="filter-label">Department</label>
+              <select
+                className="audit-filter-select"
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+              >
+                <option value="all">All departments</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="audit-filter-item">
+              <label className="filter-label">Action</label>
+              <select
+                className="audit-filter-select"
+                value={selectedAction}
+                onChange={(e) => setSelectedAction(e.target.value)}
+              >
+                <option value="all">All actions</option>
+                {actions.map((act) => (
+                  <option key={act} value={act}>
+                    {act}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="audit-filter-item">
+              <label className="filter-label">From Date</label>
+              <input
+                type="date"
+                className="audit-date-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="audit-filter-item">
+              <label className="filter-label">To Date</label>
+              <input
+                type="date"
+                className="audit-date-input"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <button className="reset-filters-button" onClick={handleResetFilters} title="Reset all search filters">
+                <RotateCcw size={14} /> Reset filters
+              </button>
+            )}
+          </div>
+        </div>
+        {visibleEntries.length === 0 ? (
+          <p className="empty">No matching audit log entries found.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Document</th>
+                <th>Department</th>
+                <th>Version</th>
+                <th>Approved by</th>
+                <th>Action</th>
+                <th>Approval note</th>
+                <th>File hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleEntries.map((entry) => {
+                const dept = getEntryDepartment(entry) || "-";
+                return (
+                  <tr key={entry.id || entry.objectKey || `${entry.documentId}-${entry.version}-${entry.timestamp}`}>
+                    <td>{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>
+                      <strong>{entry.documentName}</strong>
+                      <br />
+                      <span className="mono">{entry.documentId}</span>
+                    </td>
+                    <td>
+                      <span className="dept-badge">{dept}</span>
+                    </td>
+                    <td>v{entry.version}</td>
+                    <td>{entry.approvedBy || entry.editor || "System"}</td>
+                    <td>{entry.action || "approved upload"}</td>
+                    <td>{entry.note || "-"}</td>
+                    <td className="mono audit-hash">{entry.fileHash || entry.nextHash || "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function App() {
+  const [view, setView] = useState("admin");
+  const [session, setSession] = useState(null);
+  const [auditEntries, setAuditEntries] = useState([]);
+  if (!session) return <LoginGate onLogin={setSession} />;
+  const isSuperAdmin = session.role === "Super Admin";
+  const canViewDocuments = session.permissions?.includes("view");
+  return <><div className="workspace-switcher">{session.hospitalLogoPath && <img className="navigation-logo" src={session.hospitalLogoPath} alt={session.hospitalName} />}<span>{session.hospitalName || session.role}</span>{isSuperAdmin ? <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> Hospitals</button><button className={view === "templates" ? "active" : ""} onClick={() => setView("templates")}><FolderOpen size={16} /> Template library</button></> : <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> User management</button><button className={view === "roles" ? "active" : ""} onClick={() => setView("roles")}><Users size={16} /> Roles</button>{canViewDocuments && <button className={view === "master-list" ? "active" : ""} onClick={() => setView("master-list")}><FileSearch size={16} /> Documents</button>}<button className={view === "audit" ? "active" : ""} onClick={() => setView("audit")}><ClipboardList size={16} /> Audit log</button></>}<button onClick={() => setSession(null)}>Sign out</button></div>{isSuperAdmin ? view === "templates" ? <TemplateLibrary /> : <SuperAdminWorkspace /> : view === "admin" ? <AdminWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} /> : view === "roles" ? <RoleManagement hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : view === "audit" ? <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : canViewDocuments ? <MasterListWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} permissions={session.permissions || []} onCheckIn={(entry) => setAuditEntries((current) => [entry, ...current])} /> : <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} />}</>;
+}
+
+export default App;

@@ -1,0 +1,39 @@
+{
+  "name": "nabh-workflow",
+  "version": "1.0.0",
+  "main": "workflows/complaintWorkflow.js",
+  "type": "module",
+  "scripts": {
+    "start": "node workflows/complaintWorkflow.js",
+    "complaint": "node workflows/complaintWorkflow.js",
+    "complaint:interactive": "node workflows/complaintInteractive.js",
+    "admission-advice": "node workflows/admissionAdviceWorkflow.js",
+    "hospital-pre-registration": "node workflows/hospitalPreRegistrationWorkflow.js",
+    "architecture": "node workflows/architectureDocumentWorkflow.js",
+    "api": "node agents/apiAgent.js",
+    "ui": "npm --prefix web run dev",
+    "ui:build": "npm --prefix web run build",
+    "template:complaint": "node workflows/complaintWorkflow.js",
+    "template:complaint:interactive": "node workflows/complaintInteractive.js",
+    "agents:all": "node workflows/complaintWorkflow.js",
+    "agent:all": "node workflows/complaintWorkflow.js",
+    "interactive": "node workflows/complaintInteractive.js",
+    "agent": "node agentRunner.js",
+    "agent:intake": "node agentRunner.js intake",
+    "agent:extract": "node agentRunner.js extract",
+    "agent:compliance": "node agentRunner.js compliance",
+    "agent:validate": "node agentRunner.js validate",
+    "agent:pdf": "node agentRunner.js pdf",
+    "agent:audit": "node agentRunner.js audit",
+    "template:admission-advice": "node workflows/admissionAdviceWorkflow.js",
+    "template:hospital-pre-registration": "node workflows/hospitalPreRegistrationWorkflow.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1124.0",
+    "@azure/storage-blob": "^12.33.0",
+    "@google-cloud/storage": "^8.0.1",
+    "express": "^5.2.1",
+    "googleapis": "^178.0.0",
+    "pdf-lib": "^1.17.1"
+  }
+}

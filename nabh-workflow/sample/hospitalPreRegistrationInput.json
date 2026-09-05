@@ -1,0 +1,22 @@
+{
+  "fullName": "Ramesh Iyer",
+  "gender": "Male",
+  "dateOfBirth": "14-06-1978",
+  "idNumber": "XXXX-XXXX-4821",
+  "contactNumber": "9845012345",
+  "emailAddress": "ramesh.iyer@example.com",
+  "permanentAddress": "12 Lakeview Road, Indiranagar, Bengaluru, Karnataka 560038",
+  "admittingDoctor": "Dr. N. Menon",
+  "department": "Orthopedics",
+  "proposedDate": "05-09-2026",
+  "stayType": "Inpatient (IPD)",
+  "insuranceCompany": "Star Health Insurance",
+  "paymentMode": "Insurance / TPA",
+  "tpaName": "MediAssist",
+  "policyId": "SH-2026-778901",
+  "preAuthStatus": "Initiated",
+  "emergencyContactName": "Lakshmi Iyer",
+  "relationship": "Spouse",
+  "contactPhone1": "9845012345",
+  "contactPhone2": "9845067890"
+}
