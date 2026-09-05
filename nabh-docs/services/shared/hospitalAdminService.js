@@ -1,11 +1,6 @@
 import { randomUUID } from "crypto";
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { readDocumentMatches, readHospitals, saveHospitals } from "../shared/dataStore.js";
 
-const dataDirectory = fileURLToPath(new URL("../../output", import.meta.url));
-const dataPath = path.join(dataDirectory, "hospitals.json");
-const documentMatchPath = path.join(dataDirectory, "documentMatches.json");
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
   ["maitri_mental_health.png", "Maitri Mental Health"], ["prana_mother_child_care.png", "Prana Mother Child Care"], ["surya_multispecialty.png", "Surya Multispecialty"], ["trishul_orthopedic_centre.png", "Trishul Orthopedic Centre"], ["vaidya_rural_health.png", "Vaidya Rural Health"]
@@ -41,7 +36,8 @@ function permissions(value, roleName) {
 const allDocumentRoles = new Set(["Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator"]);
 
 async function allDocumentsByDepartment() {
-  const departments = JSON.parse(await readFile(documentMatchPath, "utf8"));
+  const departments = await readDocumentMatches();
+  if (!departments) return {};
   return Object.fromEntries(Object.entries(departments).map(([department, documents]) => [department, documents.map((document) => document.id)]));
 }
 
@@ -51,16 +47,6 @@ function selectedDocumentsByDepartment(documents, offset) {
     const start = (offset * 5 + departmentIndex * 3) % ids.length;
     return [department, Array.from({ length: count }, (_, index) => ids[(start + index) % ids.length])];
   }));
-}
-
-async function readHospitals() {
-  try { return JSON.parse(await readFile(dataPath, "utf8")); }
-  catch (error) { if (error.code === "ENOENT") return []; throw error; }
-}
-
-async function saveHospitals(hospitals) {
-  await mkdir(dataDirectory, { recursive: true });
-  await writeFile(dataPath, JSON.stringify(hospitals, null, 2));
 }
 
 function text(value) { return typeof value === "string" ? value.trim() : ""; }
@@ -190,6 +176,7 @@ export async function listHospitalRoles(hospitalId) {
   if (!hospital) return null;
   const roles = rolesForHospital(hospital);
   const allDocuments = await allDocumentsByDepartment();
+  if (!Object.keys(allDocuments).length) return roles;
   let changed = false;
   roles.forEach((role, roleIndex) => {
     if (allDocumentRoles.has(role.name) && !role.defaultAccessApplied) {

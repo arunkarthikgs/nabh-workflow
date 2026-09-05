@@ -8,6 +8,7 @@
     "master-list:local": "node workflows/masterListWorkflow.js --local",
     "match-documents": "node workflows/documentMatchingWorkflow.js",
     "server": "node server.js",
+    "db:migrate": "DATA_STORE=postgres node scripts/migrateToPostgres.js",
     "ui": "npm --prefix web run dev",
     "ui:build": "npm --prefix web run build",
     "prototype": "node workflows/generateFullStaticPrototype.js",
@@ -23,6 +24,7 @@
     "googleapis": "^178.0.0",
     "jszip": "^3.10.1",
     "pdf-lib": "^1.17.1",
+    "pg": "^8.23.0",
     "sharp": "^0.35.4"
   }
 }

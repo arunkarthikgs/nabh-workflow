@@ -7,6 +7,7 @@ import path from "path";
 import { readMasterListSource } from "../agents/masterListIntakeAgent.js";
 import { matchDocumentsToFiles } from "../agents/documentMatchingAgent.js";
 import { indexFiles } from "../services/shared/fileIndexer.js";
+import { closeDataStore, dataStoreDriver, saveDocumentMatches } from "../services/shared/dataStore.js";
 
 const DEFAULT_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1iZasVBmjayMtecLyMp94c8zK0dALj9-F/edit?usp=drive_link&ouid=111928607204974965190&rtpof=true&sd=true";
 
@@ -42,6 +43,10 @@ async function run() {
   await mkdir(outputDir, { recursive: true });
   const outputPath = fileURLToPath(new URL("../output/documentMatches.json", import.meta.url));
   await writeFile(outputPath, JSON.stringify(matches, null, 2));
+  if (dataStoreDriver() !== "json") {
+    await saveDocumentMatches(matches);
+    await closeDataStore();
+  }
 
   let totalDocuments = 0;
   let highConfidence = 0;

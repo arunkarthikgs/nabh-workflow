@@ -27,12 +27,12 @@ function verify(token, secret) {
   try { return JSON.parse(unbase64url(body)); } catch { return false; }
 }
 
-export function createOnlyOfficeService({ dataPath, storageDir, auditPath, publicBaseUrl, documentServerUrl, jwtSecret }) {
+export function createOnlyOfficeService({ readDocumentMatches, saveDocumentMatches, readDocumentAudit, saveDocumentAudit, storageDir, publicBaseUrl, documentServerUrl, jwtSecret }) {
   const sessions = new Map();
   const normalizedDocumentServerUrl = documentServerUrl?.replace(/\/$/, "");
 
   async function readDepartments() {
-    return JSON.parse(await readFile(dataPath, "utf8"));
+    return (await readDocumentMatches()) || {};
   }
 
   async function findDocument(department, id) {
@@ -70,7 +70,7 @@ export function createOnlyOfficeService({ dataPath, storageDir, auditPath, publi
     const { departments, document } = await findDocument(department, id);
     if (!document) return null;
     const filePath = await currentFile(document);
-    await writeFile(dataPath, JSON.stringify(departments, null, 2));
+    await saveDocumentMatches(departments);
     const fileType = extension(document);
     const version = document.version || 1;
     const sessionId = randomUUID();
@@ -101,7 +101,7 @@ export function createOnlyOfficeService({ dataPath, storageDir, auditPath, publi
     const { departments, document } = await findDocument(department, id);
     if (!document) return null;
     const filePath = await currentFile(document);
-    await writeFile(dataPath, JSON.stringify(departments, null, 2));
+    await saveDocumentMatches(departments);
     return { filePath, fileName: path.basename(filePath) };
   }
 
@@ -127,18 +127,16 @@ export function createOnlyOfficeService({ dataPath, storageDir, auditPath, publi
     document.version = nextVersion;
     document.controlledFilePath = destination;
     document.history = [...(document.history || []), { version: nextVersion, timestamp, editor: session.editor, action: "onlyoffice check-in", changes: { fileHash: { from: previousHash, to: nextHash }, note: { from: "", to: session.checkInNote } } }];
-    await writeFile(dataPath, JSON.stringify(departments, null, 2));
-    let audit = [];
-    try { audit = JSON.parse(await readFile(auditPath, "utf8")); } catch (error) { if (error.code !== "ENOENT") throw error; }
+    await saveDocumentMatches(departments);
+    const audit = await readDocumentAudit();
     audit.unshift({ id: randomUUID(), documentId: document.documentId, documentName: document.documentName, department: session.department, version: nextVersion, editor: session.editor, note: session.checkInNote, timestamp, previousHash, nextHash });
-    await mkdir(path.dirname(auditPath), { recursive: true });
-    await writeFile(auditPath, JSON.stringify(audit, null, 2));
+    await saveDocumentAudit(audit);
     sessions.delete(sessionId);
     return { error: 0 };
   }
 
   async function listAudit() {
-    try { return JSON.parse(await readFile(auditPath, "utf8")); } catch (error) { if (error.code === "ENOENT") return []; throw error; }
+    return readDocumentAudit();
   }
 
   return { editorConfig, streamDocument, saveCallback, listAudit };

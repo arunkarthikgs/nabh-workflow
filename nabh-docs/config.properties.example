@@ -9,3 +9,16 @@ R2_TEMPLATE_PREFIX=Templates/
 R2_CLIENT_FOLDER=Clients/
 # Optional. Defaults to https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com
 # R2_ENDPOINT_URL=https://your-cloudflare-account-id.r2.cloudflarestorage.com
+
+# Persistence driver: json (output/*.json files, the default) or postgres.
+DATA_STORE=json
+# PostgreSQL connection (used only when DATA_STORE=postgres).
+# Either set POSTGRES_URL, or the individual POSTGRES_* values below.
+# POSTGRES_URL=postgres://user:password@127.0.0.1:5432/nabh_docs
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=5432
+POSTGRES_DATABASE=nabh_docs
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-postgres-password
+# true (verify certificate) | no-verify (self-signed) | false
+POSTGRES_SSL=false

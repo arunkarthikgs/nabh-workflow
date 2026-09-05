@@ -9,6 +9,8 @@ import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
 import { addHospitalUser, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, listHospitalRoles, listHospitals, updateHospital, updateHospitalRole, updateHospitalUser } from "./services/shared/hospitalAdminService.js";
+import { loadConfig } from "./services/shared/config.js";
+import { dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
@@ -19,7 +21,6 @@ const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
 const prototypeDir = fileURLToPath(new URL("./prototype", import.meta.url));
 const logosDir = fileURLToPath(new URL("./logos", import.meta.url));
-const dataPath = fileURLToPath(new URL("./output/documentMatches.json", import.meta.url));
 const aacPolicyPdfPath = fileURLToPath(new URL("./output/AAC_Policy_Presentation.pdf", import.meta.url));
 const aacPolicyWordPath = fileURLToPath(new URL("./output/AAC_Policy_Modified.docx", import.meta.url));
 const templateRoot = process.env.TEMPLATE_LIBRARY_DIR || "/Users/vkartsu/SFTPConfig/output_office_templates";
@@ -29,24 +30,13 @@ const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
 
-async function loadProperties() {
-  const propertiesPath = fileURLToPath(new URL("./config.properties", import.meta.url));
-  try {
-    const content = await readFile(propertiesPath, "utf8");
-    for (const line of content.split(/\r?\n/)) {
-      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-      if (match && !match[1].startsWith("#") && process.env[match[1]] === undefined) process.env[match[1]] = match[2];
-    }
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-}
-
-await loadProperties();
+loadConfig();
 const onlyOffice = createOnlyOfficeService({
-  dataPath,
+  readDocumentMatches,
+  saveDocumentMatches,
+  readDocumentAudit,
+  saveDocumentAudit,
   storageDir: fileURLToPath(new URL("./output/controlled-documents", import.meta.url)),
-  auditPath: fileURLToPath(new URL("./output/documentAudit.json", import.meta.url)),
   publicBaseUrl: process.env.PUBLIC_BASE_URL,
   documentServerUrl: process.env.ONLYOFFICE_DOCUMENT_SERVER_URL,
   jwtSecret: process.env.ONLYOFFICE_JWT_SECRET
@@ -144,13 +134,13 @@ app.delete("/api/admin/hospitals/:hospitalId/roles/:roleId", async (request, res
 
 app.get("/api/document-matches", async (_request, response, next) => {
   try {
-    const raw = await readFile(dataPath, "utf8");
-    response.type("application/json").send(raw);
-  } catch (error) {
-    if (error.code === "ENOENT") {
+    const departments = await readDocumentMatches();
+    if (!departments) {
       response.status(404).json({ error: "No document match data found yet. Run the documentMatchingWorkflow first." });
       return;
     }
+    response.json(departments);
+  } catch (error) {
     next(error);
   }
 });
@@ -238,8 +228,8 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
     const repository = await getR2ClientRepositoryStatus(hospital.code);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository });
     if (!r2TemplateStorageEnabled()) {
-      const departments = JSON.parse(await readFile(dataPath, "utf8"));
-      return response.json({ departments, repository });
+      const departments = await readDocumentMatches();
+      return response.json({ departments: departments || {}, repository });
     }
     const [masterListBuffer, clientFiles, versionManifests] = await Promise.all([
       getR2ClientFile(hospital.code, masterListTemplateFile),
@@ -629,8 +619,8 @@ app.patch("/api/document-matches/:department/active", async (request, response, 
     const { department } = request.params;
     const { id, active } = request.body;
 
-    const departments = JSON.parse(await readFile(dataPath, "utf8"));
-    const documents = departments[department];
+    const departments = await readDocumentMatches();
+    const documents = departments?.[department];
     if (!documents) {
       response.status(404).json({ error: `Unknown department: ${department}` });
       return;
@@ -643,9 +633,8 @@ app.patch("/api/document-matches/:department/active", async (request, response, 
     }
 
     doc.active = Boolean(active);
-    await writeFile(dataPath, JSON.stringify(departments, null, 2));
-    response.json({ ok: true, active: doc.active });
-  } catch (error) {
+    await saveDocumentMatches(departments);
+    response.json({ ok: true, active: doc.active });  } catch (error) {
     next(error);
   }
 });
@@ -662,8 +651,8 @@ app.patch("/api/document-matches/:department/edit", async (request, response, ne
       return;
     }
 
-    const departments = JSON.parse(await readFile(dataPath, "utf8"));
-    const documents = departments[department];
+    const departments = await readDocumentMatches();
+    const documents = departments?.[department];
     if (!documents) {
       response.status(404).json({ error: `Unknown department: ${department}` });
       return;
@@ -697,7 +686,7 @@ app.patch("/api/document-matches/:department/edit", async (request, response, ne
     doc.history = doc.history || [];
     doc.history.push({ version: doc.version, timestamp: new Date().toISOString(), editor: editor.trim(), action: "edited", changes });
 
-    await writeFile(dataPath, JSON.stringify(departments, null, 2));
+    await saveDocumentMatches(departments);
     response.json({ ok: true, document: doc });
   } catch (error) {
     next(error);
@@ -706,6 +695,12 @@ app.patch("/api/document-matches/:department/edit", async (request, response, ne
 
 const port = Number(process.env.PORT) || 4000;
 const host = process.env.HOST || "127.0.0.1";
-app.listen(port, host, () => {
+app.listen(port, host, async () => {
   console.log(`Master List viewer listening on http://${host}:${port}`);
+  try {
+    const info = await dataStoreInfo();
+    console.log(`Data store: ${info.driver}${info.target ? ` (${info.target})` : ""}`);
+  } catch (error) {
+    console.error(`Data store (${dataStoreDriver()}) is unavailable: ${error.message}`);
+  }
 });

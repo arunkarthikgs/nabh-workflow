@@ -1,0 +1,57 @@
+// Selects the persistence driver from config.properties (DATA_STORE=json|postgres).
+import * as jsonStore from "./store/jsonStore.js";
+import { configValue } from "./config.js";
+
+const driver = configValue("DATA_STORE", "json").toLowerCase() === "postgres" ? "postgres" : "json";
+let storePromise = null;
+
+async function createStore() {
+  if (driver === "json") return jsonStore;
+  const postgresStore = await import("./store/postgresStore.js");
+  await postgresStore.initialize();
+  return postgresStore;
+}
+
+function store() {
+  if (!storePromise) storePromise = createStore().catch((error) => { storePromise = null; throw error; });
+  return storePromise;
+}
+
+export function dataStoreDriver() {
+  return driver;
+}
+
+export async function dataStoreInfo() {
+  return (await store()).info();
+}
+
+export async function readHospitals() {
+  return (await store()).readHospitals();
+}
+
+export async function saveHospitals(hospitals) {
+  return (await store()).saveHospitals(hospitals);
+}
+
+export async function readDocumentMatches() {
+  return (await store()).readDocumentMatches();
+}
+
+export async function saveDocumentMatches(departments) {
+  return (await store()).saveDocumentMatches(departments);
+}
+
+export async function readDocumentAudit() {
+  return (await store()).readDocumentAudit();
+}
+
+export async function saveDocumentAudit(entries) {
+  return (await store()).saveDocumentAudit(entries);
+}
+
+export async function closeDataStore() {
+  if (!storePromise) return;
+  const active = await storePromise;
+  storePromise = null;
+  await active.close();
+}
