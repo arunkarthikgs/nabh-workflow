@@ -19,3 +19,4 @@ config.properties
 /tmp/
 *.log
 .DS_Store
+.wrangler/

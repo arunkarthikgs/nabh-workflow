@@ -1,24 +1,16 @@
-# Local Cloudflare R2 configuration. Copy to config.properties and replace values.
-# config.properties is ignored by Git; do not commit access keys or secrets.
-R2_ENABLED=true
-R2_ACCOUNT_ID=your-cloudflare-account-id
+# Local secrets only. Copy to config.properties and fill in the values.
+# config.properties is ignored by Git; everything non-secret lives in config.defaults.properties.
+# In production these are set as Cloudflare Worker secrets instead:
+#   npx wrangler secret put R2_ACCESS_KEY_ID
 R2_ACCESS_KEY_ID=your-r2-access-key-id
 R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
-R2_BUCKET_NAME=nbah-repo
-R2_TEMPLATE_PREFIX=Templates/
-R2_CLIENT_FOLDER=Clients/
 # Optional. Defaults to https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com
 # R2_ENDPOINT_URL=https://your-cloudflare-account-id.r2.cloudflarestorage.com
 
-# Persistence driver: json (output/*.json files, the default) or postgres.
-DATA_STORE=json
-# PostgreSQL connection (used only when DATA_STORE=postgres).
-# Either set POSTGRES_URL, or the individual POSTGRES_* values below.
+# Only when DATA_STORE=postgres.
 # POSTGRES_URL=postgres://user:password@127.0.0.1:5432/nabh_docs
-POSTGRES_HOST=127.0.0.1
-POSTGRES_PORT=5432
-POSTGRES_DATABASE=nabh_docs
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your-postgres-password
-# true (verify certificate) | no-verify (self-signed) | false
-POSTGRES_SSL=false
+# POSTGRES_PASSWORD=your-postgres-password
+
+# OnlyOffice integration.
+# ONLYOFFICE_DOCUMENT_SERVER_URL=https://onlyoffice.example.test
+# ONLYOFFICE_JWT_SECRET=your-onlyoffice-jwt-secret

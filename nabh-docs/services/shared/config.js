@@ -1,21 +1,26 @@
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 
-const propertiesPath = fileURLToPath(new URL("../../config.properties", import.meta.url));
+// Highest priority first: real env vars, then local overrides, then the tracked defaults.
+const propertyFiles = ["../../config.properties", "../../config.defaults.properties"].map((file) => fileURLToPath(new URL(file, import.meta.url)));
 let loaded = false;
 
-// Environment variables always win over config.properties so deployments can override local files.
+// Environment variables always win over the property files so deployments can override them.
 export function loadConfig() {
   if (loaded) return;
   loaded = true;
-  try {
-    const content = readFileSync(propertiesPath, "utf8");
+  for (const propertiesPath of propertyFiles) {
+    let content;
+    try {
+      content = readFileSync(propertiesPath, "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
     for (const line of content.split(/\r?\n/)) {
       const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
       if (match && process.env[match[1]] === undefined) process.env[match[1]] = match[2];
     }
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
   }
 }
 

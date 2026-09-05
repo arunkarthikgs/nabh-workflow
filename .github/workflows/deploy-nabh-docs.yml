@@ -1,0 +1,48 @@
+name: Deploy nabh-docs to Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nabh-docs/**"
+      - ".github/workflows/deploy-nabh-docs.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nabh-docs
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: nabh-docs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: nabh-docs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Worker and container
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nabh-docs
+          command: deploy
+
+      - name: Smoke test
+        if: vars.DEPLOY_URL != ''
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --retry 5 --retry-delay 10 "${{ vars.DEPLOY_URL }}/api/document-matches")
+          echo "GET /api/document-matches -> $code"
+          [ "$code" = "200" ]

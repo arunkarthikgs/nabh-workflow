@@ -1,0 +1,11 @@
+node_modules
+web/node_modules
+web/dist
+config.properties
+.git
+.github
+.wrangler
+docs
+tools
+*.log
+.DS_Store
