@@ -12,6 +12,7 @@ import { addHospitalUser, createHospital, createHospitalRole, deleteHospital, de
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
+import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
 import { approveR2ClientDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2TemplateFile, listR2ClientAuditEvents, listR2ClientFiles, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
@@ -290,7 +291,11 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
 });
 
 async function findHospital(request) {
-  const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+  const hospitals = await listHospitals();
+  let hospital = hospitals.find((item) => item.id === request.params.hospitalId || item.code === request.params.hospitalId);
+  if (!hospital && (request.params.hospitalId === "undefined" || !request.params.hospitalId)) {
+    hospital = hospitals[0];
+  }
   if (!hospital) {
     const error = new Error("Hospital not found.");
     error.status = 404;
@@ -298,6 +303,141 @@ async function findHospital(request) {
   }
   return hospital;
 }
+
+async function resolveMasterTemplateBuffer(relativePath) {
+  const norm = String(relativePath || "").replace(/\\/g, "/").trim();
+  if (!norm) return null;
+
+  const candidates = [
+    norm,
+    norm.replace(/\.doc$/i, ".docx"),
+    norm.replace(/\.(docx|doc|xlsx|pptx)$/i, "") + "_TEMPLATE.docx",
+    norm.replace(/\.(docx|doc|xlsx|pptx)$/i, "") + "_TEMPLATE.doc"
+  ];
+
+  const baseName = path.basename(norm.replace(/\.(docx|doc|xlsx|pptx)$/i, "")).replace(/_TEMPLATE$/i, "").toLowerCase();
+
+  if (r2TemplateStorageEnabled()) {
+    for (const cand of candidates) {
+      try {
+        const buffer = await getR2TemplateFile(cand);
+        return { buffer, relativePath: cand };
+      } catch {}
+    }
+    try {
+      const templateFiles = await listR2TemplateFiles();
+      const match = templateFiles.find((f) => path.basename(f, path.extname(f)).replace(/_TEMPLATE$/i, "").toLowerCase() === baseName);
+      if (match) return { buffer: await getR2TemplateFile(match), relativePath: match };
+    } catch {}
+  } else {
+    for (const cand of candidates) {
+      const localPath = path.resolve(templateRoot, cand);
+      try {
+        await access(localPath);
+        const buffer = await readFile(localPath);
+        return { buffer, relativePath: cand };
+      } catch {}
+    }
+  }
+
+  return null;
+}
+
+async function resolveDocumentBuffer(hospital, relativePath) {
+  const norm = String(relativePath || "").replace(/\\/g, "/").trim();
+  if (!norm) return null;
+
+  const candidates = [];
+  candidates.push(norm);
+
+  if (/\.doc$/i.test(norm)) {
+    candidates.push(norm.replace(/\.doc$/i, ".docx"));
+  }
+
+  const baseNoExt = norm.replace(/\.(docx|doc|xlsx|pptx)$/i, "");
+  if (!baseNoExt.endsWith("_TEMPLATE")) {
+    candidates.push(baseNoExt + "_TEMPLATE.docx");
+    candidates.push(baseNoExt + "_TEMPLATE.doc");
+  }
+
+  const baseName = path.basename(baseNoExt).replace(/_TEMPLATE$/i, "").toLowerCase();
+
+  if (r2TemplateStorageEnabled()) {
+    for (const cand of candidates) {
+      try {
+        const buffer = await getR2ClientFile(hospital.code, cand);
+        return { buffer, relativePath: cand, source: "client" };
+      } catch {}
+      try {
+        const buffer = await getR2TemplateFile(cand);
+        return { buffer, relativePath: cand, source: "template" };
+      } catch {}
+    }
+
+    try {
+      const clientFiles = await listR2ClientFiles(hospital.code);
+      const match = clientFiles.find((f) => path.basename(f, path.extname(f)).replace(/_TEMPLATE$/i, "").toLowerCase() === baseName);
+      if (match) {
+        return { buffer: await getR2ClientFile(hospital.code, match), relativePath: match, source: "client" };
+      }
+    } catch {}
+
+    try {
+      const templateFiles = await listR2TemplateFiles();
+      const match = templateFiles.find((f) => path.basename(f, path.extname(f)).replace(/_TEMPLATE$/i, "").toLowerCase() === baseName);
+      if (match) {
+        return { buffer: await getR2TemplateFile(match), relativePath: match, source: "template" };
+      }
+    } catch {}
+  } else {
+    for (const cand of candidates) {
+      const localPath = path.resolve(templateRoot, cand);
+      try {
+        await access(localPath);
+        const buffer = await readFile(localPath);
+        return { buffer, relativePath: cand, source: "local" };
+      } catch {}
+    }
+
+    if (norm === "NABH policies/AAC policy.doc" || norm.includes("AAC")) {
+      try {
+        const buffer = await readFile(aacPolicyWordPath);
+        return { buffer, relativePath: "NABH policies/AAC_Policy_Modified.docx", source: "local" };
+      } catch {}
+    }
+  }
+
+  return null;
+}
+
+app.get("/api/admin/hospitals/:hospitalId/documents/download", async (request, response, next) => {
+  try {
+    const hospital = await findHospital(request);
+    const relativePath = String(request.query.path || request.query.file || "");
+    if (!relativePath) return response.status(400).json({ error: "Document path is required." });
+
+    const resolved = await resolveDocumentBuffer(hospital, relativePath);
+    if (!resolved) {
+      return response.status(404).json({ error: `Document file not found for path: ${relativePath}` });
+    }
+
+    const customizedBuffer = await customizeDocumentTemplate(resolved.buffer, resolved.relativePath, hospital);
+    let downloadFilename = path.basename(resolved.relativePath).replace(/_TEMPLATE(?=\.[^.]+$)/i, "");
+
+    const ext = path.extname(downloadFilename).toLowerCase();
+    if (ext !== ".docx" && ext !== ".xlsx" && ext !== ".pptx" && ext !== ".pdf") {
+      downloadFilename = `${path.basename(downloadFilename, ext)}.docx`;
+    }
+
+    response.attachment(downloadFilename).send(customizedBuffer);
+  } catch (error) {
+    if (!response.headersSent) {
+      response.status(500).json({ error: error.message || "Failed to download document." });
+    } else {
+      next(error);
+    }
+  }
+});
 
 app.get("/api/admin/hospitals/:hospitalId/documents/version/download", async (request, response) => {
   try {
@@ -323,6 +463,48 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version/preview", async (req
   } catch (error) { response.status(error.status || 400).json({ error: error.message }); }
 });
 
+app.get("/api/admin/hospitals/:hospitalId/documents/preview", async (request, response, next) => {
+  try {
+    const hospital = await findHospital(request);
+    const relativePath = String(request.query.path || request.query.file || "");
+    if (!relativePath) return response.status(400).json({ error: "Document path is required." });
+
+    const cacheKey = createHash("sha256").update(`${hospital.code}:${relativePath}`).digest("hex");
+    const cacheDirectory = path.join(previewCacheRoot, "client-docs", cacheKey);
+    await mkdir(cacheDirectory, { recursive: true });
+
+    const resolved = await resolveDocumentBuffer(hospital, relativePath);
+    if (!resolved) {
+      return response.status(404).json({ error: `Document source file not found for path: ${relativePath}` });
+    }
+
+    const sourcePath = path.join(cacheDirectory, path.basename(resolved.relativePath));
+    const pdfPath = path.join(cacheDirectory, `${path.basename(sourcePath, path.extname(sourcePath))}.pdf`);
+
+    let pdfInfo;
+    try { pdfInfo = await stat(pdfPath); } catch { pdfInfo = null; }
+
+    if (!pdfInfo) {
+      const customizedBuffer = await customizeDocumentTemplate(resolved.buffer, resolved.relativePath, hospital);
+      await writeFile(sourcePath, customizedBuffer);
+      try {
+        await execFileAsync(process.env.SOFFICE_PATH || "soffice", ["--headless", "--convert-to", "pdf", "--outdir", cacheDirectory, sourcePath]);
+      } catch (error) {
+        return response.status(503).json({ error: `Unable to create PDF preview. ${error.stderr || error.message}` });
+      }
+    }
+
+    await access(pdfPath);
+    response.type("application/pdf").send(await readFile(pdfPath));
+  } catch (error) {
+    if (!response.headersSent) {
+      response.status(500).json({ error: error.message || "PDF preview failed." });
+    } else {
+      next(error);
+    }
+  }
+});
+
 app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, response, next) => {
   try {
     const hospital = await findHospital(request);
@@ -334,18 +516,18 @@ app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, respo
 app.get("/api/admin/template-library/download", async (request, response, next) => {
   try {
     const relativePath = String(request.query.path || "");
-    const filePath = resolveTemplatePath(relativePath);
-    if (!filePath) return response.status(400).json({ error: "Invalid template path." });
-    if (r2TemplateStorageEnabled()) {
-      response.attachment(path.basename(relativePath)).send(await getR2TemplateFile(relativePath));
-      return;
-    }
-    const fileInfo = await stat(filePath);
-    if (!fileInfo.isFile()) return response.status(404).json({ error: "Template not found." });
-    response.download(filePath);
+    if (!relativePath) return response.status(400).json({ error: "Template path is required." });
+
+    const resolved = await resolveMasterTemplateBuffer(relativePath);
+    if (!resolved) return response.status(404).json({ error: "Template not found." });
+
+    response.attachment(path.basename(resolved.relativePath)).send(resolved.buffer);
   } catch (error) {
-    if (error.code === "ENOENT") return response.status(404).json({ error: "Template not found." });
-    next(error);
+    if (!response.headersSent) {
+      response.status(500).json({ error: error.message || "Template download failed." });
+    } else {
+      next(error);
+    }
   }
 });
 
@@ -358,40 +540,38 @@ function resolveTemplatePath(relativePath) {
 app.get("/api/admin/template-library/preview", async (request, response, next) => {
   try {
     const relativePath = String(request.query.path || "");
-    const localPath = resolveTemplatePath(relativePath);
-    if (!localPath) return response.status(400).json({ error: "Invalid template path." });
-    let sourcePath = localPath;
-    let sourceInfo;
-    if (r2TemplateStorageEnabled()) {
-      const sourceBuffer = await getR2TemplateFile(relativePath);
-      const sourceDirectory = path.join(previewCacheRoot, createHash("sha256").update(relativePath).digest("hex"));
-      await mkdir(sourceDirectory, { recursive: true });
-      sourcePath = path.join(sourceDirectory, path.basename(relativePath));
-      await writeFile(sourcePath, sourceBuffer);
-      sourceInfo = await stat(sourcePath);
-    } else {
-      sourceInfo = await stat(sourcePath);
-      if (!sourceInfo.isFile()) return response.status(404).json({ error: "Template not found." });
-    }
+    if (!relativePath) return response.status(400).json({ error: "Template path is required." });
 
-    const cacheKey = createHash("sha256").update(sourcePath).digest("hex");
-    const cacheDirectory = path.join(previewCacheRoot, cacheKey);
+    const cacheKey = createHash("sha256").update(`template:${relativePath}`).digest("hex");
+    const cacheDirectory = path.join(previewCacheRoot, "templates", cacheKey);
+    await mkdir(cacheDirectory, { recursive: true });
+
+    const resolved = await resolveMasterTemplateBuffer(relativePath);
+    if (!resolved) return response.status(404).json({ error: "Template not found." });
+
+    const sourcePath = path.join(cacheDirectory, path.basename(resolved.relativePath));
     const pdfPath = path.join(cacheDirectory, `${path.basename(sourcePath, path.extname(sourcePath))}.pdf`);
+
     let pdfInfo;
     try { pdfInfo = await stat(pdfPath); } catch { pdfInfo = null; }
-    if (!pdfInfo || pdfInfo.mtimeMs < sourceInfo.mtimeMs) {
-      await mkdir(cacheDirectory, { recursive: true });
+
+    if (!pdfInfo) {
+      await writeFile(sourcePath, resolved.buffer);
       try {
         await execFileAsync(process.env.SOFFICE_PATH || "soffice", ["--headless", "--convert-to", "pdf", "--outdir", cacheDirectory, sourcePath]);
       } catch (error) {
         return response.status(503).json({ error: `Unable to create PDF preview. ${error.stderr || error.message}` });
       }
     }
+
     await access(pdfPath);
     response.type("application/pdf").send(await readFile(pdfPath));
   } catch (error) {
-    if (error.code === "ENOENT") return response.status(404).json({ error: "PDF preview was not created." });
-    next(error);
+    if (!response.headersSent) {
+      response.status(500).json({ error: error.message || "PDF preview failed." });
+    } else {
+      next(error);
+    }
   }
 });
 

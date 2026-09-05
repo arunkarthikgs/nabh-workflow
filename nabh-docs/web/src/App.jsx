@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, Fragment } from "react";
-import { Building2, FileSearch, FolderOpen, Search, ArrowUp, ArrowDown, Pencil, History, Check, X, Eye, Download, Upload, Users, X as Close, ClipboardList, FilePenLine, RefreshCw, Save, RotateCcw, Calendar, Filter } from "lucide-react";
+import { Building2, FileSearch, FolderOpen, Search, ArrowUp, ArrowDown, Pencil, History, Check, X, Eye, Download, Upload, Users, X as Close, ClipboardList, FilePenLine, RefreshCw, Save, RotateCcw, Calendar, Filter, AlertCircle } from "lucide-react";
 import hospitalLogo from "./assets/logo.png";
 import AdminWorkspace from "./AdminWorkspace.jsx";
 import LoginGate from "./LoginGate.jsx";
@@ -124,6 +124,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
   const [editDraft, setEditDraft] = useState(null);
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [previewAacPolicy, setPreviewAacPolicy] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState(null);
   const [openDocument, setOpenDocument] = useState(null);
   const [documentContent, setDocumentContent] = useState("");
   const [checkInNote, setCheckInNote] = useState("");
@@ -138,6 +139,40 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
   const [approving, setApproving] = useState(false);
   const canEdit = permissions.includes("edit");
 
+  const pollSyncStatus = (initialMsg) => {
+    setSyncingTemplates(true);
+    if (initialMsg) setSyncMessage(initialMsg);
+    const poll = async () => {
+      try {
+        const statusResponse = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`);
+        const status = await statusResponse.json();
+        setRepositoryStatus(status);
+        if (status.job?.status === "running") {
+          window.setTimeout(poll, 1500);
+          return;
+        }
+        setSyncingTemplates(false);
+        if (status.job?.status === "complete") {
+          setSyncMessage(`${status.job.copied || 0} template(s) synchronized and customized with your hospital logo.`);
+          fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`)
+            .then(async (res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data?.departments) {
+                setDepartments(data.departments);
+                if (!selected) setSelected(Object.keys(data.departments)[0] || null);
+              }
+            });
+        } else if (status.job?.status === "failed") {
+          setSyncMessage(status.job.error || "Template synchronization failed or was incomplete.");
+        }
+      } catch (err) {
+        setSyncingTemplates(false);
+        setSyncMessage(err.message || "Unable to check sync status.");
+      }
+    };
+    window.setTimeout(poll, 500);
+  };
+
   useEffect(() => {
     fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`)
       .then(async (response) => {
@@ -147,6 +182,11 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       })
       .then((data) => {
         setRepositoryStatus(data);
+        if (data.job?.status === "running") {
+          pollSyncStatus("Template synchronization is currently in progress...");
+        } else if (data.job?.status === "failed") {
+          setSyncMessage(data.job.error || "Previous template synchronization failed or was incomplete.");
+        }
         if (!data.repository.exists) return null;
         return fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`).then(async (response) => {
           const result = await response.json();
@@ -298,19 +338,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/sync`, { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to sync new templates.");
-      setSyncMessage("Template sync started. Existing client files will not be changed.");
-      const poll = async () => {
-        const statusResponse = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`);
-        const status = await statusResponse.json();
-        setRepositoryStatus(status);
-        if (status.job?.status === "running") { window.setTimeout(poll, 1500); return; }
-        setSyncingTemplates(false);
-        if (status.job?.status === "complete") {
-          setSyncMessage(`${status.job.copied} new template${status.job.copied === 1 ? "" : "s"} added. Existing client files were not changed.`);
-          window.location.reload();
-        } else if (status.job?.status === "failed") setSyncMessage(status.job.error || "Template sync failed.");
-      };
-      window.setTimeout(poll, 500);
+      pollSyncStatus("Template synchronization started. Existing client files will not be changed.");
     } catch (syncError) {
       setSyncMessage(syncError.message);
       setSyncingTemplates(false);
@@ -423,7 +451,47 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
     finally { setApproving(false); }
   }
 
-  if (repositoryStatus && !repositoryStatus.repository.exists) return <main><header><div className="brand"><img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} /><div><p className="eyebrow">NABH document workspace</p><h1>{hospitalName} documents</h1></div></div><p className="intro">Your hospital document repository is not initialized.</p></header><section className="document-panel repository-empty"><FolderOpen size={28} /><h2>Document repository</h2><p>Sync the current global templates to create this hospital's private document folder. Existing hospital files are never overwritten.</p><button className="primary-button" type="button" disabled={syncingTemplates} onClick={syncNewTemplates}><RefreshCw size={16} /> {syncingTemplates ? "Syncing templates..." : "Sync templates"}</button>{syncMessage && <p className="access-message">{syncMessage}</p>}</section></main>;
+  if (repositoryStatus && !repositoryStatus.repository.exists) {
+    const isRunning = syncingTemplates || repositoryStatus?.job?.status === "running";
+    const isFailed = repositoryStatus?.job?.status === "failed";
+    return (
+      <main>
+        <header>
+          <div className="brand">
+            <img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} />
+            <div>
+              <p className="eyebrow">NABH document workspace</p>
+              <h1>{hospitalName} documents</h1>
+            </div>
+          </div>
+          <p className="intro">Your hospital document repository is not initialized.</p>
+        </header>
+        <section className="document-panel repository-empty">
+          <FolderOpen size={28} />
+          <h2>Document repository</h2>
+          <p>Sync global templates to create this hospital's private document repository. Existing hospital files are never overwritten.</p>
+
+          {isRunning && (
+            <div className="sync-banner status-in-progress" style={{ width: "100%" }}>
+              <RefreshCw size={16} className="spin-icon" />
+              <span><strong>Synchronization in progress...</strong> Copying and customizing templates with your hospital logo.</span>
+            </div>
+          )}
+          {isFailed && (
+            <div className="sync-banner status-error" style={{ width: "100%" }}>
+              <AlertCircle size={16} />
+              <span><strong>Synchronization incomplete or failed:</strong> {repositoryStatus.job?.error || syncMessage || "An error occurred during template sync."}</span>
+            </div>
+          )}
+
+          <button className="primary-button" type="button" disabled={isRunning} onClick={syncNewTemplates}>
+            <RefreshCw size={16} className={isRunning ? "spin-icon" : ""} /> {isRunning ? "Syncing templates..." : "Sync templates"}
+          </button>
+          {syncMessage && !isRunning && !isFailed && <p className="access-message">{syncMessage}</p>}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -443,6 +511,34 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       </header>
 
       {error && <p className="status error">{error}</p>}
+
+      {(syncingTemplates || repositoryStatus?.job?.status === "running") && (
+        <div className="sync-banner status-in-progress">
+          <RefreshCw size={16} className="spin-icon" />
+          <span>
+            <strong>Template Synchronization in Progress:</strong> Global templates are currently being copied and customized with your hospital logo. Document lists will update automatically upon completion.
+          </span>
+        </div>
+      )}
+
+      {repositoryStatus?.job?.status === "failed" && !syncingTemplates && (
+        <div className="sync-banner status-error">
+          <AlertCircle size={16} />
+          <span>
+            <strong>Template Synchronization Incomplete / Failed:</strong> {repositoryStatus.job?.error || syncMessage || "Template synchronization could not complete."} Click retry to synchronize remaining templates.
+          </span>
+          <button className="primary-button compact" type="button" disabled={syncingTemplates} onClick={syncNewTemplates}>
+            <RefreshCw size={14} /> Retry Sync
+          </button>
+        </div>
+      )}
+
+      {syncMessage && !syncingTemplates && repositoryStatus?.job?.status !== "failed" && (
+        <div className="sync-banner status-info">
+          <Check size={16} />
+          <span>{syncMessage}</span>
+        </div>
+      )}
 
       {departments && (
         <div className="layout">
@@ -594,10 +690,22 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                           <span className="no-match">No file matched</span>
                         )}
                         {!isEditing && doc.reusedAcrossDocuments && <span className="reused"> (reused x{doc.reusedAcrossDocuments})</span>}
-                        {!isEditing && isAacPolicy(doc) && (
+                        {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && (
                           <span className="policy-actions">
-                            <button className="icon-button" title="Preview AAC policy" onClick={() => setPreviewAacPolicy(true)}><Eye size={14} /></button>
-                            <a className="icon-button" href="/api/documents/aac-policy/download" title="Download modified AAC policy Word document"><Download size={14} /></a>
+                            <button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}>
+                              <Eye size={14} />
+                            </button>
+                            <a
+                              className="icon-button"
+                              href={
+                                isAacPolicy(doc)
+                                  ? "/api/documents/aac-policy/download"
+                                  : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`
+                              }
+                              title={`Download original file (${(doc.relativeFilePath || doc.matchedFilePath).split(".").pop().toUpperCase()})`}
+                            >
+                              <Download size={14} />
+                            </a>
                           </span>
                         )}
                         {canEdit && !isEditing && doc.matchedFilePath && <button className="icon-button document-edit-button" title="Open and edit document" onClick={() => startDocumentEdit(doc)}><FilePenLine size={14} /></button>}
@@ -667,6 +775,42 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                 )}
               </tbody>
             </table>
+          </section>
+        </div>
+      )}
+      {previewDocument && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setPreviewDocument(null)}>
+          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label={`Preview ${previewDocument.documentName}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Controlled document preview</p>
+                <h2>{previewDocument.documentName}</h2>
+                <p className="editor-file-name">{previewDocument.relativeFilePath || previewDocument.matchedFilePath || previewDocument.documentId}</p>
+              </div>
+              <div className="preview-actions">
+                <a
+                  className="download-button"
+                  href={
+                    isAacPolicy(previewDocument)
+                      ? "/api/documents/aac-policy/download"
+                      : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(previewDocument.relativeFilePath || previewDocument.matchedFilePath)}`
+                  }
+                  title="Download original format"
+                >
+                  <Download size={15} /> Download original file
+                </a>
+                <button className="icon-button" title="Close preview" onClick={() => setPreviewDocument(null)}><Close size={18} /></button>
+              </div>
+            </div>
+            <iframe
+              className="policy-preview"
+              src={
+                isAacPolicy(previewDocument)
+                  ? "/api/documents/aac-policy/preview"
+                  : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/preview?path=${encodeURIComponent(previewDocument.relativeFilePath || previewDocument.matchedFilePath)}`
+              }
+              title={`${previewDocument.documentName} PDF preview`}
+            />
           </section>
         </div>
       )}

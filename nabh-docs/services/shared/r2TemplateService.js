@@ -1,6 +1,7 @@
 import { CopyObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
 import path from "path";
+import { customizeDocumentTemplate } from "./documentCustomizer.js";
 
 const DEFAULT_BUCKET = "nbah-repo";
 const DEFAULT_PREFIX = "Templates/";
@@ -263,13 +264,29 @@ export async function provisionR2ClientRepository(hospital, { syncNewTemplates =
   const copyObject = async (sourceObject) => {
     const relativePath = sourceObject.Key.slice(settings.prefix.length);
     const destinationKey = `${destinationPrefix}${relativePath}`;
-    if (await objectExists(settings.bucket, destinationKey)) return "skipped";
-    await client().send(new CopyObjectCommand({
-      Bucket: settings.bucket,
-      Key: destinationKey,
-      CopySource: `${settings.bucket}/${encodeURIComponent(sourceObject.Key).replace(/%2F/g, "/")}`
-    }));
-    return "copied";
+    if (!syncNewTemplates && await objectExists(settings.bucket, destinationKey)) return "skipped";
+
+    try {
+      const getResult = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: sourceObject.Key }));
+      const rawBuffer = Buffer.from(await getResult.Body.transformToByteArray());
+      const customizedBuffer = await customizeDocumentTemplate(rawBuffer, relativePath, hospital);
+
+      await client().send(new PutObjectCommand({
+        Bucket: settings.bucket,
+        Key: destinationKey,
+        Body: customizedBuffer,
+        ContentType: getResult.ContentType || "application/octet-stream"
+      }));
+      return "copied";
+    } catch (error) {
+      console.warn(`Customization skipped for ${relativePath}, falling back to direct copy:`, error.message);
+      await client().send(new CopyObjectCommand({
+        Bucket: settings.bucket,
+        Key: destinationKey,
+        CopySource: `${settings.bucket}/${encodeURIComponent(sourceObject.Key).replace(/%2F/g, "/")}`
+      }));
+      return "copied";
+    }
   };
   for (let index = 0; index < sourceObjects.length; index += 12) {
     const results = await Promise.all(sourceObjects.slice(index, index + 12).map(copyObject));
