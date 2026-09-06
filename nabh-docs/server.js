@@ -47,6 +47,22 @@ app.use("/prototype", express.static(prototypeDir));
 app.use("/logos", express.static(logosDir));
 app.use(express.json({ limit: "2mb" }));
 
+app.get("/api/health", async (_request, response) => {
+  let store = { driver: dataStoreDriver(), ok: false };
+  try { store = { ...await dataStoreInfo(), ok: true }; } catch (error) { store.error = error.message; }
+  response.json({
+    ok: true,
+    store,
+    r2: {
+      enabled: process.env.R2_ENABLED?.toLowerCase() === "true",
+      accountId: Boolean(process.env.R2_ACCOUNT_ID),
+      accessKeyId: Boolean(process.env.R2_ACCESS_KEY_ID),
+      secretAccessKey: Boolean(process.env.R2_SECRET_ACCESS_KEY),
+      bucket: process.env.R2_BUCKET_NAME || null
+    }
+  });
+});
+
 app.get("/api/admin/hospitals", async (_request, response, next) => {
   try { response.json({ hospitals: await listHospitals() }); } catch (error) { next(error); }
 });
