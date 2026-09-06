@@ -19,7 +19,7 @@ const forwardedKeys = [
 
 export class NabhApp extends Container {
   defaultPort = 8080;
-  sleepAfter = "30m";
+  sleepAfter = "5m";
   // Worker vars and secrets are invisible to the container unless forwarded here.
   envVars = Object.fromEntries(forwardedKeys.filter((key) => this.env[key] !== undefined).map((key) => [key, String(this.env[key])]));
 }
