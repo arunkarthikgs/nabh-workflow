@@ -129,7 +129,7 @@ export default function TemplateLibrary() {
             <h1>Template library</h1>
           </div>
         </div>
-        <p className="intro">Each NABH accreditation programme has its own template set. Select a programme to browse it.</p>
+        <p className="intro">Each NABH accreditation programme has its own template set. Select a programme to browse it. Super Admins can configure document questionnaires from each template row.</p>
         <button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Template library" : "Audit log"}</button>
         <label className="filter-box">
           NABH accreditation programme
