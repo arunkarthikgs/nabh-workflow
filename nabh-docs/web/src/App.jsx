@@ -24,7 +24,7 @@ import {
   Filter,
   AlertCircle,
 } from "lucide-react";
-import hospitalLogo from "./assets/logo.png";
+import hospitalLogo from "./assets/nabh-readiness-system.png";
 import AdminWorkspace from "./AdminWorkspace.jsx";
 import LoginGate from "./LoginGate.jsx";
 import RegisterHospital from "./RegisterHospital.jsx";

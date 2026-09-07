@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, FileText, ShieldCheck } from "lucide-react";
-import hospitalLogo from "./assets/logo.png";
+import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 const accounts = { superadmin: ["Admin@123", "Super Admin"] };
 const exampleAccounts = [

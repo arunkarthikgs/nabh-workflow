@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import hospitalLogo from "./assets/logo.png";
+import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 export default function SetPassword({ token, onComplete }) {
   const [state, setState] = useState({ status: "loading" });

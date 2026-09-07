@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
-import hospitalLogo from "./assets/logo.png";
+import hospitalLogo from "./assets/nabh-readiness-system.png";
 import { emptyHospitalDetails, hospitalRegistrationSections } from "./hospitalFormFields.js";
 
 const blankForm = () => ({ name: "", code: "", adminName: "", adminEmail: "", logoDataUrl: "", details: emptyHospitalDetails() });

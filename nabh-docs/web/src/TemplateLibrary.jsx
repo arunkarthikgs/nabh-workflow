@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ClipboardList, Download, Eye, FileSearch, FileSpreadsheet, FileText, FolderOpen, History, Presentation, Search, Upload, X } from "lucide-react";
-import hospitalLogo from "./assets/logo.png";
+import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 const typeIcons = { DOCX: FileText, XLSX: FileSpreadsheet, PPTX: Presentation };
 
