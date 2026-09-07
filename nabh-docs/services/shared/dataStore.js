@@ -111,12 +111,20 @@ export async function readTemplateQuestionnaire(programme, templatePath) {
   return (await store()).readTemplateQuestionnaire(programme, templatePath);
 }
 
+export async function readTemplateQuestionnaireSummaries(programme) {
+  return (await store()).readTemplateQuestionnaireSummaries(programme);
+}
+
 export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
   return (await store()).saveTemplateQuestionnaire(programme, templatePath, questions);
 }
 
 export async function saveDocumentAnswers(hospitalId, documentId, answers, questionnaire) {
   return (await store()).saveDocumentAnswers(hospitalId, documentId, answers, questionnaire);
+}
+
+export async function readDocumentAnswers(hospitalId) {
+  return (await store()).readDocumentAnswers(hospitalId);
 }
 
 export async function saveBookings(bookings) {

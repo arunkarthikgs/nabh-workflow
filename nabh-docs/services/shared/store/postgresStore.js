@@ -598,6 +598,12 @@ export async function readTemplateQuestionnaire(programme, templatePath) {
   return { programme, templatePath, questions: rows.map((row) => ({ id: row.question_key, label: row.label, type: row.question_type, required: row.required, options: row.options || [], prefillField: row.prefill_field || "" })) };
 }
 
+export async function readTemplateQuestionnaireSummaries(programme) {
+  const client = await connect();
+  const { rows } = await client.query(`select t.programme, t.template_path, count(q.id)::int as question_count, t.updated_at from template_questionnaires t left join template_questions q on q.questionnaire_id = t.id where ($1::text is null or t.programme = $1) group by t.id order by t.programme, t.template_path`, [programme || null]);
+  return rows.map((row) => ({ programme: row.programme, templatePath: row.template_path, questionCount: row.question_count, updatedAt: row.updated_at?.toISOString?.() || row.updated_at }));
+}
+
 export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
   const client = await (await connect()).connect();
   try {
@@ -613,6 +619,18 @@ export async function saveTemplateQuestionnaire(programme, templatePath, questio
 export async function saveDocumentAnswers(hospitalId, documentId, answers, questionnaire) {
   const client = await connect();
   for (const question of questionnaire.questions || []) await client.query(`insert into hospital_document_answers (hospital_id, document_id, question_id, answer) select $1, $2, id, $3 from template_questions where questionnaire_id = (select id from template_questionnaires where programme = $4 and template_path = $5) and question_key = $6 on conflict (hospital_id, document_id, question_id) do update set answer = excluded.answer, updated_at = now()`, [hospitalId, documentId, answers[question.id] || "", questionnaire.programme, questionnaire.templatePath, question.id]);
+}
+
+export async function readDocumentAnswers(hospitalId) {
+  const client = await connect();
+  const { rows } = await client.query(`select a.document_id, q.question_key, a.answer, a.updated_at from hospital_document_answers a join template_questions q on q.id = a.question_id where a.hospital_id = $1 order by a.document_id, a.updated_at`, [hospitalId]);
+  const result = {};
+  for (const row of rows) {
+    const entry = result[row.document_id] ||= { answers: {}, updatedAt: null };
+    entry.answers[row.question_key] = row.answer;
+    entry.updatedAt = row.updated_at?.toISOString?.() || row.updated_at;
+  }
+  return result;
 }
 
 function bookingColumns(booking) {

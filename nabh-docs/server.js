@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, dataStoreDriver, dataStoreInfo, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -21,6 +21,7 @@ import { getDocumentQuestions, validateDocumentAnswers, validateQuestionnaireDef
 import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
+import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReportPdf } from "./services/shared/questionnaireReportPdf.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
 import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
@@ -349,7 +350,9 @@ app.get("/api/admin/template-library", async (request, response, next) => {
       return response.json({ departments: {}, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0, error: `No templates found yet for the "${programme}" programme. Ask an administrator to upload templates for this programme.` });
     }
     if (programme) {
-      const departments = programmeTemplateDepartments(templateFiles);
+      const summaries = await readTemplateQuestionnaireSummaries(programme);
+      const countByPath = new Map(summaries.map((item) => [item.templatePath, item.questionCount]));
+      const departments = Object.fromEntries(Object.entries(programmeTemplateDepartments(templateFiles)).map(([category, documents]) => [category, documents.map((document) => ({ ...document, questionCount: countByPath.get(document.templatePath) || 0 }))]));
       return response.json({ departments, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0 });
     }
     const masterList = await readTemplateMasterList();
@@ -367,6 +370,37 @@ app.get("/api/admin/template-library", async (request, response, next) => {
     }
     next(error);
   }
+});
+
+app.get("/api/admin/template-library/questionnaire-report", async (request, response, next) => {
+  try {
+    const requestedProgramme = String(request.query.programme || "").trim();
+    const programmes = requestedProgramme ? [requestedProgramme] : NABH_ACCREDITATION_PROGRAMMES;
+    if (requestedProgramme && !NABH_ACCREDITATION_PROGRAMMES.includes(requestedProgramme)) return response.status(400).json({ error: "Unknown NABH accreditation programme." });
+    const documents = [];
+    for (const programme of programmes) {
+      const summaries = await readTemplateQuestionnaireSummaries(programme);
+      for (const summary of summaries) {
+        const category = summary.templatePath.split("/")[0] || "Other";
+        const questionnaire = await readTemplateQuestionnaire(programme, summary.templatePath);
+        documents.push({ programme, department: NABH_WORKSPACE_CATEGORIES.includes(category) ? category : classifyDocument(summary.templatePath), documentName: path.basename(summary.templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, ""), templatePath: summary.templatePath, questionCount: summary.questionCount, updatedAt: summary.updatedAt, questions: questionnaire?.questions || [] });
+      }
+    }
+    response.json({ programmes, documents });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/admin/template-library/questionnaire-report.pdf", async (request, response, next) => {
+  try {
+    const summaries = await readTemplateQuestionnaireSummaries();
+    const documents = [];
+    for (const summary of summaries) {
+      const questionnaire = await readTemplateQuestionnaire(summary.programme, summary.templatePath);
+      documents.push({ documentName: `${summary.programme} - ${path.basename(summary.templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, "")}`, programme: summary.programme, questions: questionnaire?.questions || [], answers: {}, generatedAt: summary.updatedAt });
+    }
+    const pdf = await createTemplateQuestionnaireReportPdf({ documents });
+    response.type("application/pdf").attachment("template-questionnaire-report.pdf").send(pdf);
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.get("/api/admin/template-library/questions", async (request, response, next) => {
@@ -660,6 +694,49 @@ app.post("/api/admin/hospitals/:hospitalId/document-draft", async (request, resp
     const draft = await generateDocumentDraft(hospital, documentId, documentName, prepared.answers);
     response.status(201).json({ draft, questionnaire: prepared.questionnaire });
   } catch (error) { if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
+});
+
+async function hospitalQuestionnaireReport(hospital) {
+  const departments = await loadHospitalDepartments(hospital);
+  const storedAnswers = await readDocumentAnswers(hospital.id);
+  const documents = [];
+  for (const [department, departmentDocuments] of Object.entries(departments)) {
+    for (const document of departmentDocuments) {
+      const templatePath = document.relativeFilePath || document.matchedFilePath || "";
+      const questionnaire = templatePath ? await readTemplateQuestionnaire(hospital.accreditation?.programme, templatePath) : null;
+      documents.push({
+        documentId: document.id,
+        documentName: document.documentName,
+        department,
+        templatePath,
+        programme: hospital.accreditation?.programme || "",
+        questions: questionnaire?.questions || [],
+        answers: storedAnswers[document.id]?.answers || {},
+        generatedAt: storedAnswers[document.id]?.updatedAt || new Date().toISOString()
+      });
+    }
+  }
+  return { hospitalId: hospital.id, programme: hospital.accreditation?.programme || "", documents };
+}
+
+app.get("/api/admin/hospitals/:hospitalId/questionnaire-report", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    response.json(await hospitalQuestionnaireReport(hospital));
+  } catch (error) { next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/questionnaire-report.pdf", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    const report = await hospitalQuestionnaireReport(hospital);
+    const pdf = await createHospitalQuestionnaireReportPdf({ hospital, documents: report.documents.filter((document) => document.questions.length || Object.keys(document.answers).length) });
+    response.type("application/pdf").attachment(`${(hospital.code || "hospital").toLowerCase()}-questionnaire-report.pdf`).send(pdf);
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.get("/api/training/catalog", (_request, response) => {

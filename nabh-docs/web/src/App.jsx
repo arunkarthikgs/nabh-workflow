@@ -1251,6 +1251,7 @@ function MasterListWorkspace({
                   ? "Syncing templates..."
                   : "Sync new templates"}
               </button>
+              <a className="secondary-button" href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/questionnaire-report.pdf`}><Download size={15} /> Export questionnaire report</a>
             </div>
 
             {syncMessage && <p className="access-message">{syncMessage}</p>}

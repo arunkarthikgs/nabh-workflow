@@ -139,6 +139,13 @@ export async function readTemplateQuestionnaire(programme, templatePath) {
   return all[programme]?.[templatePath] || null;
 }
 
+export async function readTemplateQuestionnaireSummaries(programme) {
+  const all = await readJson(templateQuestionnairesPath, {});
+  return Object.entries(all)
+    .filter(([key]) => !programme || key === programme)
+    .flatMap(([key, templates]) => Object.entries(templates || {}).map(([templatePath, questionnaire]) => ({ programme: key, templatePath, questionCount: questionnaire.questions?.length || 0, updatedAt: questionnaire.updatedAt || null })));
+}
+
 export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
   const all = await readJson(templateQuestionnairesPath, {});
   all[programme] = { ...(all[programme] || {}), [templatePath]: { programme, templatePath, questions, updatedAt: new Date().toISOString() } };
@@ -152,6 +159,14 @@ export async function saveDocumentAnswers(hospitalId, documentId, answers, quest
   all[key] = { hospitalId, documentId, questionnaire, answers, updatedAt: new Date().toISOString() };
   await writeJson(documentAnswersPath, all);
   return all[key];
+}
+
+export async function readDocumentAnswers(hospitalId) {
+  const all = await readJson(documentAnswersPath, {});
+  return Object.values(all).filter((record) => record.hospitalId === hospitalId).reduce((result, record) => {
+    result[record.documentId] = { answers: record.answers || {}, updatedAt: record.updatedAt || null };
+    return result;
+  }, {});
 }
 
 export async function saveBookings(bookings) {

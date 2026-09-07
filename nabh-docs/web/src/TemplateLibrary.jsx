@@ -40,6 +40,8 @@ export default function TemplateLibrary() {
   const [history, setHistory] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState([]);
+  const [questionnaireReport, setQuestionnaireReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
   const [questionnaireQuestions, setQuestionnaireQuestions] = useState([]);
   const [questionnaireMessage, setQuestionnaireMessage] = useState("");
@@ -94,6 +96,15 @@ export default function TemplateLibrary() {
     setAuditOpen(true);
   }
 
+  async function showQuestionnaireReport() {
+    setReportLoading(true);
+    const response = await fetch("/api/admin/template-library/questionnaire-report");
+    const result = await response.json();
+    setReportLoading(false);
+    if (!response.ok) return setError(result.error || "Unable to load questionnaire report.");
+    setQuestionnaireReport(result.documents || []);
+  }
+
   async function configureQuestions(template) {
     setQuestionnaireMessage("Loading questionnaire...");
     const response = await fetch(`/api/admin/template-library/questions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
@@ -130,7 +141,7 @@ export default function TemplateLibrary() {
           </div>
         </div>
         <p className="intro">Each NABH accreditation programme has its own template set. Select a programme to browse it. Super Admins can configure document questionnaires from each template row.</p>
-        <button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Template library" : "Audit log"}</button>
+        <div className="template-library-header-actions"><button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Template library" : "Audit log"}</button><button className="secondary-button" type="button" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading report..." : "Questionnaire report"}</button><a className="secondary-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
         <label className="filter-box">
           NABH accreditation programme
           <select value={programme} onChange={(event) => setProgramme(event.target.value)}>
@@ -190,7 +201,7 @@ export default function TemplateLibrary() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Document</th><th>Template name</th><th>Stored template</th><th>Type</th><th aria-label="Actions" /></tr>
+                  <tr><th>Document</th><th>Template name</th><th>Stored template</th><th>Type</th><th>Questions</th><th aria-label="Actions" /></tr>
                 </thead>
                 <tbody>
                   {templates.map((template) => {
@@ -201,12 +212,13 @@ export default function TemplateLibrary() {
                         <td><strong>{template.documentName}</strong></td>
                         <td className="file-cell" title={template.templatePath || ""}>{template.fileName || <span className="no-match">No file matched</span>}</td>
                         <td>{template.fileType && <span className="template-type"><Icon size={15} /> {template.fileType}</span>}</td>
+                        <td><span className={`question-count ${template.questionCount ? "has-questions" : ""}`}>{template.questionCount || 0}</span></td>
                         <td>{template.templatePath && (
                           <span className="template-actions">
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
                             <button className="icon-button" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={17} /></button>
-                            <button className="icon-button" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /></button>
+                            <button className="questionnaire-action" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /><span>{template.questionCount || 0}</span></button>
                             <button className="icon-button" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
                           </span>
                         )}</td>
@@ -230,6 +242,14 @@ export default function TemplateLibrary() {
             {approvalMessage && <p className="access-message">{approvalMessage}</p>}
             <button className="primary-button" type="submit"><CheckCircle2 size={16} /> Approve new version</button>
           </form>
+        </div>
+      )}
+      {questionnaireReport && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaireReport(null)}>
+          <section className="preview-dialog questionnaire-report-dialog" role="dialog" aria-modal="true" aria-label="Questionnaire report" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header"><div><p className="eyebrow">Template library report</p><h2>Configured document questionnaires</h2><p className="editor-file-name">{questionnaireReport.length} document(s) have configured questions.</p></div><div className="preview-actions"><a className="download-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={15} /> Export PDF</a><button className="icon-button" title="Close report" onClick={() => setQuestionnaireReport(null)}><X size={18} /></button></div></div>
+            <div className="questionnaire-report-body">{questionnaireReport.length === 0 ? <p className="empty">No document questionnaires have been configured yet.</p> : <table><thead><tr><th>Programme</th><th>Department</th><th>Document</th><th>Questions</th><th>Configured questions</th></tr></thead><tbody>{questionnaireReport.map((document) => <tr key={`${document.programme}-${document.templatePath}`}><td>{document.programme}</td><td>{document.department}</td><td><strong>{document.documentName}</strong><br /><span className="mono">{document.templatePath}</span></td><td><span className="question-count has-questions">{document.questionCount}</span></td><td><ul className="question-report-list">{document.questions.map((question) => <li key={question.id}>{question.label}{question.required !== false && <span>Required</span>}</li>)}</ul></td></tr>)}</tbody></table>}</div>
+          </section>
         </div>
       )}
       {questionnaireTemplate && (
