@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "crypto";
 import path from "path";
 import { customizeDocumentTemplate } from "./documentCustomizer.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug } from "./accreditationService.js";
+import { NABH_WORKSPACE_CATEGORIES } from "./documentCategoryService.js";
 
 const DEFAULT_BUCKET = "nbah-repo";
 const DEFAULT_PREFIX = "Templates/";
@@ -194,6 +195,16 @@ export async function listR2ClientAuditEvents(hospitalCode, programme) {
   return events.filter(Boolean).sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
 }
 
+export async function recordR2ClientAuditEvent(hospital, event) {
+  if (!isEnabled()) return null;
+  const programme = hospital?.accreditation?.programme;
+  if (!programme) return null;
+  const timestamp = event.timestamp || new Date().toISOString();
+  const payload = { hospitalId: hospital.id, hospitalCode: hospital.code, timestamp, ...event };
+  await client().send(new PutObjectCommand({ Bucket: config().bucket, Key: `${clientPrefix(hospital.code, programme)}audit/${timestamp.replace(/[:.]/g, "-")}-${randomUUID()}.json`, Body: JSON.stringify(payload, null, 2), ContentType: "application/json" }));
+  return payload;
+}
+
 export async function listR2TemplateAuditEvents() {
   if (!isEnabled()) return [];
   const settings = config();
@@ -340,9 +351,11 @@ export async function ensureProgrammeTemplateFolders() {
   const existing = [];
   for (const programme of NABH_ACCREDITATION_PROGRAMMES) {
     const prefix = programmeSourcePrefix(settings, programme);
-    if (await objectExists(settings.bucket, prefix)) { existing.push({ programme, prefix }); continue; }
-    await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: prefix, Body: "", ContentType: "application/x-directory" }));
-    created.push({ programme, prefix });
+    for (const folder of [prefix, ...NABH_WORKSPACE_CATEGORIES.map((category) => `${prefix}${category}/`)]) {
+      if (await objectExists(settings.bucket, folder)) { existing.push({ programme, prefix: folder }); continue; }
+      await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: folder, Body: "", ContentType: "application/x-directory" }));
+      created.push({ programme, prefix: folder });
+    }
   }
   return { mode: "r2", created, existing };
 }

@@ -22,7 +22,7 @@ import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBoo
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -340,6 +340,26 @@ async function loadHospitalDepartments(hospital) {
   })]));
 }
 
+async function recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action) {
+  const departments = await loadHospitalDepartments(hospital);
+  const document = Object.entries(departments).flatMap(([department, documents]) => documents.map((item) => ({ ...item, department }))).find((item) => item.id === documentId);
+  const auditEntry = {
+    documentId,
+    documentName: document?.documentName || documentId,
+    department: document?.department || "",
+    action: action || "readiness status changed",
+    approvedBy: entry.updatedBy,
+    note: `${previousStatus.replace(/_/g, " ")} -> ${entry.status.replace(/_/g, " ")}${entry.note ? `: ${entry.note}` : ""}`,
+    previousStatus,
+    status: entry.status,
+    timestamp: entry.updatedAt
+  };
+  if (r2TemplateStorageEnabled()) return recordR2ClientAuditEvent(hospital, auditEntry);
+  const audit = await readDocumentAudit();
+  await saveDocumentAudit([auditEntry, ...audit]);
+  return auditEntry;
+}
+
 app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
@@ -366,7 +386,9 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const { documentId, status, updatedBy, note } = request.body || {};
+    const previousStatus = (await getHospitalDocumentStatus(hospital.id))[documentId]?.status || "not_started";
     const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
+    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry);
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -483,7 +505,11 @@ app.post("/api/login", async (request, response, next) => {
 app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, response, next) => {
   try {
     const { documentId, action, updatedBy, note } = request.body || {};
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const previousStatus = (await getHospitalDocumentStatus(hospital.id))[documentId]?.status || "not_started";
     const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note);
+    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
