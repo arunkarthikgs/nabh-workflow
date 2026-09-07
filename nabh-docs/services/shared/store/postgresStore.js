@@ -1,6 +1,6 @@
 // PostgreSQL-backed data store. Mirrors the JSON store contract so both drivers stay interchangeable.
 import { readFile } from "fs/promises";
-import { randomUUID } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { configValue } from "../config.js";
@@ -79,6 +79,38 @@ const schemaStatements = [
      profile jsonb not null default '{}'::jsonb,
      created_at timestamptz not null default now(),
      constraint hospital_users_email_key unique (hospital_id, email) deferrable initially deferred
+   )`,
+  `create table if not exists registration_tokens (
+     id uuid primary key,
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     email text not null,
+     token_hash text not null unique,
+     expires_at timestamptz not null,
+     used_at timestamptz,
+     revoked_at timestamptz,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists user_audit_events (
+     id uuid primary key,
+     hospital_id uuid references hospitals (id) on delete set null,
+     user_id uuid references hospital_users (id) on delete set null,
+     action text not null,
+     entity_type text not null,
+     entity_id text,
+     metadata jsonb not null default '{}'::jsonb,
+     ip_address text,
+     user_agent text,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists auth_sessions (
+     id uuid primary key,
+     token_hash text not null unique,
+     user_id uuid references hospital_users (id) on delete cascade,
+     hospital_id uuid references hospitals (id) on delete cascade,
+     role text not null,
+     expires_at timestamptz not null,
+     revoked_at timestamptz,
+     created_at timestamptz not null default now()
    )`,
   `create table if not exists hospital_roles (
      id uuid primary key,
@@ -170,6 +202,18 @@ const schemaStatements = [
   // "create table if not exists" above alone would skip them on an already-existing table.
   `alter table hospitals add column if not exists registration_status text not null default ''`,
   `alter table hospitals add column if not exists accreditation jsonb not null default '{}'::jsonb`,
+  `alter table hospitals add column if not exists status text not null default 'pending'`,
+  `alter table hospital_users add column if not exists user_id text`,
+  `alter table hospital_users add column if not exists email_verified_at timestamptz`,
+  `alter table hospital_users add column if not exists last_login_at timestamptz`,
+  `alter table hospital_users add column if not exists updated_at timestamptz not null default now()`,
+  `alter table hospital_users add column if not exists status text not null default 'active'`,
+  `alter table hospital_users add column if not exists contact_phone text not null default ''`,
+  `create unique index if not exists hospital_users_user_id_idx on hospital_users (user_id) where user_id is not null`,
+  `create index if not exists hospital_users_global_email_idx on hospital_users (lower(email)) where email is not null and email <> ''`,
+  `create index if not exists registration_tokens_lookup_idx on registration_tokens (hospital_id, email, expires_at)`,
+  `create index if not exists user_audit_events_hospital_idx on user_audit_events (hospital_id, created_at desc)`,
+  `create index if not exists auth_sessions_token_idx on auth_sessions (token_hash) where revoked_at is null`,
   `alter table service_bookings add column if not exists category text not null default ''`,
   `alter table service_bookings add column if not exists service_id text not null default ''`,
   `alter table service_bookings add column if not exists service_name text not null default ''`,
@@ -273,7 +317,10 @@ export async function resetHospitalDomain() {
   const client = await (await connect()).connect();
   try {
     await client.query("begin");
+    await client.query("truncate table user_audit_events, auth_sessions, registration_tokens, template_questionnaires cascade");
     await client.query("truncate table hospitals cascade");
+    await client.query("drop index if exists hospital_users_global_email_idx");
+    await client.query("create unique index hospital_users_global_email_idx on hospital_users (lower(email)) where email is not null and email <> ''");
     await client.query("commit");
   } catch (error) {
     await client.query("rollback");
@@ -298,7 +345,7 @@ function isoDate(value) {
 }
 
 function toUser(row) {
-  return { id: row.id, name: row.name, email: row.email, role: row.role, active: row.active, ...(row.profile || {}), createdAt: isoDate(row.created_at) };
+  return { id: row.id, userId: row.user_id || undefined, name: row.name, email: row.email, role: row.role, active: row.active, status: row.status || (row.active ? "active" : "inactive"), emailVerifiedAt: row.email_verified_at ? isoDate(row.email_verified_at) : null, lastLoginAt: row.last_login_at ? isoDate(row.last_login_at) : null, contactPhone: row.contact_phone || "", ...(row.profile || {}), createdAt: isoDate(row.created_at), updatedAt: isoDate(row.updated_at || row.created_at) };
 }
 
 function toRole(row) {
@@ -370,11 +417,11 @@ export async function saveHospitals(hospitals) {
       await client.query(`delete from hospital_users where hospital_id = $1 and not (id = any ($2::uuid[]))`, [hospital.id, users.map((user) => user.id)]);
       for (const [userIndex, user] of users.entries()) {
         await client.query(
-          `insert into hospital_users (id, hospital_id, ordinal, name, email, role, active, profile, created_at)
-           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
-           on conflict (id) do update set ordinal = excluded.ordinal, name = excluded.name, email = excluded.email,
-             role = excluded.role, active = excluded.active, profile = excluded.profile`,
-          [user.id, hospital.id, userIndex, user.name, user.email, user.role, user.active !== false, JSON.stringify(profileOf(user)), isoDate(user.createdAt)]
+          `insert into hospital_users (id, hospital_id, ordinal, user_id, name, email, role, active, status, contact_phone, email_verified_at, last_login_at, profile, created_at, updated_at)
+           values ($1, $2, $3, $4, $5, nullif($6, ''), $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15)
+           on conflict (id) do update set ordinal = excluded.ordinal, user_id = excluded.user_id, name = excluded.name, email = excluded.email,
+             role = excluded.role, active = excluded.active, status = excluded.status, contact_phone = excluded.contact_phone, email_verified_at = excluded.email_verified_at, last_login_at = excluded.last_login_at, profile = excluded.profile, updated_at = excluded.updated_at`,
+          [user.id, hospital.id, userIndex, user.userId || null, user.name, user.email || "", user.role, user.active !== false, user.status || (user.active === false ? "inactive" : "active"), user.contactPhone || "", user.emailVerifiedAt || null, user.lastLoginAt || null, JSON.stringify(profileOf(user)), isoDate(user.createdAt), isoDate(user.updatedAt || user.createdAt)]
         );
       }
 
@@ -411,8 +458,8 @@ export async function addHospital(hospital) {
     );
     for (const [index, user] of (hospital.users || []).entries()) {
       await client.query(
-        `insert into hospital_users (id, hospital_id, ordinal, name, email, role, active, profile, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
-        [user.id, hospital.id, index, user.name, user.email, user.role, user.active !== false, JSON.stringify(profileOf(user)), isoDate(user.createdAt)]
+        `insert into hospital_users (id, hospital_id, ordinal, user_id, name, email, role, active, status, contact_phone, profile, created_at, updated_at) values ($1, $2, $3, $4, $5, nullif($6, ''), $7, $8, $9, $10, $11::jsonb, $12, $13)`,
+        [user.id, hospital.id, index, user.userId || null, user.name, user.email || "", user.role, user.active !== false, user.status || (user.active === false ? "inactive" : "active"), user.contactPhone || "", JSON.stringify(profileOf(user)), isoDate(user.createdAt), isoDate(user.updatedAt || user.createdAt)]
       );
     }
     await client.query("commit");
@@ -435,7 +482,7 @@ export async function saveHospital(hospital) {
   return result.rowCount ? hospital : null;
 }
 
-export async function saveHospitalUser(hospitalId, user) { const client = await connect(); await client.query(`insert into hospital_users (id, hospital_id, ordinal, name, email, role, active, profile, created_at) values ($1,$2,coalesce((select max(ordinal)+1 from hospital_users where hospital_id=$2),0),$3,$4,$5,$6,$7::jsonb,$8) on conflict (id) do update set name=excluded.name,email=excluded.email,role=excluded.role,active=excluded.active,profile=excluded.profile`, [user.id, hospitalId, user.name, user.email, user.role, user.active !== false, JSON.stringify(profileOf(user)), isoDate(user.createdAt)]); return user; }
+export async function saveHospitalUser(hospitalId, user) { const client = await connect(); await client.query(`insert into hospital_users (id, hospital_id, ordinal, user_id, name, email, role, active, status, contact_phone, email_verified_at, last_login_at, profile, created_at, updated_at) values ($1,$2,coalesce((select max(ordinal)+1 from hospital_users where hospital_id=$2),0),$3,$4,nullif($5,''),$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14) on conflict (id) do update set user_id=excluded.user_id,name=excluded.name,email=excluded.email,role=excluded.role,active=excluded.active,status=excluded.status,contact_phone=excluded.contact_phone,email_verified_at=excluded.email_verified_at,last_login_at=excluded.last_login_at,profile=excluded.profile,updated_at=excluded.updated_at`, [user.id, hospitalId, user.userId || null, user.name, user.email || "", user.role, user.active !== false, user.status || (user.active === false ? "inactive" : "active"), user.contactPhone || "", user.emailVerifiedAt || null, user.lastLoginAt || null, JSON.stringify(profileOf(user)), isoDate(user.createdAt), isoDate(user.updatedAt || user.createdAt)]); return user; }
 export async function deleteHospitalUserRecord(hospitalId, userId) { const client = await connect(); return Boolean((await client.query(`delete from hospital_users where hospital_id=$1 and id=$2`, [hospitalId, userId])).rowCount); }
 export async function saveHospitalRole(hospitalId, role) { const client = await connect(); await client.query(`insert into hospital_roles (id,hospital_id,ordinal,name,reports,document_access,permissions,default_access_applied) values ($1,$2,coalesce((select max(ordinal)+1 from hospital_roles where hospital_id=$2),0),$3,$4::jsonb,$5::jsonb,$6::jsonb,$7) on conflict (id) do update set name=excluded.name,reports=excluded.reports,document_access=excluded.document_access,permissions=excluded.permissions,default_access_applied=excluded.default_access_applied`, [role.id,hospitalId,role.name,JSON.stringify(role.reports || []),JSON.stringify(role.documentAccess || {}),JSON.stringify(role.permissions || []),Boolean(role.defaultAccessApplied)]); return role; }
 export async function deleteHospitalRoleRecord(hospitalId, roleId) { const client = await connect(); return Boolean((await client.query(`delete from hospital_roles where hospital_id=$1 and id=$2`, [hospitalId, roleId])).rowCount); }
@@ -632,6 +679,39 @@ export async function readDocumentAnswers(hospitalId) {
   }
   return result;
 }
+
+export async function createRegistrationToken(hospitalId, email, rawToken, expiresAt) {
+  const client = await connect();
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  await client.query(`update registration_tokens set revoked_at = now() where hospital_id = $1 and email = $2 and used_at is null and revoked_at is null`, [hospitalId, email.toLowerCase()]);
+  await client.query(`insert into registration_tokens (id, hospital_id, email, token_hash, expires_at) values ($1, $2, $3, $4, $5)`, [randomUUID(), hospitalId, email.toLowerCase(), tokenHash, expiresAt]);
+  return true;
+}
+
+export async function findRegistrationToken(rawToken) {
+  const client = await connect();
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const { rows } = await client.query(`select t.*, h.name as hospital_name, h.code as hospital_code, u.* from registration_tokens t join hospitals h on h.id = t.hospital_id join hospital_users u on u.hospital_id = h.id and lower(u.email) = lower(t.email) where t.token_hash = $1 and t.used_at is null and t.revoked_at is null and t.expires_at > now() limit 1`, [tokenHash]);
+  if (!rows[0]) return null;
+  const row = rows[0];
+  return { tokenId: row.id, hospitalId: row.hospital_id, hospital: { id: row.hospital_id, name: row.hospital_name, code: row.hospital_code }, user: toUser(row) };
+}
+
+export async function consumeRegistrationToken(tokenId) {
+  const client = await connect();
+  const result = await client.query(`update registration_tokens set used_at = now() where id = $1 and used_at is null and revoked_at is null and expires_at > now()`, [tokenId]);
+  return Boolean(result.rowCount);
+}
+
+export async function appendUserAuditEvent(event) {
+  const client = await connect();
+  await client.query(`insert into user_audit_events (id, hospital_id, user_id, action, entity_type, entity_id, metadata, ip_address, user_agent) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)`, [randomUUID(), event.hospitalId || null, event.userId || null, event.action, event.entityType, event.entityId || null, JSON.stringify(event.metadata || {}), event.ipAddress || null, event.userAgent || null]);
+  return event;
+}
+
+export async function createAuthSession(session) { const client = await connect(); await client.query(`insert into auth_sessions (id, token_hash, user_id, hospital_id, role, expires_at) values ($1, $2, $3, $4, $5, $6)`, [session.id, session.tokenHash, session.userId || null, session.hospitalId || null, session.role, session.expiresAt]); return session; }
+export async function readAuthSession(tokenHash) { const client = await connect(); const { rows } = await client.query(`select id, user_id, hospital_id, role, expires_at from auth_sessions where token_hash = $1 and revoked_at is null and expires_at > now()`, [tokenHash]); return rows[0] || null; }
+export async function revokeAuthSession(tokenHash) { const client = await connect(); return Boolean((await client.query(`update auth_sessions set revoked_at = now() where token_hash = $1 and revoked_at is null`, [tokenHash])).rowCount); }
 
 function bookingColumns(booking) {
   return [booking.category || "", booking.serviceId || "", booking.serviceName || "", booking.mode || "virtual", booking.preferredDate || null, booking.status || "requested", booking.notes || "", isoDate(booking.createdAt), isoDate(booking.updatedAt)];

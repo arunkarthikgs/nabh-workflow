@@ -2406,7 +2406,7 @@ function App() {
             </button>
           </>
         )}
-        <button onClick={() => setSession(null)}>Sign out</button>
+        <button onClick={async () => { await fetch("/api/logout", { method: "POST" }); setSession(null); }}>Sign out</button>
       </div>
       {isSuperAdmin ? (
         view === "home" ? (

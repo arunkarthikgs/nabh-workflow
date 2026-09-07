@@ -133,6 +133,7 @@ export async function updateBooking(booking) {
 
 const templateQuestionnairesPath = path.join(dataDirectory, "templateQuestionnaires.json");
 const documentAnswersPath = path.join(dataDirectory, "documentAnswers.json");
+const authSessionsPath = path.join(dataDirectory, "authSessions.json");
 
 export async function readTemplateQuestionnaire(programme, templatePath) {
   const all = await readJson(templateQuestionnairesPath, {});
@@ -168,6 +169,15 @@ export async function readDocumentAnswers(hospitalId) {
     return result;
   }, {});
 }
+
+export async function createRegistrationToken(hospitalId, email, rawToken, expiresAt) { return { hospitalId, email, rawToken, expiresAt }; }
+export async function findRegistrationToken() { return null; }
+export async function consumeRegistrationToken() { return false; }
+export async function appendUserAuditEvent() { return null; }
+
+export async function createAuthSession(session) { const sessions = await readJson(authSessionsPath, []); sessions.push(session); await writeJson(authSessionsPath, sessions); return session; }
+export async function readAuthSession(tokenHash) { const sessions = await readJson(authSessionsPath, []); const session = sessions.find((item) => item.tokenHash === tokenHash && !item.revokedAt && new Date(item.expiresAt).getTime() > Date.now()); return session || null; }
+export async function revokeAuthSession(tokenHash) { const sessions = await readJson(authSessionsPath, []); const session = sessions.find((item) => item.tokenHash === tokenHash && !item.revokedAt); if (!session) return false; session.revokedAt = new Date().toISOString(); await writeJson(authSessionsPath, sessions); return true; }
 
 export async function saveBookings(bookings) {
   await writeJson(bookingsPath, bookings);

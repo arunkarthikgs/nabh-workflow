@@ -127,6 +127,26 @@ export async function readDocumentAnswers(hospitalId) {
   return (await store()).readDocumentAnswers(hospitalId);
 }
 
+export async function createRegistrationToken(hospitalId, email, rawToken, expiresAt) {
+  return (await store()).createRegistrationToken(hospitalId, email, rawToken, expiresAt);
+}
+
+export async function findRegistrationToken(rawToken) {
+  return (await store()).findRegistrationToken(rawToken);
+}
+
+export async function consumeRegistrationToken(tokenId) {
+  return (await store()).consumeRegistrationToken(tokenId);
+}
+
+export async function appendUserAuditEvent(event) {
+  return (await store()).appendUserAuditEvent(event);
+}
+
+export async function createAuthSession(session) { return (await store()).createAuthSession(session); }
+export async function readAuthSession(tokenHash) { return (await store()).readAuthSession(tokenHash); }
+export async function revokeAuthSession(tokenHash) { return (await store()).revokeAuthSession(tokenHash); }
+
 export async function saveBookings(bookings) {
   return (await store()).saveBookings(bookings);
 }

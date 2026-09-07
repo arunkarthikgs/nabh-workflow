@@ -10,6 +10,7 @@ export default function RegisterHospital({ onBackToLogin }) {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const change = (event) => {
     const { name, value } = event.target;
@@ -33,7 +34,7 @@ export default function RegisterHospital({ onBackToLogin }) {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, location: [form.details.city, form.details.state].filter(Boolean).join(", ") })
+        body: JSON.stringify({ ...form, acceptedTerms, location: [form.details.city, form.details.state].filter(Boolean).join(", ") })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to register hospital.");
@@ -58,7 +59,7 @@ export default function RegisterHospital({ onBackToLogin }) {
           <img src={hospitalLogo} alt="NABH Docs" className="login-logo" />
           <p className="eyebrow">Next step</p>
           <h2>Check your email</h2>
-          <p className="access-message">Client code: <strong>{result.hospital.code}</strong></p>
+          <p className="access-message">User ID: <strong>{result.hospital.users[0]?.userId || "Assigned after activation"}</strong><br />Hospital code: <strong>{result.hospital.code}</strong></p>
           {result.email?.transport === "pending" && <p className="access-message">Email delivery is being completed in the background. It may take a moment to arrive.</p>}
           {result.warnings?.map((warning) => <p className="access-message" key={warning}>{warning}</p>)}
           {result.repository?.provisioning && <p className="access-message">Your document workspace is being prepared in the background and will be ready shortly after you sign in.</p>}
@@ -105,20 +106,21 @@ export default function RegisterHospital({ onBackToLogin }) {
             <div className="admin-fields">
               {fields.map(([key, label, type, options]) => (
                 <label key={key}>
-                  {label}
+                  {label}{["addressLine1", "city", "mainPhone", "responsiblePhone"].includes(key) && <b> *</b>}
                   {type === "select" ? (
                     <select name={key} value={form.details[key]} onChange={change}>
                       <option value="">Select</option>
                       {options.map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
-                    <input name={key} type={type || (key.includes("Email") ? "email" : "text")} value={form.details[key]} onChange={change} />
+                    <input name={key} required={["addressLine1", "city", "mainPhone", "responsiblePhone"].includes(key)} type={type || (key.includes("Email") ? "email" : "text")} value={form.details[key]} onChange={change} />
                   )}
                 </label>
               ))}
             </div>
           </section>
         ))}
+        <label className="terms-checkbox"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required /> I accept the Privacy Policy and Terms of Service.</label>
         {error && <p className="status error">{error}</p>}
         <div className="toolbar">
           <button className="primary-button" disabled={submitting}><ArrowRight size={16} /> {submitting ? "Registering..." : "Create account"}</button>

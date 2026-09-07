@@ -1,6 +1,6 @@
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
-import { addHospital, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
+import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
@@ -236,30 +236,44 @@ export async function registerHospital(input) {
   const name = text(input.name);
   const adminName = text(input.adminName);
   const adminEmail = text(input.adminEmail).toLowerCase();
-  if (!name || !adminName || !adminEmail) throw new Error("Hospital name, administrator name, and administrator email are required.");
+  const details = input.details && typeof input.details === "object" ? input.details : {};
+  if (!name || !adminName || !adminEmail || !text(details.addressLine1) || !text(details.city) || !text(details.responsiblePhone || details.mainPhone)) throw new Error("Hospital name, administrator name, email, address, city, and contact phone are required.");
+  if (input.acceptedTerms !== true) throw new Error("Accept the Privacy Policy and Terms before registering.");
   const hospitals = await readHospitals();
   const requestedCode = text(input.code).toUpperCase();
+  if (requestedCode && !/^[A-Z0-9]{4}$/.test(requestedCode)) throw new Error("Hospital code must be exactly four letters or numbers.");
   if (requestedCode && hospitals.some((hospital) => hospital.code === requestedCode)) throw new Error("Client code already exists.");
-  const base = requestedCode || (name.replace(/[^A-Za-z]/g, "").slice(0, 3) || "HOS").toUpperCase();
+  const base = requestedCode || (name.replace(/[^A-Za-z0-9]/g, "").slice(0, 4) || "HOSP").toUpperCase().padEnd(4, "X").slice(0, 4);
   let code = base, suffix = 0;
-  while (hospitals.some((hospital) => hospital.code === code)) { suffix += 1; code = `${base}${suffix}`; }
+  while (hospitals.some((hospital) => hospital.code === code)) { suffix += 1; code = `${base.slice(0, 3)}${suffix % 10}`; }
   const now = new Date().toISOString();
   const setupToken = generateSetupToken();
+  const usedUserIds = new Set(hospitals.flatMap((hospital) => (hospital.users || []).map((user) => Number(user.userId)).filter(Number.isInteger)));
+  let nextUserId = 10000000;
+  while (usedUserIds.has(nextUserId)) nextUserId++;
   const hospital = {
     id: randomUUID(), name, code, location: text(input.location), status: "pending", registrationStatus: "self_registered",
-    logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: "", branch: "main" }, details: input.details && typeof input.details === "object" ? input.details : {},
+    logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: "", branch: "main" }, details,
     users: [{
-      id: randomUUID(), name: adminName, email: adminEmail, role: "Hospital Administrator", active: true, createdAt: now,
+      id: randomUUID(), userId: String(nextUserId), name: adminName, email: adminEmail, role: "Hospital Administrator", active: true, status: "active", contactPhone: text(details.responsiblePhone || details.mainPhone), createdAt: now, updatedAt: now,
       passwordSet: false, passwordSetupToken: setupToken, passwordSetupExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
     }],
     createdAt: now, updatedAt: now
   };
+  if (dataStoreDriver() === "postgres") {
+    delete hospital.users[0].passwordSetupToken;
+    delete hospital.users[0].passwordSetupExpiresAt;
+    await addHospital(hospital);
+    await createRegistrationToken(hospital.id, adminEmail, setupToken, new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
+    return { ...hospital, registrationToken: setupToken };
+  }
   return addHospital(hospital);
 }
 
 // Locates the hospital + user owning a still-valid password setup token, without exposing tokens elsewhere.
 export async function findUserBySetupToken(token) {
   if (!text(token)) return null;
+  if (dataStoreDriver() === "postgres") return findRegistrationToken(token);
   const hospitals = await readHospitals();
   for (const hospital of hospitals) {
     const user = hospital.users?.find((item) => item.passwordSetupToken === token);
@@ -275,6 +289,16 @@ export async function completePasswordSetup(token, password) {
   if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) throw new Error("This setup link has expired.");
   if (typeof password !== "string" || password.length < 8) throw new Error("Password must be at least 8 characters.");
   const { salt, hash } = hashPassword(password);
+  if (dataStoreDriver() === "postgres") {
+    const hospitals = await readHospitals();
+    const hospital = hospitals.find((item) => item.id === found.hospital.id);
+    const user = hospital?.users.find((item) => item.id === found.user.id);
+    if (!hospital || !user || !(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
+    user.passwordSalt = salt; user.passwordHash = hash; user.passwordSet = true; user.emailVerifiedAt = new Date().toISOString(); user.updatedAt = new Date().toISOString();
+    hospital.status = "pending"; hospital.registrationStatus = "pending_activation"; hospital.updatedAt = user.updatedAt;
+    await saveHospitalUser(hospital.id, user); await saveHospital(hospital);
+    return { hospital, user };
+  }
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === found.hospital.id);
   const user = hospital.users.find((item) => item.id === found.user.id);
@@ -294,24 +318,30 @@ export async function resetHospitalUserPassword(userId) {
     const user = hospital.users?.find((item) => item.id === userId);
     if (!user) continue;
     user.passwordSet = false;
-    user.passwordSetupToken = generateSetupToken();
-    user.passwordSetupExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const setupToken = generateSetupToken();
+    const setupExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    if (dataStoreDriver() !== "postgres") { user.passwordSetupToken = setupToken; user.passwordSetupExpiresAt = setupExpiresAt; }
+    else await createRegistrationToken(hospital.id, user.email, setupToken, setupExpiresAt);
     hospital.updatedAt = new Date().toISOString();
     await saveHospitalUser(hospital.id, user);
-    return { hospital, user };
+    return { hospital, user: { ...user, passwordSetupToken: setupToken, passwordSetupExpiresAt: setupExpiresAt } };
   }
   return null;
 }
 
 // Verifies a hospital administrator's password: real hash if set, otherwise the legacy demo password.
-export async function verifyHospitalAdminPassword(code, password) {
+export async function verifyHospitalAdminPassword(identifier, password) {
   const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.code.toLowerCase() === code.toLowerCase());
-  if (!hospital) return null;
-  const user = hospital.users.find((item) => item.role === "Hospital Administrator");
-  if (!user) return null;
+  const normalized = text(identifier).toLowerCase();
+  const found = hospitals.flatMap((hospital) => (hospital.users || []).map((user) => ({ hospital, user }))).find(({ hospital, user }) => user.userId === text(identifier) || (user.email && user.email.toLowerCase() === normalized) || (user.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
+  if (!found || found.user.active === false || found.user.status === "inactive") return null;
+  const { hospital, user } = found;
   const ok = user.passwordHash ? verifyPassword(password, user.passwordSalt, user.passwordHash) : password === "Hospital@123";
-  return ok ? hospital : null;
+  if (!ok) return null;
+  user.lastLoginAt = new Date().toISOString();
+  user.updatedAt = user.lastLoginAt;
+  await saveHospitalUser(hospital.id, user);
+  return { hospital, user };
 }
 
 

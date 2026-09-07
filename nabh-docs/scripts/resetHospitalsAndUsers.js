@@ -17,9 +17,27 @@ const outputDirectory = fileURLToPath(new URL("../output", import.meta.url));
 const hospitals = JSON.parse(await readFile(path.join(outputDirectory, "hospitals.json"), "utf8"));
 if (!Array.isArray(hospitals)) throw new Error("output/hospitals.json must contain an array.");
 
+const usedEmails = new Set();
+let nextUserId = 10000000;
+const seedHospitals = hospitals.map((sourceHospital, hospitalIndex) => {
+  const hospital = structuredClone(sourceHospital);
+  const originalCode = String(hospital.code || `H${hospitalIndex + 1}`).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  hospital.code = (originalCode.slice(0, 3) || "HOS") + String(hospitalIndex % 10);
+  hospital.status = hospital.status === "inactive" ? "inactive" : "active";
+  hospital.users = (hospital.users || []).map((user) => {
+    const nextUser = { ...user, userId: String(nextUserId++), status: user.active === false ? "inactive" : "active", updatedAt: user.updatedAt || user.createdAt };
+    const email = String(nextUser.email || "").trim().toLowerCase();
+    if (email && usedEmails.has(email)) nextUser.email = `${email.split("@")[0]}+${hospital.code.toLowerCase()}@${email.split("@")[1]}`;
+    else nextUser.email = email;
+    if (nextUser.email) usedEmails.add(nextUser.email);
+    return nextUser;
+  });
+  return hospital;
+});
+
 await postgresStore.initialize();
 await postgresStore.resetHospitalDomain();
-if (hospitals.length) await postgresStore.saveHospitals(hospitals);
+if (seedHospitals.length) await postgresStore.saveHospitals(seedHospitals);
 
 if (r2TemplateStorageEnabled()) {
   for (const hospital of hospitals) {
@@ -31,4 +49,4 @@ if (r2TemplateStorageEnabled()) {
 }
 
 await postgresStore.close();
-console.log(`Reset and reseeded ${hospitals.length} hospital(s) and their users.`);
+console.log(`Reset and reseeded ${seedHospitals.length} hospital(s) and ${seedHospitals.reduce((count, hospital) => count + hospital.users.length, 0)} user(s).`);

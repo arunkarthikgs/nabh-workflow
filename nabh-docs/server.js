@@ -2,7 +2,7 @@
 // Run: node server.js
 import express from "express";
 import ExcelJS from "exceljs";
-import { createHash } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { execFile } from "child_process";
 import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, dataStoreDriver, dataStoreInfo, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -103,6 +103,42 @@ app.use("/prototype", express.static(prototypeDir));
 app.use("/logos", express.static(logosDir));
 app.use(express.json({ limit: "2mb" }));
 
+function requestCookies(request) {
+  return Object.fromEntries(String(request.headers.cookie || "").split(";").map((part) => part.trim().split("=")).filter(([key, value]) => key && value).map(([key, ...value]) => [key, decodeURIComponent(value.join("="))]));
+}
+
+async function issueApplicationSession(response, session) {
+  const rawToken = randomBytes(32).toString("hex");
+  await createAuthSession({ id: randomUUID(), tokenHash: createHash("sha256").update(rawToken).digest("hex"), userId: session.accountId || null, hospitalId: session.hospitalId || null, role: session.role, expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() });
+  response.setHeader("Set-Cookie", `nabh_session=${encodeURIComponent(rawToken)}; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
+}
+
+async function requireApplicationSession(request, response, next) {
+  try {
+    const rawToken = requestCookies(request).nabh_session;
+    if (!rawToken) return response.status(401).json({ error: "Authentication required." });
+    const session = await readAuthSession(createHash("sha256").update(rawToken).digest("hex"));
+    if (!session) return response.status(401).json({ error: "Authentication required." });
+    request.appSession = session;
+    next();
+  } catch (error) { next(error); }
+}
+
+function requireHospitalAccess(request, response, next) {
+  if (request.appSession?.role === "Super Admin" || request.appSession?.hospital_id === request.params.hospitalId || request.appSession?.hospitalId === request.params.hospitalId) return next();
+  return response.status(403).json({ error: "You are not authorized to access this hospital." });
+}
+
+function requireSuperAdmin(request, response, next) {
+  if (request.appSession?.role === "Super Admin") return next();
+  return response.status(403).json({ error: "Super Admin access required." });
+}
+
+app.use("/api/admin", requireApplicationSession);
+app.use("/api/admin/template-library", requireSuperAdmin);
+app.use("/api/admin/smtp", requireSuperAdmin);
+app.use("/api/admin/hospitals/:hospitalId", requireHospitalAccess);
+
 app.get("/api/health", async (_request, response) => {
   let store = { driver: dataStoreDriver(), ok: false };
   try { store = { ...await dataStoreInfo(), ok: true }; } catch (error) { store.error = error.message; }
@@ -119,12 +155,17 @@ app.get("/api/health", async (_request, response) => {
   });
 });
 
-app.get("/api/admin/hospitals", async (_request, response, next) => {
-  try { response.json({ hospitals: await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation)) }); } catch (error) { next(error); }
+app.get("/api/admin/hospitals", async (request, response, next) => {
+  try {
+    const hospitals = await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation));
+    const visible = request.appSession.role === "Super Admin" ? hospitals : hospitals.filter((hospital) => hospital.id === request.appSession.hospital_id || hospital.id === request.appSession.hospitalId);
+    response.json({ hospitals: visible });
+  } catch (error) { next(error); }
 });
 
 app.post("/api/admin/hospitals", async (request, response, next) => {
   try {
+    if (request.appSession.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const hospital = await persistHospitalLogo(await createHospital(request.body || {}));
     response.status(201).json({ hospital, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" } });
   }
@@ -191,9 +232,10 @@ app.delete("/api/admin/hospitals/:hospitalId/users/:userId", async (request, res
   try { const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); requireActiveHospital(hospital); const deleted = await deleteHospitalUser(request.params.hospitalId, request.params.userId); if (!deleted) return response.status(404).json({ error: "User not found." }); response.status(204).end(); } catch (error) { next(error); }
 });
 
-app.get("/api/admin/users", async (_request, response, next) => {
+app.get("/api/admin/users", async (request, response, next) => {
   try {
-    const hospitals = await listHospitals();
+    const allHospitals = await listHospitals();
+    const hospitals = request.appSession.role === "Super Admin" ? allHospitals : allHospitals.filter((hospital) => hospital.id === request.appSession.hospital_id || hospital.id === request.appSession.hospitalId);
     response.json({ users: hospitals.flatMap((hospital) => (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }))) });
   } catch (error) { next(error); }
 });
@@ -205,6 +247,7 @@ app.post("/api/admin/smtp/verify", async (_request, response) => {
 
 app.post("/api/admin/users/:userId/reset-password", async (request, response, next) => {
   try {
+    if (request.appSession.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const found = await resetHospitalUserPassword(request.params.userId);
     if (!found) return response.status(404).json({ error: "User not found." });
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
@@ -589,8 +632,9 @@ app.post("/api/register", async (request, response, next) => {
   try {
     const createdHospital = await registerHospital(request.body || {});
     const user = createdHospital.users[0];
+    await appendUserAuditEvent({ hospitalId: createdHospital.id, action: "hospital_registration_requested", entityType: "hospital", entityId: createdHospital.id, metadata: { email: request.body?.adminEmail || "" }, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
-    const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
+    const setupLink = `${origin}/?setPasswordToken=${createdHospital.registrationToken || user.passwordSetupToken}`;
     const { passwordSetupToken, passwordSetupExpiresAt, ...safeUser } = user;
     // The document workspace is not provisioned yet: it requires an accepted accreditation
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
@@ -627,21 +671,41 @@ app.get("/api/set-password/:token", async (request, response, next) => {
 app.post("/api/set-password", async (request, response, next) => {
   try {
     const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password);
+    await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "registration_completed", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const role = hospital.roles?.find((item) => item.name === user.role);
-    response.json({ session: { role: user.role, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath } });
+    const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath };
+    await issueApplicationSession(response, session);
+    response.json({ session });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.post("/api/login", async (request, response, next) => {
   try {
-    const userId = String(request.body?.userId || "").trim().toLowerCase();
+    const userId = String(request.body?.userId || request.body?.email || "").trim();
     const password = String(request.body?.password || "");
-    if (!userId.endsWith("-admin")) return response.status(401).json({ error: "Invalid credentials." });
-    const hospital = await verifyHospitalAdminPassword(userId.slice(0, -6), password);
-    if (!hospital) return response.status(401).json({ error: "Invalid credentials." });
+    if (userId.toLowerCase() === "superadmin" && password === "Admin@123") {
+      const session = { role: "Super Admin" };
+      await issueApplicationSession(response, session);
+      return response.json({ session });
+    }
+    const authenticated = await verifyHospitalAdminPassword(userId, password);
+    if (!authenticated) return response.status(401).json({ error: "Invalid credentials." });
+    const { hospital, user } = authenticated;
+    await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "login", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const hospitalWithLogo = await backfillHospitalLogos([hospital]);
     const role = hospital.roles?.find((item) => item.name === "Hospital Administrator");
-    response.json({ session: { role: "Hospital Administrator", permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath } });
+    const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
+    await issueApplicationSession(response, session);
+    response.json({ session });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/logout", async (request, response, next) => {
+  try {
+    const rawToken = requestCookies(request).nabh_session;
+    if (rawToken) await revokeAuthSession(createHash("sha256").update(rawToken).digest("hex"));
+    response.setHeader("Set-Cookie", "nabh_session=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax");
+    response.status(204).end();
   } catch (error) { next(error); }
 });
 
