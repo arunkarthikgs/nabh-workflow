@@ -389,6 +389,18 @@ export async function readHospitals() {
   return hospitals.rows.map((row) => toHospital(row, usersByHospital.get(row.id) || [], rolesByHospital.get(row.id) || []));
 }
 
+export async function readHospitalRegistry() {
+  const client = await connect();
+  const { rows } = await client.query(`select id, ordinal, name, code, location, status, logo_data_url, logo_path, repository, details, registration_status, accreditation, created_at, updated_at from hospitals order by ordinal, created_at`);
+  return rows.map((row) => toHospital(row, [], []));
+}
+
+export async function readHospitalSummaries() {
+  const client = await connect();
+  const { rows: [summary] } = await client.query(`select count(*)::int as total, count(*) filter (where status = 'pending')::int as pending, count(*) filter (where status = 'active')::int as active, (select count(*)::int from hospital_users) as users from hospitals`);
+  return summary;
+}
+
 function profileOf(user) {
   return Object.fromEntries(profileFields.filter((field) => user[field] !== undefined).map((field) => [field, user[field]]));
 }

@@ -32,6 +32,15 @@ export async function readHospitals() {
   return readJson(hospitalsPath, []);
 }
 
+export async function readHospitalRegistry() {
+  return (await readHospitals()).map(({ users, roles, ...hospital }) => hospital);
+}
+
+export async function readHospitalSummaries() {
+  const hospitals = await readHospitals();
+  return { total: hospitals.length, pending: hospitals.filter((hospital) => hospital.status === "pending").length, active: hospitals.filter((hospital) => hospital.status === "active").length, users: hospitals.reduce((total, hospital) => total + (hospital.users || []).length, 0) };
+}
+
 export async function saveHospitals(hospitals) {
   await writeJson(hospitalsPath, hospitals);
 }

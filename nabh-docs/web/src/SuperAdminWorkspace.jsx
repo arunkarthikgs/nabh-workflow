@@ -23,7 +23,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
     [approving, setApproving] = useState(false);
   const selected = hospitals.find((item) => item.id === id);
   async function load() {
-    const response = await fetch("/api/admin/hospitals");
+    const response = await fetch("/api/admin/hospitals?view=registry");
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Unable to load hospitals.");
     const records = result.hospitals || [];
