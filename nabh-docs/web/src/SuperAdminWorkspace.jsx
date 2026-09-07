@@ -266,10 +266,12 @@ export default function SuperAdminWorkspace() {
               </div>
             </section>
           ))}
-          <button className="primary-button">
-            <Save size={16} /> Save hospital
-          </button>
-          {selected?.status === "pending" && <button className="secondary-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button>}
+          <div className="hospital-form-actions">
+            <button className="primary-button">
+              <Save size={16} /> Save hospital
+            </button>
+            {selected?.status === "pending" && <button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button>}
+          </div>
           {message && <p className="admin-message">{message}</p>}
         </form>
       </section>
