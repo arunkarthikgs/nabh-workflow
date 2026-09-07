@@ -16,7 +16,7 @@ import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js"
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
 import { NABH_WORKSPACE_CATEGORIES, classifyDocument } from "./services/shared/documentCategoryService.js";
-import { generateDocumentDraft, getDocumentDraft, performDocumentAction } from "./services/shared/draftGenerationService.js";
+import { performDocumentAction } from "./services/shared/draftGenerationService.js";
 import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
@@ -167,6 +167,17 @@ app.post("/api/admin/users/:userId/reset-password", async (request, response, ne
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`;
     const email = await sendEmail(buildWelcomeEmail(found.hospital, found.user, setupLink));
+    response.json({ user: { id: found.user.id, name: found.user.name, email: found.user.email }, email });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital || !hospital.users?.some((user) => user.id === request.params.userId)) return response.status(404).json({ error: "User not found for this hospital." });
+    const found = await resetHospitalUserPassword(request.params.userId);
+    const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
+    const email = await sendEmail(buildWelcomeEmail(found.hospital, found.user, `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`));
     response.json({ user: { id: found.user.id, name: found.user.name, email: found.user.email }, email });
   } catch (error) { next(error); }
 });
@@ -466,24 +477,6 @@ app.post("/api/login", async (request, response, next) => {
     if (!hospital) return response.status(401).json({ error: "Invalid credentials." });
     const role = hospital.roles?.find((item) => item.name === "Hospital Administrator");
     response.json({ session: { role: "Hospital Administrator", permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath } });
-  } catch (error) { next(error); }
-});
-
-app.post("/api/admin/hospitals/:hospitalId/documents/draft", async (request, response, next) => {
-  try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
-    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    if (!isProfileComplete(hospital)) return response.status(400).json({ error: "Complete the institutional profile before generating documents.", missingProfileFields: missingProfileFields(hospital) });
-    const { documentId, documentName, answers } = request.body || {};
-    const draft = await generateDocumentDraft(hospital, documentId, documentName, answers);
-    response.status(201).json({ draft });
-  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
-});
-
-app.get("/api/admin/hospitals/:hospitalId/documents/draft", async (request, response, next) => {
-  try {
-    const draft = await getDocumentDraft(request.params.hospitalId, request.query.documentId);
-    response.json({ draft });
   } catch (error) { next(error); }
 });
 
