@@ -59,6 +59,7 @@ export default function RegisterHospital({ onBackToLogin }) {
           <p className="eyebrow">Next step</p>
           <h2>Check your email</h2>
           <p className="access-message">Client code: <strong>{result.hospital.code}</strong></p>
+          {result.warnings?.map((warning) => <p className="access-message" key={warning}>{warning}</p>)}
           {result.repository?.provisioning && <p className="access-message">Your document workspace is being prepared in the background and will be ready shortly after you sign in.</p>}
           {result.email?.transport === "dev-outbox" && <p className="access-message">Local dev mode: no SMTP is configured, so the email was written to <code>output/outbox/{result.email.file}</code> instead of being delivered. Open that file to find the setup link.</p>}
           {result.email?.previewUrl && <p className="access-message">Test SMTP mode: no real inbox receives this email. <a href={result.email.previewUrl} target="_blank" rel="noopener noreferrer">View the sent email</a>.</p>}

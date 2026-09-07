@@ -519,7 +519,9 @@ app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, 
 
 app.post("/api/register", async (request, response, next) => {
   try {
-    const hospital = await persistHospitalLogo(await registerHospital(request.body || {}));
+    const createdHospital = await registerHospital(request.body || {});
+    const hospital = await withTimeout(persistHospitalLogo(createdHospital), 12000, "Hospital logo upload timed out.")
+      .catch((error) => ({ ...createdHospital, logoError: error.message }));
     const user = hospital.users[0];
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
@@ -528,7 +530,7 @@ app.post("/api/register", async (request, response, next) => {
     const { passwordSetupToken, passwordSetupExpiresAt, ...safeUser } = user;
     // The document workspace is not provisioned yet: it requires an accepted accreditation
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
-    response.status(201).json({ hospital: { ...hospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email });
+    response.status(201).json({ hospital: { ...hospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email, warnings: [hospital.logoError, email.error].filter(Boolean) });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
