@@ -131,8 +131,8 @@ export async function updateBooking(booking) {
   return booking;
 }
 
-const templateQuestionnairesPath = path.join(outputDirectory, "templateQuestionnaires.json");
-const documentAnswersPath = path.join(outputDirectory, "documentAnswers.json");
+const templateQuestionnairesPath = path.join(dataDirectory, "templateQuestionnaires.json");
+const documentAnswersPath = path.join(dataDirectory, "documentAnswers.json");
 
 export async function readTemplateQuestionnaire(programme, templatePath) {
   const all = await readJson(templateQuestionnairesPath, {});
