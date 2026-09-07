@@ -2155,7 +2155,6 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                 <th>Approved by</th>
                 <th>Action</th>
                 <th>Approval note</th>
-                <th>File hash</th>
               </tr>
             </thead>
             <tbody>
@@ -2189,9 +2188,6 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                     <td>{entry.approvedBy || entry.editor || "System"}</td>
                     <td>{entry.action || "approved upload"}</td>
                     <td>{entry.note || "-"}</td>
-                    <td className="mono audit-hash">
-                      {entry.fileHash || entry.nextHash || "-"}
-                    </td>
                   </tr>
                 );
               })}

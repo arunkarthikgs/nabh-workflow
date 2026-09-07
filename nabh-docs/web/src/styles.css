@@ -238,7 +238,6 @@ th { color: #9b9a97; font-family: "Manrope", sans-serif; font-size: 10px; font-w
 td { border-top: 1px solid #efefed; color: #37352f; font-size: 12px; padding: 12px 10px; }
 tbody tr:hover td { background: #fafaf9; }
 td.mono { color: #787774; font-family: "DM Mono", monospace; }
-.audit-hash { font-size: 10px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 td.file-cell { color: #5f5e5b; }
 td.file-cell a { color: #2383e2; }
 tr.doc-inactive td, tr.doc-inactive td.mono { color: #b7b6b3; }

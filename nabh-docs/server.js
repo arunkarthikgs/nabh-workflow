@@ -37,6 +37,10 @@ const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
 
+function usesPostgresDataStore() {
+  return dataStoreDriver() === "postgres";
+}
+
 async function persistHospitalLogo(hospital) {
   if (!hospital?.logoDataUrl) return hospital;
   if (r2TemplateStorageEnabled()) await saveR2HospitalLogo(hospital.code, hospital.logoDataUrl);
@@ -383,19 +387,19 @@ async function recordDocumentStatusAudit(hospital, documentId, previousStatus, e
     status: entry.status,
     timestamp: entry.updatedAt
   };
-  if (r2TemplateStorageEnabled()) return recordR2ClientAuditEvent(hospital, auditEntry);
+  if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) return recordR2ClientAuditEvent(hospital, auditEntry);
   const audit = await readDocumentAudit();
   await saveDocumentAudit([auditEntry, ...audit]);
   return auditEntry;
 }
 
 async function getPersistentDocumentStatus(hospital) {
-  return r2TemplateStorageEnabled() ? getR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme) : getHospitalDocumentStatus(hospital.id);
+  return r2TemplateStorageEnabled() && !usesPostgresDataStore() ? getR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme) : getHospitalDocumentStatus(hospital.id);
 }
 
 async function persistDocumentStatus(hospital, documentId, status, updatedBy, note) {
   const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
-  if (r2TemplateStorageEnabled()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...await getPersistentDocumentStatus(hospital), [documentId]: entry });
+  if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...await getPersistentDocumentStatus(hospital), [documentId]: entry });
   return entry;
 }
 
@@ -551,7 +555,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     const previousStatus = persistentStatus[documentId]?.status || "not_started";
     if (persistentStatus[documentId]) await setHospitalDocumentStatus(hospital.id, documentId, persistentStatus[documentId].status, persistentStatus[documentId].updatedBy, persistentStatus[documentId].note);
     const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note);
-    if (r2TemplateStorageEnabled()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [documentId]: entry });
+    if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [documentId]: entry });
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -857,7 +861,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/preview", async (request, re
 app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, response, next) => {
   try {
     const hospital = await findHospital(request);
-    const entries = r2TemplateStorageEnabled() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await onlyOffice.listAudit();
+    const entries = r2TemplateStorageEnabled() && !usesPostgresDataStore() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await readDocumentAudit();
     response.json({ entries });
   } catch (error) { next(error); }
 });
@@ -928,7 +932,7 @@ app.get("/api/admin/template-library/preview", async (request, response, next) =
 
 app.get("/api/document-audit", async (_request, response, next) => {
   try {
-    if (!r2TemplateStorageEnabled()) return response.json({ entries: await onlyOffice.listAudit() });
+    if (!r2TemplateStorageEnabled() || usesPostgresDataStore()) return response.json({ entries: await readDocumentAudit() });
     const hospitals = await listHospitals();
     const clientEntries = await Promise.all(hospitals.filter((hospital) => hospital.accreditation?.programme).map(async (hospital) => (await listR2ClientAuditEvents(hospital.code, hospital.accreditation.programme)).map((entry) => ({ ...entry, hospitalCode: hospital.code, hospitalName: hospital.name }))));
     response.json({ entries: [...await listR2TemplateAuditEvents(), ...clientEntries.flat()].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp))) });
