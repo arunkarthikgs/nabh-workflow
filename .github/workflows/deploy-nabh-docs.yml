@@ -38,7 +38,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: nabh-docs
-          command: deploy --containers-rollout=immediate
+          command: deploy --containers-rollout=immediate --keep-vars
 
       - name: Smoke test
         if: vars.DEPLOY_URL != ''
