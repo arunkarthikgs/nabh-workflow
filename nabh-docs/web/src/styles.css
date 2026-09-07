@@ -466,7 +466,20 @@ tr.history-row td { background: #f7f7f5; }
 .permission-matrix input { accent-color: #2383e2; margin-right: 5px; }
 .permission-summary { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 .template-type { align-items: center; color: #5f5e5b; display: inline-flex; font-size: 11px; gap: 5px; }
-.template-actions { display: inline-flex; gap: 3px; }
+.template-actions { align-items: center; display: inline-flex; gap: 10px; }
+.template-library .actions-column { min-width: 280px; text-align: left; }
+.hospital-document-name-cell { color: #29304f; min-width: 240px; }
+.hospital-document-name-cell:not(:has(input)) { font-family: "Libre Baskerville", Georgia, serif; font-size: 14px; font-weight: 700; line-height: 1.45; }
+.hospital-document-file-cell { color: #7b8195; font-size: 11px; max-width: 260px; }
+.hospital-document-actions { align-items: center; background: #f7f8fb; border: 1px solid #e0e4ee; border-radius: 7px; display: inline-flex; gap: 5px; margin-left: 8px; padding: 3px; }
+.hospital-document-actions .icon-button { padding: 6px; }
+.questionnaire-document-action { background: #e7f3f8 !important; border-color: #c8e1eb !important; color: #0b6e99 !important; }
+.questionnaire-document-action:hover { background: #d8edf4 !important; border-color: #8fc6d7 !important; }
+.template-library .template-actions .icon-button,
+.template-library .template-actions .questionnaire-action { min-height: 36px; min-width: 36px; padding: 9px; }
+.template-library .template-actions .icon-button svg,
+.template-library .template-actions .questionnaire-action svg { height: 19px; width: 19px; }
+.template-library .template-actions .questionnaire-action { gap: 5px; min-width: 52px; }
 .repository-empty { align-items: flex-start; display: flex; flex-direction: column; gap: 12px; max-width: 620px; padding: 28px; }
 .repository-empty p { color: #787774; font-size: 13px; line-height: 1.6; margin: 0; }
 .permission-summary span { border-radius: 3px; font-size: 10px; font-weight: 700; padding: 2px 5px; text-transform: capitalize; }

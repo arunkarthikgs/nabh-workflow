@@ -1310,7 +1310,7 @@ function MasterListWorkspace({
                       <tr
                         className={doc.active ? "doc-active" : "doc-inactive"}
                       >
-                        <td className="hospital-document-name-cell">
+                        <td>
                           <input
                             type="checkbox"
                             checked={selectedKeys.has(docKey(doc))}
@@ -1351,7 +1351,7 @@ function MasterListWorkspace({
                             doc.documentId
                           )}
                         </td>
-                        <td>
+                        <td className="hospital-document-name-cell">
                           {isEditing ? (
                             <input
                               className="edit-input"

@@ -207,7 +207,7 @@ export default function TemplateLibrary() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Template name</th><th>Type</th><th aria-label="Actions" /></tr>
+                  <tr><th>Template name</th><th>Type</th><th className="actions-column">Actions</th></tr>
                 </thead>
                 <tbody>
                   {templates.map((template) => {
@@ -216,7 +216,7 @@ export default function TemplateLibrary() {
                       <tr key={`${selectedDepartment}-${template.documentId}`}>
                         <td><strong>{template.documentName}</strong></td>
                         <td>{template.fileType && <span className="template-type"><Icon size={15} /> {template.fileType}</span>}</td>
-                        <td>{template.templatePath && (
+                        <td className="actions-column">{template.templatePath && (
                           <span className="template-actions">
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
