@@ -52,13 +52,14 @@ export default function RegisterHospital({ onBackToLogin }) {
           <div className="login-mark"><Building2 size={20} /></div>
           <p className="eyebrow">Registration complete</p>
           <h1>{result.hospital.name} is ready to explore the platform.</h1>
-          <p>We've sent a welcome email to <strong>{result.hospital.users[0]?.email}</strong> with a link to set your password. Once that's done, you'll land straight on your hospital home page.</p>
+          <p>Your hospital profile has been created. A password setup email is being sent to <strong>{result.hospital.users[0]?.email}</strong>.</p>
         </section>
         <form className="login-panel" onSubmit={(event) => event.preventDefault()}>
           <img src={hospitalLogo} alt="NABH Docs" className="login-logo" />
           <p className="eyebrow">Next step</p>
           <h2>Check your email</h2>
           <p className="access-message">Client code: <strong>{result.hospital.code}</strong></p>
+          {result.email?.transport === "pending" && <p className="access-message">Email delivery is being completed in the background. It may take a moment to arrive.</p>}
           {result.warnings?.map((warning) => <p className="access-message" key={warning}>{warning}</p>)}
           {result.repository?.provisioning && <p className="access-message">Your document workspace is being prepared in the background and will be ready shortly after you sign in.</p>}
           {result.email?.transport === "dev-outbox" && <p className="access-message">Local dev mode: no SMTP is configured, so the email was written to <code>output/outbox/{result.email.file}</code> instead of being delivered. Open that file to find the setup link.</p>}

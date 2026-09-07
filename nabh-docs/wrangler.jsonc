@@ -7,7 +7,12 @@
   "observability": { "enabled": true },
   "vars": {
     "DATA_STORE": "postgres",
-    "POSTGRES_SSL": "no-verify"
+    "POSTGRES_SSL": "no-verify",
+    "SMTP_HOST": "mbox.inofinix.com",
+    "SMTP_PORT": "465",
+    "SMTP_SECURE": "true",
+    "SMTP_USER": "nabh@cocoonmail.com",
+    "SMTP_FROM": "NABH Readiness System <nabh@cocoonmail.com>"
   },
 
   "containers": [

@@ -520,17 +520,15 @@ app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, 
 app.post("/api/register", async (request, response, next) => {
   try {
     const createdHospital = await registerHospital(request.body || {});
-    const hospital = await withTimeout(persistHospitalLogo(createdHospital), 12000, "Hospital logo upload timed out.")
-      .catch((error) => ({ ...createdHospital, logoError: error.message }));
-    const user = hospital.users[0];
+    const user = createdHospital.users[0];
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
-    const email = await withTimeout(sendEmail(buildWelcomeEmail(hospital, user, setupLink)), 12000, "Email delivery timed out.")
-      .catch((error) => ({ delivered: false, error: error.message }));
     const { passwordSetupToken, passwordSetupExpiresAt, ...safeUser } = user;
     // The document workspace is not provisioned yet: it requires an accepted accreditation
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
-    response.status(201).json({ hospital: { ...hospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email, warnings: [hospital.logoError, email.error].filter(Boolean) });
+    response.status(201).json({ hospital: { ...createdHospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email: { delivered: null, transport: "pending" } });
+    void withTimeout(persistHospitalLogo(createdHospital), 12000, "Hospital logo upload timed out.").catch((error) => console.error("Hospital logo upload failed after registration:", error.message));
+    void withTimeout(sendEmail(buildWelcomeEmail(createdHospital, user, setupLink)), 12000, "Email delivery timed out.").catch((error) => console.error("Welcome email failed after registration:", error.message));
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
