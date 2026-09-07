@@ -24,7 +24,9 @@ export default function SuperAdminWorkspace() {
   const selected = hospitals.find((item) => item.id === id);
   async function load() {
     const response = await fetch("/api/admin/hospitals");
-    const { hospitals: records } = await response.json();
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to load hospitals.");
+    const records = result.hospitals || [];
     setHospitals(records);
     setId((current) =>
       records.some((item) => item.id === current)
@@ -33,7 +35,7 @@ export default function SuperAdminWorkspace() {
     );
   }
   useEffect(() => {
-    load();
+    load().catch((error) => setMessage(error.message));
   }, []);
   useEffect(() => {
     if (selected)

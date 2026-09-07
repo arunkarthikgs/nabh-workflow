@@ -129,7 +129,11 @@ async function createPool() {
   let pg;
   try { ({ default: pg } = await import("pg")); }
   catch { throw new Error("DATA_STORE=postgres requires the 'pg' package. Run: npm install pg"); }
-  return new pg.Pool({ ...poolConfig(), max: Number(configValue("POSTGRES_POOL_MAX", "10")) });
+  return new pg.Pool({
+    ...poolConfig(),
+    max: Number(configValue("POSTGRES_POOL_MAX", "10")),
+    connectionTimeoutMillis: Number(configValue("POSTGRES_CONNECTION_TIMEOUT_MS", "10000"))
+  });
 }
 
 async function connect() {
