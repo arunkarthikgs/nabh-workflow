@@ -256,6 +256,9 @@ h2 { font-size: 19px; }
 .hospital-status-pending { background: #fdecc8; color: #9a6700; }
 .hospital-status-active { background: #dbeddb; color: #2f6b47; }
 .hospital-status-inactive { background: #f1f1ef; color: #787774; }
+.pending-hospital-count { background: #fdecc8; border-radius: 3px; color: #9a6700; font-size: 10px; font-weight: 700; margin-left: auto; padding: 3px 6px; text-transform: uppercase; }
+.hospital-row-pending { border-left: 3px solid #d88a00; padding-left: 8px !important; }
+.hospital-row-pending:hover, .hospital-row-pending.selected { background: #fff8e8; }
 .count-pill { min-width: 18px; padding: 1px 6px; }
 
 .filter-box { background: #f7f7f5; border: 1px solid transparent; border-radius: 4px; color: #9b9a97; padding: 8px 10px; }

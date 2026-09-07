@@ -111,6 +111,7 @@ export default function SuperAdminWorkspace() {
       .toLowerCase()
       .includes(query.toLowerCase()) && (statusFilter === "all" || item.status === statusFilter),
   );
+  const pendingCount = hospitals.filter((item) => item.status === "pending").length;
   return (
     <main className="admin-main">
       <header>
@@ -135,6 +136,7 @@ export default function SuperAdminWorkspace() {
           <div className="panel-heading">
             <Building2 size={18} />
             <h2>Hospitals</h2>
+            {pendingCount > 0 && <span className="pending-hospital-count">{pendingCount} pending</span>}
             <button
               className="icon-button"
               onClick={() => {
@@ -156,7 +158,7 @@ export default function SuperAdminWorkspace() {
           <label className="hospital-status-filter">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
           {filtered.map((item) => (
             <button
-              className={`hospital-row ${item.id === id ? "selected" : ""}`}
+              className={`hospital-row ${item.id === id ? "selected" : ""} ${item.status === "pending" ? "hospital-row-pending" : ""}`}
               key={item.id}
               onClick={() => setId(item.id)}
             >

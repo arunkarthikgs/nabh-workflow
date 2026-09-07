@@ -23,6 +23,7 @@ import {
   Calendar,
   Filter,
   AlertCircle,
+  House,
 } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
 import AdminWorkspace from "./AdminWorkspace.jsx";
@@ -32,6 +33,7 @@ import SetPassword from "./SetPassword.jsx";
 import PlatformWorkspace from "./PlatformWorkspace.jsx";
 import SuperAdminWorkspace from "./SuperAdminWorkspace.jsx";
 import SuperAdminUserManagement from "./SuperAdminUserManagement.jsx";
+import SuperAdminHome from "./SuperAdminHome.jsx";
 import TemplateLibrary from "./TemplateLibrary.jsx";
 import RoleManagement from "./RoleManagement.jsx";
 
@@ -2220,7 +2222,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 }
 
 function App() {
-  const [view, setView] = useState("platform");
+  const [view, setView] = useState("home");
   const [session, setSession] = useState(null);
   const [auditEntries, setAuditEntries] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
@@ -2234,7 +2236,7 @@ function App() {
           token={setupToken}
           onComplete={(newSession) => {
             window.history.replaceState(null, "", window.location.pathname);
-            setView("platform");
+            setView("home");
             setSession(newSession);
           }}
         />
@@ -2264,6 +2266,7 @@ function App() {
         <span>{session.hospitalName || session.role}</span>
         {isSuperAdmin ? (
           <>
+            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
               onClick={() => setView("admin")}
@@ -2285,6 +2288,7 @@ function App() {
           </>
         ) : (
           <>
+            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
               onClick={() => setView("admin")}
@@ -2322,13 +2326,17 @@ function App() {
         <button onClick={() => setSession(null)}>Sign out</button>
       </div>
       {isSuperAdmin ? (
-        view === "templates" ? (
+        view === "home" ? (
+          <SuperAdminHome onOpenHospitals={() => setView("admin")} onOpenUsers={() => setView("users")} />
+        ) : view === "templates" ? (
           <TemplateLibrary />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
         ) : (
           <SuperAdminWorkspace />
         )
+      ) : view === "home" ? (
+        <PlatformWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} homeOnly onNavigateToDocuments={(category, status) => { const params = new URLSearchParams({ cat: category, status }); window.history.replaceState(null, "", `?${params.toString()}`); setView("master-list"); }} />
       ) : view === "admin" ? (
         <AdminWorkspace
           hospitalId={session.hospitalId}

@@ -277,8 +277,8 @@ function ServicesTab({ hospitalId }) {
   );
 }
 
-export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigateToDocuments }) {
-  const [tab, setTab] = useState("overview");
+export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigateToDocuments, homeOnly = false }) {
+  const [tab, setTab] = useState(homeOnly ? "overview" : "profile");
   const [hospital, setHospital] = useState(null);
 
   function loadHospital() {
@@ -288,6 +288,7 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
   }
 
   useEffect(loadHospital, [hospitalId]);
+  useEffect(() => { setTab(homeOnly ? "overview" : "profile"); }, [homeOnly]);
 
   const details = hospital?.details;
   const profileComplete = Boolean(details && ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"].every((field) => (details[field] || "").toString().trim()));
@@ -303,13 +304,12 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
           </div>
         </div>
       </header>
-      <div className="access-tabs">
+      {!homeOnly && <div className="access-tabs">
         <button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}><Building2 size={14} /> Institutional profile</button>
         <button className={tab === "accreditation" ? "active" : ""} onClick={() => setTab("accreditation")}><ClipboardCheck size={14} /> Accreditation</button>
-        <button className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}><Layers size={14} /> Workspace overview</button>
         <button className={tab === "services" ? "active" : ""} onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
-      </div>
-      {!profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
+      </div>}
+      {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
       {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} />}
       {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} />}
       {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
