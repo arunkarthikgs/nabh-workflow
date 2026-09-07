@@ -1211,7 +1211,7 @@ function MasterListWorkspace({
               <Search size={14} />
               <input
                 type="text"
-                placeholder="Search by document name, ID, department, or matched file"
+                placeholder="Search documents"
                 value={documentSearch}
                 onChange={(event) => setDocumentSearch(event.target.value)}
               />
