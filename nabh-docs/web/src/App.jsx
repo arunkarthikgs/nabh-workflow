@@ -1286,6 +1286,7 @@ function MasterListWorkspace({
                   <th>Document Name</th>
                   <th>Readiness</th>
                   <th>Version</th>
+                  <th className="hospital-actions-column">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1335,33 +1336,6 @@ function MasterListWorkspace({
                             />
                           ) : (
                             doc.documentName
-                          )}
-                          {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <span className="hospital-document-actions">
-                            <button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={15} /></button>
-                            <a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={15} /></a>
-                          </span>}
-                          {canEdit && !isEditing && (
-                            <button
-                              className="icon-button document-edit-button questionnaire-document-action"
-                              title="Answer hospital questions and generate personalized draft"
-                              onClick={() => openQuestionnaire(doc)}
-                            >
-                              <ClipboardList size={14} />
-                            </button>
-                          )}
-                          {canEdit && doc.relativeFilePath && (
-                            <button
-                              className="icon-button document-edit-button questionnaire-document-action"
-                              title="Upload and approve new version"
-                              onClick={() => {
-                                setApprovalDocument(doc);
-                                setApprovalFile(null);
-                                setApprovalNote("");
-                                setApprovalError("");
-                              }}
-                            >
-                              <Upload size={14} />
-                            </button>
                           )}
                         </td>
                         <td>
@@ -1482,6 +1456,13 @@ function MasterListWorkspace({
                               )}
                             </span>
                           )}
+                        </td>
+                        <td className="hospital-actions-column">
+                          <span className="hospital-document-actions">
+                            {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
+                            {canEdit && !isEditing && <button className="icon-button questionnaire-document-action" title="Answer hospital questions and generate personalized draft" onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /></button>}
+                            {canEdit && doc.relativeFilePath && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
+                          </span>
                         </td>
                       </tr>
                       {expandedHistoryId === doc.id &&
