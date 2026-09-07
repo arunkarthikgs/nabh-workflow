@@ -556,6 +556,12 @@ export async function readDocumentStatus() {
   return byHospital;
 }
 
+export async function readDocumentStatusByHospital(hospitalId) {
+  const client = await connect();
+  const { rows } = await client.query(`select document_id, status, updated_at, updated_by, note from document_status where hospital_id = $1`, [hospitalId]);
+  return { [hospitalId]: Object.fromEntries(rows.map((row) => [row.document_id, { status: row.status, updatedAt: isoDate(row.updated_at), updatedBy: row.updated_by, note: row.note }])) };
+}
+
 export async function saveDocumentStatus(statusByHospital) {
   const client = await (await connect()).connect();
   try {

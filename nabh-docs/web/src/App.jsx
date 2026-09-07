@@ -824,8 +824,14 @@ function MasterListWorkspace({
       .catch((err) => setError(err.message));
   }
 
-  function toggleHistory(id) {
-    setExpandedHistoryId((current) => (current === id ? null : id));
+  async function toggleHistory(doc) {
+    if (expandedHistoryId === doc.id) { setExpandedHistoryId(null); return; }
+    const documentKey = doc.relativeFilePath || doc.matchedFilePath || doc.id;
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version-manifest?documentKey=${encodeURIComponent(documentKey)}`);
+    const result = await response.json();
+    if (!response.ok) return setError(result.error || "Unable to load version history.");
+    setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === doc.id ? { ...item, history: result.manifest?.history || [], version: result.manifest?.currentVersion || null, approved: Boolean(result.manifest?.history?.length) } : item)])) : current);
+    setExpandedHistoryId(doc.id);
   }
 
   function startDocumentEdit(doc) {
@@ -1438,13 +1444,13 @@ function MasterListWorkspace({
                             </span>
                           ) : (
                             <span className="version-actions">
-                              {isApprovedDocument(doc) ? (
+                              {doc.relativeFilePath || doc.matchedFilePath ? (
                                 <button
                                   className="version-badge"
                                   title="View history"
-                                  onClick={() => toggleHistory(doc.id)}
+                                  onClick={() => toggleHistory(doc)}
                                 >
-                                  <History size={12} /> v{doc.version || 1}
+                                  <History size={12} /> {doc.version ? `v${doc.version}` : "History"}
                                 </button>
                               ) : (
                                 <span

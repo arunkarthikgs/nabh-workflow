@@ -85,6 +85,11 @@ export async function readDocumentStatus() {
   return readJson(documentStatusPath, {});
 }
 
+export async function readDocumentStatusByHospital(hospitalId) {
+  const all = await readDocumentStatus();
+  return { [hospitalId]: all[hospitalId] || {} };
+}
+
 export async function saveDocumentStatus(statusByHospital) {
   await writeJson(documentStatusPath, statusByHospital);
 }

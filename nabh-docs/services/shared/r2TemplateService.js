@@ -158,6 +158,11 @@ export async function getR2ClientVersionFile(hospitalCode, objectKey, programme)
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
+export async function getR2ClientVersionManifest(hospitalCode, documentKey, programme) {
+  if (!isEnabled()) return null;
+  return getJsonObject(config(), `${versionPrefix(hospitalCode, documentKey, programme)}manifest.json`);
+}
+
 export async function getR2ClientRepositoryStatus(hospitalCode, programme) {
   if (!isEnabled()) return { mode: "local", exists: true, status: "ready" };
   if (!programme) return { mode: "r2", exists: false, status: "accreditation_required" };

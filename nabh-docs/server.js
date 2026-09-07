@@ -24,7 +24,7 @@ import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReportPdf } from "./services/shared/questionnaireReportPdf.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -478,19 +478,13 @@ async function loadHospitalDepartments(hospital) {
   const programme = hospital.accreditation?.programme;
   const questionnaireSummaries = await readTemplateQuestionnaireSummaries(programme);
   const questionCountByPath = new Map(questionnaireSummaries.map((item) => [item.templatePath, item.questionCount]));
-  const [clientFiles, versionManifests] = await Promise.all([
-    listR2ClientFiles(hospital.code, programme),
-    getR2ClientVersionManifests(hospital.code, programme)
-  ]);
+  const clientFiles = await listR2ClientFiles(hospital.code, programme);
   const departments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
   for (const templatePath of clientFiles) {
     if (path.basename(templatePath) === masterListTemplateFile) continue;
     const [folder] = templatePath.split("/");
     const department = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
     const documentName = path.basename(templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, "");
-    const docKey = getDocumentKey("", documentName, templatePath);
-    const versionManifest = versionManifests.get(docKey) || versionManifests.get(templatePath);
-    const isApproved = Boolean(versionManifest && versionManifest.history && versionManifest.history.some((entry) => entry.action && entry.action !== "template baseline"));
     departments[department].push({
       documentName,
       documentId: "",
@@ -500,9 +494,9 @@ async function loadHospitalDepartments(hospital) {
       matchedFilePath: templatePath,
       relativeFilePath: templatePath,
       questionCount: questionCountByPath.get(templatePath) || 0,
-      version: isApproved ? versionManifest.currentVersion : null,
-      approved: isApproved,
-      history: versionManifest?.history || []
+      version: null,
+      approved: false,
+      history: []
     });
   }
   for (const documents of Object.values(departments)) documents.sort((left, right) => left.documentName.localeCompare(right.documentName));
@@ -1059,6 +1053,15 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version/download", async (re
     const objectKey = String(request.query.key || "");
     response.attachment(path.basename(objectKey)).send(await getR2ClientVersionFile(hospital.code, objectKey, hospital.accreditation?.programme));
   } catch (error) { response.status(error.status || 400).json({ error: error.message }); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/documents/version-manifest", async (request, response, next) => {
+  try {
+    const hospital = await findHospital(request);
+    const documentKey = String(request.query.documentKey || "").trim();
+    if (!documentKey) return response.status(400).json({ error: "documentKey is required." });
+    response.json({ manifest: await getR2ClientVersionManifest(hospital.code, documentKey, hospital.accreditation?.programme) });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/admin/hospitals/:hospitalId/documents/version/preview", async (request, response) => {

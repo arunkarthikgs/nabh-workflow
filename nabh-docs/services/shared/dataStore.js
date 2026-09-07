@@ -71,6 +71,10 @@ export async function readDocumentStatus() {
   return (await store()).readDocumentStatus();
 }
 
+export async function readDocumentStatusByHospital(hospitalId) {
+  return (await store()).readDocumentStatusByHospital(hospitalId);
+}
+
 export async function saveDocumentStatus(statusByHospital) {
   return (await store()).saveDocumentStatus(statusByHospital);
 }

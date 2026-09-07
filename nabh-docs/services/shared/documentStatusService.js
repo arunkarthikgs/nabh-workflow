@@ -1,6 +1,6 @@
 // Per-hospital NABH readiness pipeline: tracks each document's progress from
 // "not started" through "evidence available", independent of the global master list.
-import { readDocumentStatus, saveDocumentStatusRecord } from "./dataStore.js";
+import { readDocumentStatus, readDocumentStatusByHospital, saveDocumentStatusRecord } from "./dataStore.js";
 
 export const DOCUMENT_STATUSES = [
   "not_started",
@@ -19,7 +19,7 @@ export function isValidDocumentStatus(value) {
 }
 
 export async function getHospitalDocumentStatus(hospitalId) {
-  const all = await readDocumentStatus();
+  const all = await readDocumentStatusByHospital(hospitalId);
   return all[hospitalId] || {};
 }
 
