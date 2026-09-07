@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Building2 } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
-import { emptyHospitalDetails, hospitalRegistrationSections } from "./hospitalFormFields.js";
+import { emptyHospitalDetails } from "./hospitalFormFields.js";
 
 const blankForm = () => ({ name: "", code: "", adminName: "", adminEmail: "", logoDataUrl: "", details: emptyHospitalDetails() });
 
@@ -95,32 +95,12 @@ export default function RegisterHospital({ onBackToLogin }) {
           <h3>Hospital identity</h3>
           <div className="admin-fields">
             <label>Legal hospital name <b>*</b><input name="name" value={form.name} onChange={change} required /></label>
-            <label>Client code<input name="code" value={form.code} onChange={change} placeholder="Auto-generated if left blank" /></label>
             <label>Hospital logo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadLogo} /></label>
             {form.logoDataUrl && <img className="hospital-mini-logo" src={form.logoDataUrl} alt="Hospital logo" />}
           </div>
         </section>
-        {hospitalRegistrationSections.map(([title, fields]) => (
-          <section key={title}>
-            <h3>{title}</h3>
-            <div className="admin-fields">
-              {fields.map(([key, label, type, options]) => (
-                <label key={key}>
-                  {label}{["addressLine1", "city", "mainPhone", "responsiblePhone"].includes(key) && <b> *</b>}
-                  {type === "select" ? (
-                    <select name={key} value={form.details[key]} onChange={change}>
-                      <option value="">Select</option>
-                      {options.map((option) => <option key={option}>{option}</option>)}
-                    </select>
-                  ) : (
-                    <input name={key} required={["addressLine1", "city", "mainPhone", "responsiblePhone"].includes(key)} type={type || (key.includes("Email") ? "email" : "text")} value={form.details[key]} onChange={change} />
-                  )}
-                </label>
-              ))}
-            </div>
-          </section>
-        ))}
-        <label className="terms-checkbox"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required /> I accept the Privacy Policy and Terms of Service.</label>
+        <p className="access-message">Accreditation and regulatory information can be completed after registration in the Institutional Profile.</p>
+        <label className="terms-checkbox"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required /> I accept the <a href="https://nabhpulse.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="https://nabhpulse.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label>
         {error && <p className="status error">{error}</p>}
         <div className="toolbar">
           <button className="primary-button" disabled={submitting}><ArrowRight size={16} /> {submitting ? "Registering..." : "Create account"}</button>
