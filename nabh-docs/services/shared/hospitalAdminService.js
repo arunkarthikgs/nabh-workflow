@@ -62,26 +62,7 @@ function logoDataUrl(value) {
 
 export async function listHospitals() {
   const hospitals = await readHospitals();
-  if (hospitals.length) {
-    let changed = false;
-    hospitals.forEach((hospital, hospitalIndex) => {
-      if (!Array.isArray(hospital.roles)) { rolesForHospital(hospital); changed = true; }
-      hospital.roles.forEach((role) => {
-        if (!Array.isArray(role.permissions)) { role.permissions = defaultPermissions(role.name); changed = true; }
-      });
-      const [logoFile, logoName] = seededLogos[hospitalIndex] || [];
-      if (logoFile && !hospital.logoPath) { hospital.logoPath = `/logos/${logoFile}`; hospital.name = logoName; changed = true; }
-      const address = `${101 + hospitalIndex * 17}, ${hospital.details?.city || "Bengaluru"} Main Road, Karnataka ${560001 + hospitalIndex * 111}`;
-      if (!hospital.details?.addressLine1) { hospital.details = { ...hospital.details, addressLine1: address, pinCode: String(560001 + hospitalIndex * 111), mainPhone: `080-4${hospitalIndex}20-1000`, officialEmail: `contact@${hospital.code.toLowerCase()}.example.test` }; changed = true; }
-      hospital.users.forEach((user, userIndex) => {
-        if (user.employeeId) return;
-        Object.assign(user, { dateOfBirth: `19${80 + userIndex}-0${(userIndex % 8) + 1}-1${userIndex % 9}`, gender: userIndex % 3 === 0 ? "Female" : userIndex % 3 === 1 ? "Male" : "Other", mobileNumber: `9${800000000 + hospitalIndex * 10000 + userIndex}`, address, employeeId: `${hospital.code}-${String(userIndex + 1).padStart(3, "0")}`, department: user.role.includes("Nurse") ? "Nursing" : user.role.includes("Quality") || user.role.includes("NABH") ? "Quality" : user.role.includes("Records") ? "Medical Records" : "Clinical Services", dateOfJoining: `202${userIndex % 4}-0${(userIndex % 8) + 1}-15`, employmentType: user.role.includes("Consultant") ? "Consultant" : "Full-time" });
-        changed = true;
-      });
-    });
-    if (changed) await saveHospitals(hospitals);
-    return hospitals;
-  }
+  if (hospitals.length) return hospitals;
   const now = new Date().toISOString();
   const hospitalData = [
     ["Janapriya Hospital", "JPH", "Bengaluru"], ["Sahyadri Care Hospital", "SCH", "Mysuru"], ["Namma Health Medical Centre", "NHM", "Hubballi"], ["Malnad Multispecialty Hospital", "MMH", "Shivamogga"], ["Coastal Life Hospital", "CLH", "Mangaluru"],
