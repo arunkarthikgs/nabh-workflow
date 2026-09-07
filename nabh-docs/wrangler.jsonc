@@ -5,6 +5,10 @@
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  "vars": {
+    "DATA_STORE": "postgres",
+    "POSTGRES_SSL": "no-verify"
+  },
 
   "containers": [
     {
