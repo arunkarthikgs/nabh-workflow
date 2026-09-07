@@ -165,6 +165,7 @@ export async function listHospitalRoles(hospitalId) {
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return null;
   const roles = rolesForHospital(hospital);
+  if (roles.length && roles.every((role) => role.defaultAccessApplied)) return roles;
   const allDocuments = await allDocumentsByDepartment();
   if (!Object.keys(allDocuments).length) return roles;
   let changed = false;

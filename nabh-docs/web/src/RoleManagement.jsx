@@ -15,13 +15,24 @@ const groups = {
   "NABH-Mandated Committees": ["Quality Committee Members", "Infection Control Committee (ICC)", "Pharmacy & Therapeutics Committee (PTC)", "Safety Committee", "Medical Records Committee", "Biomedical Committee"]
 };
 const blankRole = { name: "", documentAccess: {}, permissions: ["view"] };
+const NABH_WORKSPACE_CATEGORIES = ["Manuals", "Policies", "Standard Operating Procedures", "Forms and Formats", "Registers", "Department Manuals", "Checklists", "Training Requirements", "Records and Evidence"];
 function groupRoles(roles) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
   const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending");
   const isReadOnly = hospitalStatus !== "active";
-  async function load() { const [roleResponse, documentResponse, hospitalResponse] = await Promise.all([fetch(`/api/admin/hospitals/${hospitalId}/roles`), fetch("/api/document-matches"), fetch("/api/admin/hospitals")]); if (!roleResponse.ok || !documentResponse.ok || !hospitalResponse.ok) throw new Error("Unable to load role access data."); const loadedRoles = (await roleResponse.json()).roles, loadedDepartments = await documentResponse.json(), hospital = (await hospitalResponse.json()).hospitals.find((item) => item.id === hospitalId); setRoles(loadedRoles); setDepartments(loadedDepartments); setDepartment((current) => current || Object.keys(loadedDepartments)[0] || ""); setSelectedId((current) => loadedRoles.some((role) => role.id === current) ? current : loadedRoles[0]?.id || ""); setLogoPath(hospital?.logoPath || hospitalLogoPath || ""); setHospitalStatus(hospital?.status || "pending"); }
+  async function load() { const [roleResponse, hospitalResponse] = await Promise.all([fetch(`/api/admin/hospitals/${hospitalId}/roles`), fetch("/api/admin/hospitals")]); if (!roleResponse.ok || !hospitalResponse.ok) throw new Error("Unable to load role access data."); const loadedRoles = (await roleResponse.json()).roles, hospital = (await hospitalResponse.json()).hospitals.find((item) => item.id === hospitalId); setRoles(loadedRoles); setSelectedId((current) => loadedRoles.some((role) => role.id === current) ? current : loadedRoles[0]?.id || ""); setLogoPath(hospital?.logoPath || hospitalLogoPath || ""); setHospitalStatus(hospital?.status || "pending"); }
   useEffect(() => { load().catch((error) => setMessage(error.message)); }, [hospitalId]);
+  useEffect(() => {
+    if (tab !== "scope" || Object.keys(departments).length) return undefined;
+    fetch("/api/document-matches").then(async (response) => { if (!response.ok) throw new Error("Unable to load document access data."); return response.json(); }).then((sourceDepartments) => {
+      const groupedDepartments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
+      Object.values(sourceDepartments || {}).flat().forEach((document) => { const category = NABH_WORKSPACE_CATEGORIES.includes(document.category) ? document.category : "Department Manuals"; groupedDepartments[category].push(document); });
+      setDepartments(groupedDepartments);
+      setDepartment((current) => current || NABH_WORKSPACE_CATEGORIES.find((category) => groupedDepartments[category].length) || NABH_WORKSPACE_CATEGORIES[0]);
+    }).catch((error) => setMessage(error.message));
+    return undefined;
+  }, [tab, departments]);
   useEffect(() => {
     const button = window.document.createElement("button");
     button.className = "new-role-button";
