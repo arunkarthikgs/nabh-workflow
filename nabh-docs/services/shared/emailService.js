@@ -7,22 +7,37 @@ import { configValue } from "./config.js";
 
 const outboxDir = fileURLToPath(new URL("../../output/outbox", import.meta.url));
 
-async function sendViaSmtp(message) {
+async function smtpTransport() {
   const host = configValue("SMTP_HOST");
-  if (!host) return false;
+  if (!host) return null;
   let nodemailer;
   try { ({ default: nodemailer } = await import("nodemailer")); }
-  catch { console.warn("SMTP_HOST is configured but the 'nodemailer' package is not installed; falling back to the local dev outbox."); return false; }
-  const transporter = nodemailer.createTransport({
+  catch { throw new Error("The nodemailer package is not installed."); }
+  return nodemailer.createTransport({
     host,
     port: Number(configValue("SMTP_PORT", "587")),
     secure: configValue("SMTP_SECURE", "false").toLowerCase() === "true",
-    auth: configValue("SMTP_USER") ? { user: configValue("SMTP_USER"), pass: configValue("SMTP_PASS") } : undefined
+    auth: configValue("SMTP_USER") ? { user: configValue("SMTP_USER"), pass: configValue("SMTP_PASS") } : undefined,
+    connectionTimeout: Number(configValue("SMTP_CONNECTION_TIMEOUT_MS", "10000")),
+    greetingTimeout: Number(configValue("SMTP_GREETING_TIMEOUT_MS", "10000")),
+    socketTimeout: Number(configValue("SMTP_SOCKET_TIMEOUT_MS", "20000"))
   });
+}
+
+async function sendViaSmtp(message) {
+  const transporter = await smtpTransport();
+  if (!transporter) return false;
   const info = await transporter.sendMail({ from: configValue("SMTP_FROM", "no-reply@nabh-docs.local"), ...message });
   // Ethereal test accounts never deliver to a real inbox; surface the preview link instead.
   const previewUrl = /ethereal\.email$/i.test(host) ? nodemailer.getTestMessageUrl(info) : null;
   return { previewUrl };
+}
+
+export async function verifySmtp() {
+  const transporter = await smtpTransport();
+  if (!transporter) return { configured: false, verified: false, error: "SMTP_HOST is not configured." };
+  await transporter.verify();
+  return { configured: true, verified: true };
 }
 
 export async function sendEmail(message) {

@@ -9,7 +9,7 @@ import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
-import { buildWelcomeEmail, sendEmail } from "./services/shared/emailService.js";
+import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
 import { dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
@@ -187,6 +187,11 @@ app.get("/api/admin/users", async (_request, response, next) => {
     const hospitals = await listHospitals();
     response.json({ users: hospitals.flatMap((hospital) => (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }))) });
   } catch (error) { next(error); }
+});
+
+app.post("/api/admin/smtp/verify", async (_request, response) => {
+  try { response.json(await withTimeout(verifySmtp(), 12000, "SMTP verification timed out.")); }
+  catch (error) { response.status(502).json({ configured: Boolean(process.env.SMTP_HOST), verified: false, error: error.message }); }
 });
 
 app.post("/api/admin/users/:userId/reset-password", async (request, response, next) => {
