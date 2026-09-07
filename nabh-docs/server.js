@@ -622,9 +622,9 @@ app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, 
     const current = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!current) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(current);
-    const hospital = await submitHospitalProfile(request.params.hospitalId, request.body?.details);
+    const hospital = await submitHospitalProfile(request.params.hospitalId, request.body?.details, request.body?.logoDataUrl);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    response.json({ hospital, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
+    response.json({ hospital: await persistHospitalLogo(hospital), profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
   } catch (error) { next(error); }
 });
 

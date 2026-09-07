@@ -69,6 +69,7 @@ export default function TemplateLibrary() {
   const templates = useMemo(() => (departments?.[selectedDepartment] || []).filter((template) => `${template.documentName} ${template.documentId} ${template.fileName || ""}`.toLowerCase().includes(query.trim().toLowerCase())), [departments, selectedDepartment, query]);
   const total = useMemo(() => departmentEntries.reduce((count, [, documents]) => count + documents.length, 0), [departmentEntries]);
   const available = useMemo(() => templates.filter((template) => template.templatePath).length, [templates]);
+  const selectedQuestionTotal = useMemo(() => templates.reduce((total, template) => total + (template.questionCount || 0), 0), [templates]);
 
   async function approveTemplate(event) {
     event.preventDefault();
@@ -178,6 +179,7 @@ export default function TemplateLibrary() {
                 <span>{department}</span>
                 <span className="count-pill count-pill-active">{documents.filter((template) => template.templatePath).length}</span>
                 <span className="count-pill count-pill-inactive">{documents.filter((template) => !template.templatePath).length}</span>
+                <span className="count-pill count-pill-questions" title="Configured questions">Q {documents.reduce((total, template) => total + (template.questionCount || 0), 0)}</span>
               </button>
             ))}
             {filteredDepartments.length === 0 && <p className="empty">No departments match.</p>}
@@ -189,6 +191,7 @@ export default function TemplateLibrary() {
               <span className="count">{templates.length} of {departments[selectedDepartment]?.length || 0} document(s)</span>
               <span className="active-count">{available} available</span>
               <span className="inactive-count">{templates.length - available} unavailable</span>
+              <span className="question-count has-questions">{selectedQuestionTotal} questions</span>
             </div>
             <label className="filter-box document-search">
               <Search size={14} />

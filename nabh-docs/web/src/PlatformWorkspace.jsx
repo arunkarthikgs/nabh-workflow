@@ -6,6 +6,16 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [form, setForm] = useState(() => Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [logoDataUrl, setLogoDataUrl] = useState("");
+
+  function uploadLogo(event) {
+    const [file] = event.target.files;
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 1_500_000) { setMessage("Use a PNG, JPEG, or WebP logo smaller than 1.5 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => setLogoDataUrl(String(reader.result));
+    reader.readAsDataURL(file);
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -15,7 +25,7 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
       const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details: form })
+        body: JSON.stringify({ details: form, logoDataUrl })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to save profile.");
@@ -46,6 +56,11 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
             )}
           </label>
         ))}
+      </div>
+      <div className="profile-logo-upload">
+        <label>Hospital logo<input type="file" accept="image/png,image/jpeg,image/webp" disabled={disabled} onChange={uploadLogo} /></label>
+        {logoDataUrl && <img src={logoDataUrl} alt="Selected hospital logo" />}
+        <small>PNG, JPEG, or WebP. Maximum size 1.5 MB.</small>
       </div>
       {message && <p className="access-message">{message}</p>}
       <button className="primary-button" type="submit" disabled={saving || disabled}>{saving ? "Saving..." : "Save profile"}</button>

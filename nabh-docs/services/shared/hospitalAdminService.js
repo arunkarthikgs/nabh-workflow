@@ -371,11 +371,12 @@ export async function verifyHospitalAdminPassword(identifier, password) {
 
 
 // Self-service institutional profile capture (hospital name, ownership, beds, specialties, etc.).
-export async function submitHospitalProfile(hospitalId, details) {
+export async function submitHospitalProfile(hospitalId, details, logoDataUrl) {
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return null;
   hospital.details = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
+  if (typeof logoDataUrl === "string" && logoDataUrl.trim()) hospital.logoDataUrl = logoDataUrl.trim();
   hospital.updatedAt = new Date().toISOString();
   return saveHospital(hospital);
 }

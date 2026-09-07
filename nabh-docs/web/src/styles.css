@@ -30,6 +30,7 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .count-pill { border-radius: 999px; font-size: 10px; font-weight: 700; min-width: 20px; padding: 2px 7px; text-align: center; }
 .count-pill-active { background: #e4f7ec; color: #1e9e5c; }
 .count-pill-inactive { background: #eceafd; color: #8a8dc7; }
+.count-pill-questions { background: #e7f3f8; color: #0b6e99; font-size: 9px; }
 
 .filter-box { align-items: center; background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 10px; color: #8a8dc7; display: flex; gap: 8px; margin-bottom: 8px; padding: 9px 12px; }
 .filter-box input { background: transparent; border: 0; color: #3a3f6b; flex: 1; font: 400 13px Poppins; outline: none; }
@@ -608,6 +609,11 @@ tr.history-row td { background: #f7f7f5; }
 .activation-fields input { background: #f7f8fb; border: 1px solid #d9dcf3; border-radius: 6px; color: #37352f; display: block; font: 13px "Manrope", sans-serif; margin-top: 6px; padding: 9px 10px; width: 100%; }
 .activation-fields input:not([readonly]) { background: #ffffff; border-color: #6572dc; }
 .registration-activation-panel h3 { color: #3547d1; font-size: 13px; margin: 20px 0 10px; }
+.profile-logo-upload { align-items: center; background: #f7f8fb; border: 1px solid #e1e4ee; border-radius: 8px; display: flex; gap: 14px; margin: 20px 0; padding: 14px; }
+.profile-logo-upload label { color: #4a4e82; font-size: 12px; font-weight: 700; }
+.profile-logo-upload input { display: block; font: 12px Poppins; margin-top: 7px; }
+.profile-logo-upload img { background: #ffffff; border: 1px solid #d9dcf3; border-radius: 6px; height: 64px; object-fit: contain; padding: 5px; width: 64px; }
+.profile-logo-upload small { color: #8a8dc7; font-size: 11px; }
 .login-logo { display: block; height: 45px; margin-bottom: 24px; max-width: 150px; object-fit: contain; object-position: left center; }
 .login-panel h2 { font-size: 23px; margin: 5px 0 24px; }
 .login-panel label { color: #5f5e5b; display: block; font-size: 12px; font-weight: 700; margin-bottom: 16px; }
