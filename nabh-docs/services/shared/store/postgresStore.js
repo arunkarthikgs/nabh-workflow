@@ -45,6 +45,10 @@ function poolConfig() {
 }
 
 const schemaStatements = [
+  `create table if not exists schema_migrations (
+     version integer primary key,
+     applied_at timestamptz not null default now()
+   )`,
   `create table if not exists hospitals (
      id uuid primary key,
      ordinal integer not null default 0,
@@ -115,14 +119,51 @@ const schemaStatements = [
      id uuid primary key,
      hospital_id uuid not null references hospitals (id) on delete cascade,
      ordinal integer not null default 0,
-     booking jsonb not null
+      booking jsonb not null,
+      category text not null default '',
+      service_id text not null default '',
+      service_name text not null default '',
+      mode text not null default 'virtual',
+      preferred_date date,
+      status text not null default 'requested',
+      notes text not null default '',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
    )`,
   `create index if not exists hospital_users_hospital_idx on hospital_users (hospital_id)`,
   `create index if not exists hospital_roles_hospital_idx on hospital_roles (hospital_id)`,
+    `create index if not exists hospital_users_email_idx on hospital_users (lower(email))`,
+    `create index if not exists document_status_hospital_idx on document_status (hospital_id)`,
+    `create index if not exists document_drafts_hospital_idx on document_drafts (hospital_id)`,
+    `create index if not exists document_audit_timestamp_idx on document_audit ((entry->>'timestamp'))`,
   // ADD COLUMN IF NOT EXISTS handles upgrading a database created before these columns existed;
   // "create table if not exists" above alone would skip them on an already-existing table.
   `alter table hospitals add column if not exists registration_status text not null default ''`,
-  `alter table hospitals add column if not exists accreditation jsonb not null default '{}'::jsonb`
+  `alter table hospitals add column if not exists accreditation jsonb not null default '{}'::jsonb`,
+  `alter table service_bookings add column if not exists category text not null default ''`,
+  `alter table service_bookings add column if not exists service_id text not null default ''`,
+  `alter table service_bookings add column if not exists service_name text not null default ''`,
+  `alter table service_bookings add column if not exists mode text not null default 'virtual'`,
+  `alter table service_bookings add column if not exists preferred_date date`,
+  `alter table service_bookings add column if not exists status text not null default 'requested'`,
+  `alter table service_bookings add column if not exists notes text not null default ''`,
+  `alter table service_bookings add column if not exists created_at timestamptz not null default now()`,
+  `alter table service_bookings add column if not exists updated_at timestamptz not null default now()`,
+  `update service_bookings set category = coalesce(nullif(category, ''), booking->>'category'), service_id = coalesce(nullif(service_id, ''), booking->>'serviceId'), service_name = coalesce(nullif(service_name, ''), booking->>'serviceName'), mode = coalesce(nullif(mode, ''), booking->>'mode', 'virtual'), preferred_date = case when booking->>'preferredDate' ~ '^\\d{4}-\\d{2}-\\d{2}$' then (booking->>'preferredDate')::date else preferred_date end, status = coalesce(nullif(status, ''), booking->>'status', 'requested'), notes = coalesce(nullif(notes, ''), booking->>'notes', '') where category = '' or service_id = '' or service_name = ''`,
+  `create index if not exists service_bookings_hospital_created_idx on service_bookings (hospital_id, created_at desc)`,
+  `create index if not exists service_bookings_status_idx on service_bookings (status)`,
+  `do $$ begin
+     if not exists (select 1 from pg_constraint where conname = 'hospitals_status_check') then
+       alter table hospitals add constraint hospitals_status_check check (status in ('pending', 'active', 'inactive')) not valid;
+     end if;
+     if not exists (select 1 from pg_constraint where conname = 'service_bookings_mode_check') then
+       alter table service_bookings add constraint service_bookings_mode_check check (mode in ('virtual', 'onsite')) not valid;
+     end if;
+     if not exists (select 1 from pg_constraint where conname = 'service_bookings_status_check') then
+       alter table service_bookings add constraint service_bookings_status_check check (status in ('requested', 'confirmed', 'completed', 'cancelled')) not valid;
+     end if;
+   end $$`,
+  `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
 async function createPool() {
@@ -492,6 +533,41 @@ export async function readBookings() {
   const client = await connect();
   const { rows } = await client.query(`select booking from service_bookings order by ordinal, (booking->>'createdAt')`);
   return rows.map((row) => row.booking);
+}
+
+export async function readBookingsByHospital(hospitalId) {
+  const client = await connect();
+  const { rows } = await client.query(`select booking from service_bookings where hospital_id = $1 order by created_at desc`, [hospitalId]);
+  return rows.map((row) => row.booking);
+}
+
+export async function readBookingById(bookingId) {
+  const client = await connect();
+  const { rows } = await client.query(`select booking from service_bookings where id = $1`, [bookingId]);
+  return rows[0]?.booking || null;
+}
+
+function bookingColumns(booking) {
+  return [booking.category || "", booking.serviceId || "", booking.serviceName || "", booking.mode || "virtual", booking.preferredDate || null, booking.status || "requested", booking.notes || "", isoDate(booking.createdAt), isoDate(booking.updatedAt)];
+}
+
+export async function addBooking(booking) {
+  const client = await connect();
+  await client.query(
+    `insert into service_bookings (id, hospital_id, ordinal, booking, category, service_id, service_name, mode, preferred_date, status, notes, created_at, updated_at)
+     values ($1, $2, coalesce((select max(ordinal) + 1 from service_bookings where hospital_id = $2), 0), $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [booking.id, booking.hospitalId, JSON.stringify(booking), ...bookingColumns(booking)]
+  );
+  return booking;
+}
+
+export async function updateBooking(booking) {
+  const client = await connect();
+  const result = await client.query(
+    `update service_bookings set booking = $2::jsonb, category = $3, service_id = $4, service_name = $5, mode = $6, preferred_date = $7, status = $8, notes = $9, updated_at = $10 where id = $1`,
+    [booking.id, JSON.stringify(booking), ...bookingColumns(booking).slice(0, 7), bookingColumns(booking)[8]]
+  );
+  return result.rowCount ? booking : null;
 }
 
 export async function saveBookings(bookings) {

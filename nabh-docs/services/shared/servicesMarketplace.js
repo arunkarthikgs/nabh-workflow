@@ -1,6 +1,6 @@
 // Booking hub for Macula Healthcare expert engagements: hospital-led training sessions and consulting services.
 import { randomUUID } from "crypto";
-import { readBookings, saveBookings } from "./dataStore.js";
+import { addBooking, readBookingById, readBookingsByHospital, updateBooking } from "./dataStore.js";
 import { TRAINING_TOPICS, generateTrainingPack } from "./trainingContentService.js";
 
 export const CONSULTING_CATALOG = [
@@ -22,8 +22,7 @@ function catalogFor(category) {
 function text(value) { return typeof value === "string" ? value.trim() : ""; }
 
 export async function listBookings(hospitalId) {
-  const bookings = await readBookings();
-  return bookings.filter((booking) => booking.hospitalId === hospitalId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return (await readBookingsByHospital(hospitalId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function createBooking(hospitalId, input) {
@@ -40,9 +39,7 @@ export async function createBooking(hospitalId, input) {
     feeBasis: "On request — confirmed by Macula Healthcare after review", recording: null,
     createdAt: now, updatedAt: now
   };
-  const bookings = await readBookings();
-  bookings.push(booking);
-  await saveBookings(bookings);
+  await addBooking(booking);
   return booking;
 }
 
@@ -50,13 +47,12 @@ const BOOKING_STATUSES = ["requested", "confirmed", "completed", "cancelled"];
 
 export async function updateBookingStatus(bookingId, status, updatedBy) {
   if (!BOOKING_STATUSES.includes(status)) throw new Error(`status must be one of: ${BOOKING_STATUSES.join(", ")}`);
-  const bookings = await readBookings();
-  const booking = bookings.find((item) => item.id === bookingId);
+  const booking = await readBookingById(bookingId);
   if (!booking) return null;
   booking.status = status;
   booking.updatedBy = text(updatedBy) || "Hospital";
   booking.updatedAt = new Date().toISOString();
-  await saveBookings(bookings);
+  await updateBooking(booking);
   return booking;
 }
 
@@ -65,13 +61,12 @@ export async function attachBookingRecording(bookingId, { consent, reference, no
   if (consent !== true) throw new Error("Recording consent is required before a recording can be attached.");
   const ref = text(reference);
   if (!ref) throw new Error("A recording reference (URL or storage path) is required.");
-  const bookings = await readBookings();
-  const booking = bookings.find((item) => item.id === bookingId);
+  const booking = await readBookingById(bookingId);
   if (!booking) return null;
   if (booking.category !== "training") throw new Error("Recordings can only be attached to training bookings.");
   booking.recording = { consent: true, reference: ref, note: text(note), recordedAt: new Date().toISOString() };
   booking.updatedAt = booking.recording.recordedAt;
-  await saveBookings(bookings);
+  await updateBooking(booking);
   return booking;
 }
 

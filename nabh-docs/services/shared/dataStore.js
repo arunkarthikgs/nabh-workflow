@@ -91,6 +91,22 @@ export async function readBookings() {
   return (await store()).readBookings();
 }
 
+export async function readBookingsByHospital(hospitalId) {
+  return (await store()).readBookingsByHospital(hospitalId);
+}
+
+export async function readBookingById(bookingId) {
+  return (await store()).readBookingById(bookingId);
+}
+
+export async function addBooking(booking) {
+  return (await store()).addBooking(booking);
+}
+
+export async function updateBooking(booking) {
+  return (await store()).updateBooking(booking);
+}
+
 export async function saveBookings(bookings) {
   return (await store()).saveBookings(bookings);
 }

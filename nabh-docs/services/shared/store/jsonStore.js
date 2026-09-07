@@ -107,6 +107,30 @@ export async function readBookings() {
   return readJson(bookingsPath, []);
 }
 
+export async function readBookingsByHospital(hospitalId) {
+  return (await readBookings()).filter((booking) => booking.hospitalId === hospitalId);
+}
+
+export async function readBookingById(bookingId) {
+  return (await readBookings()).find((booking) => booking.id === bookingId) || null;
+}
+
+export async function addBooking(booking) {
+  const bookings = await readBookings();
+  bookings.push(booking);
+  await writeJson(bookingsPath, bookings);
+  return booking;
+}
+
+export async function updateBooking(booking) {
+  const bookings = await readBookings();
+  const index = bookings.findIndex((item) => item.id === booking.id);
+  if (index === -1) return null;
+  bookings[index] = booking;
+  await writeJson(bookingsPath, bookings);
+  return booking;
+}
+
 export async function saveBookings(bookings) {
   await writeJson(bookingsPath, bookings);
 }
