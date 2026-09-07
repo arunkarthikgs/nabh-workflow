@@ -22,7 +22,7 @@ import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBoo
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -49,6 +49,12 @@ async function persistHospitalLogo(hospital) {
 
 async function backfillHospitalLogos(hospitals) {
   return Promise.all(hospitals.map((hospital) => hospital.logoDataUrl && !hospital.logoPath ? persistHospitalLogo(hospital) : hospital));
+}
+
+async function hydrateHospitalAccreditation(hospital) {
+  if (!hospital || !r2TemplateStorageEnabled() || usesPostgresDataStore()) return hospital;
+  const accreditation = await getR2HospitalAccreditation(hospital.code);
+  return accreditation?.programme ? { ...hospital, accreditation } : hospital;
 }
 
 // Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
@@ -100,7 +106,7 @@ app.get("/api/health", async (_request, response) => {
 });
 
 app.get("/api/admin/hospitals", async (_request, response, next) => {
-  try { response.json({ hospitals: await backfillHospitalLogos(await listHospitals()) }); } catch (error) { next(error); }
+  try { response.json({ hospitals: await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation)) }); } catch (error) { next(error); }
 });
 
 app.post("/api/admin/hospitals", async (request, response, next) => {
@@ -113,7 +119,7 @@ app.post("/api/admin/hospitals", async (request, response, next) => {
 
 app.post("/api/admin/hospitals/:hospitalId/client-repository", async (request, response, next) => {
   try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     response.json({ repository: await provisionR2ClientRepository(hospital) });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -121,7 +127,7 @@ app.post("/api/admin/hospitals/:hospitalId/client-repository", async (request, r
 
 app.post("/api/admin/hospitals/:hospitalId/client-repository/sync", async (request, response, next) => {
   try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before syncing the document workspace.", reason: "accreditation_required" });
     response.status(202).json({ job: startRepositoryProvisioning(hospital, { syncNewTemplates: true }) });
@@ -130,7 +136,7 @@ app.post("/api/admin/hospitals/:hospitalId/client-repository/sync", async (reque
 
 app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (request, response, next) => {
   try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const job = repositorySyncJobs.get(hospital.id);
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
@@ -189,7 +195,7 @@ app.post("/api/admin/users/:userId/reset-password", async (request, response, ne
 
 app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async (request, response, next) => {
   try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital || !hospital.users?.some((user) => user.id === request.params.userId)) return response.status(404).json({ error: "User not found for this hospital." });
     const found = await resetHospitalUserPassword(request.params.userId);
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
@@ -469,7 +475,10 @@ app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, r
 
 app.get("/api/admin/hospitals/:hospitalId/accreditation", async (request, response, next) => {
   try {
-    const state = await getAccreditationState(request.params.hospitalId);
+    const hospitals = await listHospitals();
+    const hospital = await hydrateHospitalAccreditation(hospitals.find((item) => item.id === request.params.hospitalId));
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const state = { recommendation: (await getAccreditationState(hospital.id))?.recommendation, selection: hospital.accreditation || null, programmes: NABH_ACCREDITATION_PROGRAMMES };
     if (!state) return response.status(404).json({ error: "Hospital not found." });
     response.json(state);
   } catch (error) { next(error); }
@@ -477,9 +486,10 @@ app.get("/api/admin/hospitals/:hospitalId/accreditation", async (request, respon
 
 app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, response, next) => {
   try {
-    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const selection = await selectAccreditationProgramme(request.params.hospitalId, request.body?.programme, request.body?.decidedBy);
+    if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2HospitalAccreditation(hospital.code, selection);
     // Force a full resync so switching programmes always overwrites any same-named files
     // left over from a previously selected programme, instead of skipping existing ones.
     const job = r2TemplateStorageEnabled() ? startRepositoryProvisioning({ ...hospital, accreditation: selection }, { syncNewTemplates: true }) : null;

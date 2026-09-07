@@ -211,6 +211,18 @@ export async function getR2ClientDocumentStatuses(hospitalCode, programme) {
   return (await getJsonObject(settings, `${clientPrefix(hospitalCode, programme)}status/document-status.json`)) || {};
 }
 
+export async function getR2HospitalAccreditation(hospitalCode) {
+  if (!isEnabled()) return null;
+  return getJsonObject(config(), `${hospitalAssetPrefix(hospitalCode)}accreditation.json`);
+}
+
+export async function saveR2HospitalAccreditation(hospitalCode, accreditation) {
+  if (!isEnabled()) return null;
+  const settings = config();
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: `${hospitalAssetPrefix(hospitalCode)}accreditation.json`, Body: JSON.stringify(accreditation, null, 2), ContentType: "application/json" }));
+  return accreditation;
+}
+
 export async function saveR2ClientDocumentStatuses(hospitalCode, programme, statuses) {
   if (!isEnabled()) return null;
   const settings = config();
