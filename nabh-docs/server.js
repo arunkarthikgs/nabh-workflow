@@ -37,6 +37,13 @@ const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
 
+function withTimeout(promise, milliseconds, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), milliseconds))
+  ]);
+}
+
 function usesPostgresDataStore() {
   return dataStoreDriver() === "postgres";
 }
@@ -511,7 +518,8 @@ app.post("/api/register", async (request, response, next) => {
     const user = hospital.users[0];
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
-    const email = await sendEmail(buildWelcomeEmail(hospital, user, setupLink)).catch((error) => ({ delivered: false, error: error.message }));
+    const email = await withTimeout(sendEmail(buildWelcomeEmail(hospital, user, setupLink)), 12000, "Email delivery timed out.")
+      .catch((error) => ({ delivered: false, error: error.message }));
     const { passwordSetupToken, passwordSetupExpiresAt, ...safeUser } = user;
     // The document workspace is not provisioned yet: it requires an accepted accreditation
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
