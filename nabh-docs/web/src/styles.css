@@ -602,6 +602,12 @@ tr.history-row td { background: #f7f7f5; }
 .login-mark { align-items: center; background: #e7f3f8; border-radius: 5px; color: #0b6e99; display: inline-flex; height: 38px; justify-content: center; width: 38px; }
 .login-note { align-items: center; border-top: 1px solid #e9e9e7; color: #787774; display: flex; font-size: 12px; gap: 9px; margin-top: 36px; padding-top: 18px; }
 .login-panel { border: 1px solid #e9e9e7; border-radius: 6px; padding: 30px; }
+.registration-activation-panel { max-width: 560px; }
+.activation-fields { display: grid; gap: 12px; margin: 18px 0; }
+.activation-fields label { color: #5f5e5b; display: block; font-size: 12px; font-weight: 700; margin-bottom: 0; }
+.activation-fields input { background: #f7f8fb; border: 1px solid #d9dcf3; border-radius: 6px; color: #37352f; display: block; font: 13px "Manrope", sans-serif; margin-top: 6px; padding: 9px 10px; width: 100%; }
+.activation-fields input:not([readonly]) { background: #ffffff; border-color: #6572dc; }
+.registration-activation-panel h3 { color: #3547d1; font-size: 13px; margin: 20px 0 10px; }
 .login-logo { display: block; height: 45px; margin-bottom: 24px; max-width: 150px; object-fit: contain; object-position: left center; }
 .login-panel h2 { font-size: 23px; margin: 5px 0 24px; }
 .login-panel label { color: #5f5e5b; display: block; font-size: 12px; font-weight: 700; margin-bottom: 16px; }

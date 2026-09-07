@@ -243,9 +243,12 @@ export async function registerHospital(input) {
   const requestedCode = text(input.code).toUpperCase();
   if (requestedCode && !/^[A-Z0-9]{4}$/.test(requestedCode)) throw new Error("Hospital code must be exactly four letters or numbers.");
   if (requestedCode && hospitals.some((hospital) => hospital.code === requestedCode)) throw new Error("Client code already exists.");
-  const base = requestedCode || (name.replace(/[^A-Za-z0-9]/g, "").slice(0, 4) || "HOSP").toUpperCase().padEnd(4, "X").slice(0, 4);
-  let code = base, suffix = 0;
-  while (hospitals.some((hospital) => hospital.code === code)) { suffix += 1; code = `${base.slice(0, 3)}${suffix % 10}`; }
+  let code = requestedCode;
+  if (!code) {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    do code = Array.from(randomBytes(4), (byte) => alphabet[byte % alphabet.length]).join("");
+    while (hospitals.some((hospital) => hospital.code === code));
+  }
   const now = new Date().toISOString();
   const setupToken = generateSetupToken();
   const usedUserIds = new Set(hospitals.flatMap((hospital) => (hospital.users || []).map((user) => Number(user.userId)).filter(Number.isInteger)));
@@ -267,7 +270,21 @@ export async function registerHospital(input) {
     await createRegistrationToken(hospital.id, adminEmail, setupToken, new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
     return { ...hospital, registrationToken: setupToken };
   }
-  return addHospital(hospital);
+  delete hospital.users[0].passwordSetupToken;
+  delete hospital.users[0].passwordSetupExpiresAt;
+  await addHospital(hospital);
+  await createRegistrationToken(hospital.id, adminEmail, setupToken, new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
+  return { ...hospital, registrationToken: setupToken };
+}
+
+export async function resendRegistrationToken(hospitalId) {
+  const hospital = (await readHospitals()).find((item) => item.id === hospitalId);
+  const user = hospital?.users?.find((item) => item.role === "Hospital Administrator") || hospital?.users?.[0];
+  if (!hospital || !user?.email) return null;
+  const token = generateSetupToken();
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  await createRegistrationToken(hospital.id, user.email, token, expiresAt);
+  return { hospital, user: { ...user, passwordSetupToken: token, passwordSetupExpiresAt: expiresAt }, token };
 }
 
 // Locates the hospital + user owning a still-valid password setup token, without exposing tokens elsewhere.
@@ -283,17 +300,22 @@ export async function findUserBySetupToken(token) {
 }
 
 // First-time password activation: verifies the token, hashes the password, and clears the token.
-export async function completePasswordSetup(token, password) {
+export async function completePasswordSetup(token, password, registration = {}) {
   const found = await findUserBySetupToken(token);
   if (!found) throw new Error("Invalid or expired setup link.");
   if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) throw new Error("This setup link has expired.");
   if (typeof password !== "string" || password.length < 8) throw new Error("Password must be at least 8 characters.");
+  const requestedCode = text(registration.code).toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(requestedCode)) throw new Error("Hospital code must be exactly four letters or numbers.");
   const { salt, hash } = hashPassword(password);
   if (dataStoreDriver() === "postgres") {
     const hospitals = await readHospitals();
     const hospital = hospitals.find((item) => item.id === found.hospital.id);
     const user = hospital?.users.find((item) => item.id === found.user.id);
-    if (!hospital || !user || !(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
+    if (!hospital || !user) throw new Error("Invalid or expired setup link.");
+    if (hospitals.some((item) => item.id !== hospital.id && item.code === requestedCode)) throw new Error("Hospital code already exists.");
+    if (!(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
+    hospital.code = requestedCode;
     user.passwordSalt = salt; user.passwordHash = hash; user.passwordSet = true; user.emailVerifiedAt = new Date().toISOString(); user.updatedAt = new Date().toISOString();
     hospital.status = "pending"; hospital.registrationStatus = "pending_activation"; hospital.updatedAt = user.updatedAt;
     await saveHospitalUser(hospital.id, user); await saveHospital(hospital);
@@ -302,6 +324,9 @@ export async function completePasswordSetup(token, password) {
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === found.hospital.id);
   const user = hospital.users.find((item) => item.id === found.user.id);
+  if (hospitals.some((item) => item.id !== hospital.id && item.code === requestedCode)) throw new Error("Hospital code already exists.");
+  if (!(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
+  hospital.code = requestedCode;
   user.passwordSalt = salt;
   user.passwordHash = hash;
   user.passwordSet = true;

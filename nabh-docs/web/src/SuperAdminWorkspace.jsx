@@ -111,6 +111,12 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
     setId(result.hospital.id);
     setMessage(`${result.hospital.name} is now active.`);
   }
+  async function resendRegistration() {
+    if (!selected) return;
+    const response = await fetch(`/api/admin/hospitals/${selected.id}/registration/resend`, { method: "POST" });
+    const result = await response.json();
+    setMessage(response.ok ? "A new registration link was sent. The previous link was revoked." : result.error || "Unable to resend registration link.");
+  }
   const filtered = hospitals.filter((item) =>
     `${item.name} ${item.code} ${item.details?.city} ${item.details?.state}`
       .toLowerCase()
@@ -275,7 +281,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             <button className="primary-button">
               <Save size={16} /> Save hospital
             </button>
-            {selected?.status === "pending" && <button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button>}
+            {selected?.status === "pending" && <><button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button><button className="secondary-button" type="button" onClick={resendRegistration}>Resend registration link</button></>}
           </div>
           {message && <p className="admin-message">{message}</p>}
         </form>

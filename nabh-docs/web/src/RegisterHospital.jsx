@@ -17,15 +17,6 @@ export default function RegisterHospital({ onBackToLogin }) {
     setForm((current) => (name in current.details ? { ...current, details: { ...current.details, [name]: value } } : { ...current, [name]: value }));
   };
 
-  function uploadLogo(event) {
-    const [file] = event.target.files;
-    if (!file) return;
-    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 1_500_000) { setError("Use a PNG, JPEG, or WebP logo smaller than 1.5 MB."); return; }
-    const reader = new FileReader();
-    reader.onload = () => setForm((current) => ({ ...current, logoDataUrl: reader.result }));
-    reader.readAsDataURL(file);
-  }
-
   async function submit(event) {
     event.preventDefault();
     setSubmitting(true);
@@ -81,25 +72,20 @@ export default function RegisterHospital({ onBackToLogin }) {
             <h1>Register your hospital</h1>
           </div>
         </div>
-        <p className="intro">Same identity and regulatory details captured when our team onboards a hospital. Complete the rest of your institutional profile after signing in to get your accreditation recommendation and document workspace.</p>
+        <p className="intro">Start with the hospital and authorised representative details. Complete the institutional profile after signing in.</p>
       </header>
       <form className="admin-form registration-form" onSubmit={submit}>
         <section>
-          <h3>Administrator account</h3>
-          <div className="admin-fields">
-            <label>Your name <b>*</b><input name="adminName" value={form.adminName} onChange={change} required /></label>
-            <label>Your email <b>*</b><input name="adminEmail" type="email" value={form.adminEmail} onChange={change} required /></label>
-          </div>
-        </section>
-        <section>
-          <h3>Hospital identity</h3>
+          <h3>Hospital registration</h3>
           <div className="admin-fields">
             <label>Legal hospital name <b>*</b><input name="name" value={form.name} onChange={change} required /></label>
-            <label>Hospital logo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadLogo} /></label>
-            {form.logoDataUrl && <img className="hospital-mini-logo" src={form.logoDataUrl} alt="Hospital logo" />}
+            <label>Hospital address <b>*</b><input name="addressLine1" value={form.details.addressLine1} onChange={change} required /></label>
+            <label>Hospital city <b>*</b><input name="city" value={form.details.city} onChange={change} required /></label>
+            <label>Hospital Admin name <b>*</b><input name="adminName" value={form.adminName} onChange={change} required /></label>
+            <label>Hospital email <b>*</b><input name="adminEmail" type="email" value={form.adminEmail} onChange={change} required /></label>
+            <label>Hospital Admin contact phone <b>*</b><input name="responsiblePhone" type="tel" value={form.details.responsiblePhone} onChange={change} required /></label>
           </div>
         </section>
-        <p className="access-message">Accreditation and regulatory information can be completed after registration in the Institutional Profile.</p>
         <label className="terms-checkbox"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required /> I accept the <a href="https://nabhpulse.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="https://nabhpulse.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label>
         {error && <p className="status error">{error}</p>}
         <div className="toolbar">

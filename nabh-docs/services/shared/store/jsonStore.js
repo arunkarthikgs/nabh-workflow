@@ -1,5 +1,6 @@
 // File-backed data store: keeps the original output/*.json behaviour used before PostgreSQL support.
 import { mkdir, readFile, writeFile } from "fs/promises";
+import { createHash, randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -134,6 +135,7 @@ export async function updateBooking(booking) {
 const templateQuestionnairesPath = path.join(dataDirectory, "templateQuestionnaires.json");
 const documentAnswersPath = path.join(dataDirectory, "documentAnswers.json");
 const authSessionsPath = path.join(dataDirectory, "authSessions.json");
+const registrationTokensPath = path.join(dataDirectory, "registrationTokens.json");
 
 export async function readTemplateQuestionnaire(programme, templatePath) {
   const all = await readJson(templateQuestionnairesPath, {});
@@ -170,9 +172,9 @@ export async function readDocumentAnswers(hospitalId) {
   }, {});
 }
 
-export async function createRegistrationToken(hospitalId, email, rawToken, expiresAt) { return { hospitalId, email, rawToken, expiresAt }; }
-export async function findRegistrationToken() { return null; }
-export async function consumeRegistrationToken() { return false; }
+export async function createRegistrationToken(hospitalId, email, rawToken, expiresAt) { const tokens = await readJson(registrationTokensPath, []); tokens.forEach((item) => { if (item.hospitalId === hospitalId && item.email === email.toLowerCase() && !item.usedAt && !item.revokedAt) item.revokedAt = new Date().toISOString(); }); const token = { id: randomUUID(), hospitalId, email: email.toLowerCase(), tokenHash: createHash("sha256").update(rawToken).digest("hex"), expiresAt }; tokens.push(token); await writeJson(registrationTokensPath, tokens); return true; }
+export async function findRegistrationToken(rawToken) { const tokens = await readJson(registrationTokensPath, []); const hash = createHash("sha256").update(rawToken).digest("hex"); const token = tokens.find((item) => item.tokenHash === hash && !item.usedAt && !item.revokedAt && new Date(item.expiresAt).getTime() > Date.now()); if (!token) return null; const hospitals = await readJson(hospitalsPath, []); const hospital = hospitals.find((item) => item.id === token.hospitalId); const user = hospital?.users?.find((item) => item.email?.toLowerCase() === token.email); return hospital && user ? { tokenId: token.id, hospitalId: hospital.id, hospital, user } : null; }
+export async function consumeRegistrationToken(tokenId) { const tokens = await readJson(registrationTokensPath, []); const token = tokens.find((item) => item.id === tokenId && !item.usedAt && !item.revokedAt && new Date(item.expiresAt).getTime() > Date.now()); if (!token) return false; token.usedAt = new Date().toISOString(); await writeJson(registrationTokensPath, tokens); return true; }
 export async function appendUserAuditEvent() { return null; }
 
 export async function createAuthSession(session) { const sessions = await readJson(authSessionsPath, []); sessions.push(session); await writeJson(authSessionsPath, sessions); return session; }

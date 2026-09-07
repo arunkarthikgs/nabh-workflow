@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
@@ -641,6 +641,19 @@ app.post("/api/register", async (request, response, next) => {
     response.status(201).json({ hospital: { ...createdHospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email: { delivered: null, transport: "pending" } });
     void withTimeout(persistHospitalLogo(createdHospital), 12000, "Hospital logo upload timed out.").catch((error) => console.error("Hospital logo upload failed after registration:", error.message));
     void withTimeout(sendEmail(buildWelcomeEmail(createdHospital, user, setupLink)), 12000, "Email delivery timed out.").catch((error) => console.error("Welcome email failed after registration:", error.message));
+    if (process.env.PLATFORM_ADMIN_EMAIL) void withTimeout(sendEmail({ ...buildWelcomeEmail(createdHospital, user, setupLink), to: process.env.PLATFORM_ADMIN_EMAIL, subject: `New hospital registration: ${createdHospital.name}` }), 12000, "Platform admin notification timed out.").catch((error) => console.error("Platform admin notification failed:", error.message));
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/registration/resend", async (request, response, next) => {
+  try {
+    if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
+    const result = await resendRegistrationToken(request.params.hospitalId);
+    if (!result) return response.status(404).json({ error: "Hospital administrator not found." });
+    const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
+    const setupLink = `${origin}/?setPasswordToken=${result.token}`;
+    const email = await sendEmail(buildWelcomeEmail(result.hospital, result.user, setupLink));
+    response.json({ email: { delivered: email.delivered, transport: email.transport } });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -664,13 +677,13 @@ app.get("/api/set-password/:token", async (request, response, next) => {
     const found = await findUserBySetupToken(request.params.token);
     if (!found) return response.status(404).json({ error: "Invalid or expired setup link." });
     if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) return response.status(410).json({ error: "This setup link has expired." });
-    response.json({ hospitalName: found.hospital.name, email: found.user.email });
+    response.json({ hospitalName: found.hospital.name, hospitalCode: found.hospital.code, address: found.hospital.details?.addressLine1 || "", city: found.hospital.details?.city || "", adminName: found.user.name, email: found.user.email, contactPhone: found.user.contactPhone || found.hospital.details?.responsiblePhone || found.hospital.details?.mainPhone || "" });
   } catch (error) { next(error); }
 });
 
 app.post("/api/set-password", async (request, response, next) => {
   try {
-    const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password);
+    const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password, { code: request.body?.hospitalCode });
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "registration_completed", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const role = hospital.roles?.find((item) => item.name === user.role);
     const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath };
