@@ -22,7 +22,7 @@ function wrapText(text, font, size, maxWidth) {
   return lines.length ? lines : [""];
 }
 
-export async function createQuestionnaireReportPdf({ hospital, documentName, programme, questions, answers, generatedAt }) {
+export async function createQuestionnaireReportPdf({ hospital, documentName, programme, questions, answers, generatedAt, templateOnly = false }) {
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -67,17 +67,19 @@ export async function createQuestionnaireReportPdf({ hospital, documentName, pro
   y -= 58;
 
   for (const [index, question] of (questions || []).entries()) {
+    const questionLines = wrapText(`${index + 1}. ${question.label}`, bold, 10.5, contentWidth - 24);
     const answer = answers?.[question.id];
     const answerText = Array.isArray(answer) ? answer.join(", ") : String(answer || "Not answered");
-    const questionLines = wrapText(`${index + 1}. ${question.label}`, bold, 10.5, contentWidth - 24);
-    const answerLines = wrapText(answerText, regular, 10, contentWidth - 30);
-    const blockHeight = 20 + questionLines.length * 14 + 12 + answerLines.length * 14 + 18;
+    const answerLines = templateOnly ? [] : wrapText(answerText, regular, 10, contentWidth - 30);
+    const blockHeight = 20 + questionLines.length * 14 + (templateOnly ? 18 : 12 + answerLines.length * 14 + 18);
     await ensure(blockHeight);
     page.drawRectangle({ x: margin, y: y - blockHeight + 7, width: contentWidth, height: blockHeight, borderColor: colors.line, borderWidth: 0.7, color: rgb(1, 1, 1) });
     let blockY = y - 14;
     for (const line of questionLines) { page.drawText(line, { x: margin + 12, y: blockY, size: 10.5, font: bold, color: colors.ink }); blockY -= 14; }
-    blockY -= 5;
-    for (const line of answerLines) { page.drawText(line, { x: margin + 15, y: blockY, size: 10, font: regular, color: answerText === "Not answered" ? colors.muted : colors.ink }); blockY -= 14; }
+    if (!templateOnly) {
+      blockY -= 5;
+      for (const line of answerLines) { page.drawText(line, { x: margin + 15, y: blockY, size: 10, font: regular, color: answerText === "Not answered" ? colors.muted : colors.ink }); blockY -= 14; }
+    }
     y -= blockHeight + 12;
   }
 
@@ -104,5 +106,12 @@ export async function createHospitalQuestionnaireReportPdf({ hospital, documents
 }
 
 export async function createTemplateQuestionnaireReportPdf({ documents }) {
-  return createHospitalQuestionnaireReportPdf({ hospital: { name: "NABH Readiness System", code: "TEMPLATE-LIBRARY" }, documents });
+  const output = await PDFDocument.create();
+  for (const document of documents) {
+    const single = await createQuestionnaireReportPdf({ hospital: { name: "NABH Readiness System", code: "TEMPLATE-LIBRARY" }, ...document, templateOnly: true });
+    const source = await PDFDocument.load(single);
+    const pages = await output.copyPages(source, source.getPageIndices());
+    pages.forEach((page) => output.addPage(page));
+  }
+  return Buffer.from(await output.save());
 }
