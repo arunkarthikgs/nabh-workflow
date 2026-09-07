@@ -43,6 +43,10 @@ async function persistHospitalLogo(hospital) {
   return setHospitalLogoPath(hospital.id, `/api/admin/hospitals/${encodeURIComponent(hospital.id)}/logo`);
 }
 
+async function backfillHospitalLogos(hospitals) {
+  return Promise.all(hospitals.map((hospital) => hospital.logoDataUrl && !hospital.logoPath ? persistHospitalLogo(hospital) : hospital));
+}
+
 // Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
 // programme templates into R2 can take minutes. Callers read progress via repositorySyncJobs.
 function startRepositoryProvisioning(hospital, { syncNewTemplates = false } = {}) {
@@ -92,7 +96,7 @@ app.get("/api/health", async (_request, response) => {
 });
 
 app.get("/api/admin/hospitals", async (_request, response, next) => {
-  try { response.json({ hospitals: await listHospitals() }); } catch (error) { next(error); }
+  try { response.json({ hospitals: await backfillHospitalLogos(await listHospitals()) }); } catch (error) { next(error); }
 });
 
 app.post("/api/admin/hospitals", async (request, response, next) => {
@@ -497,8 +501,9 @@ app.post("/api/login", async (request, response, next) => {
     if (!userId.endsWith("-admin")) return response.status(401).json({ error: "Invalid credentials." });
     const hospital = await verifyHospitalAdminPassword(userId.slice(0, -6), password);
     if (!hospital) return response.status(401).json({ error: "Invalid credentials." });
+    const hospitalWithLogo = await backfillHospitalLogos([hospital]);
     const role = hospital.roles?.find((item) => item.name === "Hospital Administrator");
-    response.json({ session: { role: "Hospital Administrator", permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath } });
+    response.json({ session: { role: "Hospital Administrator", permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath } });
   } catch (error) { next(error); }
 });
 
