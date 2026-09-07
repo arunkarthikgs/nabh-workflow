@@ -112,7 +112,7 @@ export default function TemplateLibrary() {
             {NABH_ACCREDITATION_PROGRAMMES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
-        {departments && <p className="intro">{departmentEntries.length} departments &middot; {total} Master List documents &middot; <span className="active-count">finalized templates</span></p>}
+        {departments && <p className="intro">{departmentEntries.length} workspace categories &middot; {total} templates &middot; <span className="active-count">available</span></p>}
       </header>
 
       {auditOpen ? (
@@ -160,11 +160,11 @@ export default function TemplateLibrary() {
               </div>
             </div>
             {templates.length === 0 ? (
-              <p className="empty">No Master List documents match this search.</p>
+              <p className="empty">No templates match this search.</p>
             ) : (
               <table>
                 <thead>
-                  <tr><th>Master List ID</th><th>Document Name</th><th>Matched template</th><th>Type</th><th aria-label="Actions" /></tr>
+                  <tr><th>Document</th><th>Template name</th><th>Stored template</th><th>Type</th><th aria-label="Actions" /></tr>
                 </thead>
                 <tbody>
                   {templates.map((template) => {

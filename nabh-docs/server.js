@@ -281,6 +281,25 @@ function matchTemplate(document, department, templateFiles) {
   return best;
 }
 
+function programmeTemplateDepartments(templateFiles) {
+  const departments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
+  for (const templatePath of templateFiles) {
+    if (path.basename(templatePath) === masterListTemplateFile) continue;
+    const [folder] = templatePath.split("/");
+    const category = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
+    departments[category].push({
+      documentName: path.basename(templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, ""),
+      documentId: "",
+      templatePath,
+      fileName: path.basename(templatePath),
+      fileType: path.extname(templatePath).slice(1).toUpperCase(),
+      matchScore: 1
+    });
+  }
+  for (const documents of Object.values(departments)) documents.sort((left, right) => left.documentName.localeCompare(right.documentName));
+  return departments;
+}
+
 app.get("/api/admin/template-library", async (request, response, next) => {
   const programme = typeof request.query.programme === "string" && request.query.programme.trim() ? request.query.programme.trim() : "";
   try {
@@ -289,7 +308,11 @@ app.get("/api/admin/template-library", async (request, response, next) => {
     if (programme && !templateFiles.length) {
       return response.json({ departments: {}, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0, error: `No templates found yet for the "${programme}" programme. Ask an administrator to upload templates for this programme.` });
     }
-    const masterList = await readTemplateMasterList(programme || undefined);
+    if (programme) {
+      const departments = programmeTemplateDepartments(templateFiles);
+      return response.json({ departments, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0 });
+    }
+    const masterList = await readTemplateMasterList();
     const matchedFiles = new Set();
     const departments = Object.fromEntries(Object.entries(masterList).map(([department, documents]) => [department, documents.map((document) => {
       const match = matchTemplate(document, department, templateFiles);
