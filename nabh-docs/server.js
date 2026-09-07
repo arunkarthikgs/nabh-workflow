@@ -1328,6 +1328,14 @@ app.patch("/api/document-matches/:department/edit", async (request, response, ne
     next(error);
   }
 });
+app.use("/api", (request, response) => {
+  response.status(404).json({ error: "API endpoint not found.", path: request.path });
+});
+app.use("/api", (error, request, response, next) => {
+  if (response.headersSent) return next(error);
+  console.error(`API error ${request.method} ${request.originalUrl}:`, error);
+  response.status(error.status || 500).json({ error: error.message || "Internal API error." });
+});
 
 const port = Number(process.env.PORT) || 4000;
 const host = process.env.HOST || "127.0.0.1";
