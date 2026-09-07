@@ -40,6 +40,9 @@ export default function TemplateLibrary() {
   const [history, setHistory] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState([]);
+  const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
+  const [questionnaireQuestions, setQuestionnaireQuestions] = useState([]);
+  const [questionnaireMessage, setQuestionnaireMessage] = useState("");
 
   useEffect(() => {
     if (!programme) { setDepartments(null); setLibraryMessage(""); setSelectedDepartment(""); return; }
@@ -89,6 +92,29 @@ export default function TemplateLibrary() {
     if (!response.ok) { setError(result.error || "Unable to load the audit log."); return; }
     setAuditEntries(result.entries || []);
     setAuditOpen(true);
+  }
+
+  async function configureQuestions(template) {
+    setQuestionnaireMessage("Loading questionnaire...");
+    const response = await fetch(`/api/admin/template-library/questions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
+    const result = await response.json();
+    if (!response.ok) return setQuestionnaireMessage(result.error || "Unable to load questionnaire.");
+    setQuestionnaireTemplate(template);
+    setQuestionnaireQuestions(result.questionnaire?.questions || []);
+    setQuestionnaireMessage("");
+  }
+
+  async function saveQuestions(event) {
+    event.preventDefault();
+    setQuestionnaireMessage("Saving questionnaire...");
+    const response = await fetch("/api/admin/template-library/questions", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ programme, templatePath: questionnaireTemplate.templatePath, questions: questionnaireQuestions }) });
+    const result = await response.json();
+    if (!response.ok) return setQuestionnaireMessage(result.error || "Unable to save questionnaire.");
+    setQuestionnaireMessage("Questionnaire saved. Hospital users will see these questions when answering this document.");
+  }
+
+  function updateQuestion(index, patch) {
+    setQuestionnaireQuestions((current) => current.map((question, questionIndex) => questionIndex === index ? { ...question, ...patch } : question));
   }
 
   if (error) return <main className="admin-main"><p className="status error">{error}</p></main>;
@@ -180,6 +206,7 @@ export default function TemplateLibrary() {
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
                             <button className="icon-button" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={17} /></button>
+                            <button className="icon-button" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /></button>
                             <button className="icon-button" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
                           </span>
                         )}</td>
@@ -202,6 +229,17 @@ export default function TemplateLibrary() {
             <label>Approval note<textarea value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>
             {approvalMessage && <p className="access-message">{approvalMessage}</p>}
             <button className="primary-button" type="submit"><CheckCircle2 size={16} /> Approve new version</button>
+          </form>
+        </div>
+      )}
+      {questionnaireTemplate && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaireTemplate(null)}>
+          <form className="preview-dialog admin-form" onSubmit={saveQuestions} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header"><div><p className="eyebrow">Template questionnaire</p><h2>{questionnaireTemplate.documentName}</h2><p className="editor-file-name">Configure questions for Hospital Admin respondents.</p></div><button className="icon-button" type="button" title="Close questionnaire" onClick={() => setQuestionnaireTemplate(null)}><X size={18} /></button></div>
+            {questionnaireQuestions.map((question, index) => <fieldset className="question-config" key={`${question.id}-${index}`}><legend>Question {index + 1}</legend><label>Question ID<input value={question.id || ""} onChange={(event) => updateQuestion(index, { id: event.target.value })} /></label><label>Question text<textarea rows={2} value={question.label || ""} onChange={(event) => updateQuestion(index, { label: event.target.value })} /></label><label>Type<select value={question.type || "textarea"} onChange={(event) => updateQuestion(index, { type: event.target.value })}><option value="text">Text</option><option value="textarea">Long answer</option><option value="multiselect">Multiple selection</option></select></label><label><input type="checkbox" checked={question.required !== false} onChange={(event) => updateQuestion(index, { required: event.target.checked })} /> Required answer</label><button type="button" className="text-button" onClick={() => setQuestionnaireQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index))}>Remove question</button></fieldset>)}
+            <button type="button" className="secondary-button" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true }])}>Add question</button>
+            {questionnaireMessage && <p className="access-message">{questionnaireMessage}</p>}
+            <button className="primary-button" type="submit">Save questionnaire</button>
           </form>
         </div>
       )}

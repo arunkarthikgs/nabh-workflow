@@ -11,12 +11,13 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, readTemplateQuestionnaire, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
 import { NABH_WORKSPACE_CATEGORIES, classifyDocument } from "./services/shared/documentCategoryService.js";
-import { performDocumentAction } from "./services/shared/draftGenerationService.js";
+import { generateDocumentDraft, getDocumentDraft, performDocumentAction, prepareDocumentDraft } from "./services/shared/draftGenerationService.js";
+import { getDocumentQuestions, validateDocumentAnswers, validateQuestionnaireDefinition } from "./services/shared/documentQuestionnaireService.js";
 import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
@@ -368,6 +369,26 @@ app.get("/api/admin/template-library", async (request, response, next) => {
   }
 });
 
+app.get("/api/admin/template-library/questions", async (request, response, next) => {
+  try {
+    const programme = String(request.query.programme || "").trim();
+    const templatePath = String(request.query.path || "").trim();
+    if (!NABH_ACCREDITATION_PROGRAMMES.includes(programme) || !templatePath || templatePath.includes("..")) return response.status(400).json({ error: "A valid programme and template path are required." });
+    response.json({ questionnaire: await readTemplateQuestionnaire(programme, templatePath) });
+  } catch (error) { next(error); }
+});
+
+app.put("/api/admin/template-library/questions", async (request, response, next) => {
+  try {
+    const programme = String(request.body?.programme || "").trim();
+    const templatePath = String(request.body?.templatePath || "").trim();
+    if (!NABH_ACCREDITATION_PROGRAMMES.includes(programme) || !templatePath || templatePath.includes("..")) return response.status(400).json({ error: "A valid programme and template path are required." });
+    const questions = validateQuestionnaireDefinition(request.body);
+    const questionnaire = await saveTemplateQuestionnaire(programme, templatePath, questions);
+    response.json({ questionnaire });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
 function withDocumentStatus(departments, hospitalStatus) {
   return Object.fromEntries(Object.entries(departments).map(([department, documents]) => [
     department,
@@ -604,6 +625,41 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/document-questions", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    const documentId = String(request.query.documentId || "").trim();
+    if (!documentId) return response.status(400).json({ error: "documentId is required." });
+    response.json(await getDocumentQuestions(hospital, documentId, request.query.documentName, request.query.templatePath));
+  } catch (error) { if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/document-draft", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    const documentId = String(request.query.documentId || "").trim();
+    if (!documentId) return response.status(400).json({ error: "documentId is required." });
+    response.json({ draft: await getDocumentDraft(hospital.id, documentId) });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/document-draft", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    const { documentId, documentName, answers } = request.body || {};
+    const prepared = await prepareDocumentDraft(hospital, documentId, documentName, answers, request.body?.templatePath);
+    await saveDocumentAnswers(hospital.id, documentId, prepared.answers, prepared.questionnaire);
+    const draft = await generateDocumentDraft(hospital, documentId, documentName, prepared.answers);
+    response.status(201).json({ draft, questionnaire: prepared.questionnaire });
+  } catch (error) { if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 app.get("/api/training/catalog", (_request, response) => {

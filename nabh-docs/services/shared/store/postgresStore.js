@@ -1,5 +1,6 @@
 // PostgreSQL-backed data store. Mirrors the JSON store contract so both drivers stay interchangeable.
 import { readFile } from "fs/promises";
+import { randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { configValue } from "../config.js";
@@ -130,11 +131,40 @@ const schemaStatements = [
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
    )`,
+  `create table if not exists template_questionnaires (
+     id uuid primary key,
+     programme text not null,
+     template_path text not null,
+     updated_at timestamptz not null default now(),
+     unique (programme, template_path)
+   )`,
+  `create table if not exists template_questions (
+     id uuid primary key,
+     questionnaire_id uuid not null references template_questionnaires (id) on delete cascade,
+     question_key text not null,
+     label text not null,
+     question_type text not null,
+     required boolean not null default true,
+     options jsonb not null default '[]'::jsonb,
+     prefill_field text not null default '',
+     ordinal integer not null default 0,
+     unique (questionnaire_id, question_key)
+   )`,
+  `create table if not exists hospital_document_answers (
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     document_id text not null,
+     question_id uuid not null references template_questions (id) on delete cascade,
+     answer text not null default '',
+     updated_at timestamptz not null default now(),
+     primary key (hospital_id, document_id, question_id)
+   )`,
   `create index if not exists hospital_users_hospital_idx on hospital_users (hospital_id)`,
   `create index if not exists hospital_roles_hospital_idx on hospital_roles (hospital_id)`,
     `create index if not exists hospital_users_email_idx on hospital_users (lower(email))`,
     `create index if not exists document_status_hospital_idx on document_status (hospital_id)`,
     `create index if not exists document_drafts_hospital_idx on document_drafts (hospital_id)`,
+    `create index if not exists template_questions_questionnaire_idx on template_questions (questionnaire_id, ordinal)`,
+    `create index if not exists hospital_document_answers_document_idx on hospital_document_answers (hospital_id, document_id)`,
     `create index if not exists document_audit_timestamp_idx on document_audit ((entry->>'timestamp'))`,
   // ADD COLUMN IF NOT EXISTS handles upgrading a database created before these columns existed;
   // "create table if not exists" above alone would skip them on an already-existing table.
@@ -559,6 +589,30 @@ export async function readBookingById(bookingId) {
   const client = await connect();
   const { rows } = await client.query(`select booking from service_bookings where id = $1`, [bookingId]);
   return rows[0]?.booking || null;
+}
+
+export async function readTemplateQuestionnaire(programme, templatePath) {
+  const client = await connect();
+  const { rows } = await client.query(`select q.id, q.question_key, q.label, q.question_type, q.required, q.options, q.prefill_field, q.ordinal from template_questionnaires t left join template_questions q on q.questionnaire_id = t.id where t.programme = $1 and t.template_path = $2 order by q.ordinal`, [programme, templatePath]);
+  if (!rows.length || !rows[0].question_key) return null;
+  return { programme, templatePath, questions: rows.map((row) => ({ id: row.question_key, label: row.label, type: row.question_type, required: row.required, options: row.options || [], prefillField: row.prefill_field || "" })) };
+}
+
+export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    const { rows: [questionnaire] } = await client.query(`insert into template_questionnaires (id, programme, template_path) values ($1, $2, $3) on conflict (programme, template_path) do update set updated_at = now() returning id`, [randomUUID(), programme, templatePath]);
+    await client.query(`delete from template_questions where questionnaire_id = $1`, [questionnaire.id]);
+    for (const [ordinal, question] of questions.entries()) await client.query(`insert into template_questions (id, questionnaire_id, question_key, label, question_type, required, options, prefill_field, ordinal) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)`, [randomUUID(), questionnaire.id, question.id, question.label, question.type, question.required !== false, JSON.stringify(question.options || []), question.prefillField || "", ordinal]);
+    await client.query("commit");
+    return { programme, templatePath, questions };
+  } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+}
+
+export async function saveDocumentAnswers(hospitalId, documentId, answers, questionnaire) {
+  const client = await connect();
+  for (const question of questionnaire.questions || []) await client.query(`insert into hospital_document_answers (hospital_id, document_id, question_id, answer) select $1, $2, id, $3 from template_questions where questionnaire_id = (select id from template_questionnaires where programme = $4 and template_path = $5) and question_key = $6 on conflict (hospital_id, document_id, question_id) do update set answer = excluded.answer, updated_at = now()`, [hospitalId, documentId, answers[question.id] || "", questionnaire.programme, questionnaire.templatePath, question.id]);
 }
 
 function bookingColumns(booking) {

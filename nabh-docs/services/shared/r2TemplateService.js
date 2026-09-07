@@ -68,6 +68,30 @@ export async function getR2TemplateFile(relativePath) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
+function templateQuestionnaireKey(programme, templatePath) {
+  const slug = accreditationProgrammeSlug(programme);
+  if (!slug || !templatePath) throw new Error("Programme and template path are required.");
+  const key = createHash("sha256").update(String(templatePath)).digest("hex");
+  return `${programmeSourcePrefix(config(), programme)}metadata/questions/${key}.json`;
+}
+
+export async function getR2TemplateQuestionnaire(programme, templatePath) {
+  if (!isEnabled()) return null;
+  return getJsonObject(config(), templateQuestionnaireKey(programme, templatePath));
+}
+
+export async function saveR2TemplateQuestionnaire(programme, templatePath, questionnaire) {
+  if (!isEnabled()) throw new Error("R2 template storage is required for template questionnaires.");
+  const settings = config();
+  await client().send(new PutObjectCommand({
+    Bucket: settings.bucket,
+    Key: templateQuestionnaireKey(programme, templatePath),
+    Body: JSON.stringify({ ...questionnaire, programme, templatePath, updatedAt: new Date().toISOString() }, null, 2),
+    ContentType: "application/json"
+  }));
+  return questionnaire;
+}
+
 export async function listR2ClientFiles(hospitalCode, programme) {
   const prefix = clientPrefix(hospitalCode, programme);
   const index = await getJsonObject(config(), `${prefix}index.json`);

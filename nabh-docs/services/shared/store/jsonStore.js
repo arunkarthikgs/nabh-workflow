@@ -131,6 +131,29 @@ export async function updateBooking(booking) {
   return booking;
 }
 
+const templateQuestionnairesPath = path.join(outputDirectory, "templateQuestionnaires.json");
+const documentAnswersPath = path.join(outputDirectory, "documentAnswers.json");
+
+export async function readTemplateQuestionnaire(programme, templatePath) {
+  const all = await readJson(templateQuestionnairesPath, {});
+  return all[programme]?.[templatePath] || null;
+}
+
+export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
+  const all = await readJson(templateQuestionnairesPath, {});
+  all[programme] = { ...(all[programme] || {}), [templatePath]: { programme, templatePath, questions, updatedAt: new Date().toISOString() } };
+  await writeJson(templateQuestionnairesPath, all);
+  return all[programme][templatePath];
+}
+
+export async function saveDocumentAnswers(hospitalId, documentId, answers, questionnaire) {
+  const all = await readJson(documentAnswersPath, {});
+  const key = `${hospitalId}:${documentId}`;
+  all[key] = { hospitalId, documentId, questionnaire, answers, updatedAt: new Date().toISOString() };
+  await writeJson(documentAnswersPath, all);
+  return all[key];
+}
+
 export async function saveBookings(bookings) {
   await writeJson(bookingsPath, bookings);
 }

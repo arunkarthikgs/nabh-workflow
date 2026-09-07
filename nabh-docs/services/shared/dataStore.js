@@ -107,6 +107,18 @@ export async function updateBooking(booking) {
   return (await store()).updateBooking(booking);
 }
 
+export async function readTemplateQuestionnaire(programme, templatePath) {
+  return (await store()).readTemplateQuestionnaire(programme, templatePath);
+}
+
+export async function saveTemplateQuestionnaire(programme, templatePath, questions) {
+  return (await store()).saveTemplateQuestionnaire(programme, templatePath, questions);
+}
+
+export async function saveDocumentAnswers(hospitalId, documentId, answers, questionnaire) {
+  return (await store()).saveDocumentAnswers(hospitalId, documentId, answers, questionnaire);
+}
+
 export async function saveBookings(bookings) {
   return (await store()).saveBookings(bookings);
 }

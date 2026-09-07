@@ -327,7 +327,40 @@ function MasterListWorkspace({
   const [approvalNote, setApprovalNote] = useState("");
   const [approvalError, setApprovalError] = useState("");
   const [approving, setApproving] = useState(false);
+  const [questionnaire, setQuestionnaire] = useState(null);
+  const [questionAnswers, setQuestionAnswers] = useState({});
+  const [questionError, setQuestionError] = useState("");
+  const [generatingDraft, setGeneratingDraft] = useState(false);
+  const [generatedDraft, setGeneratedDraft] = useState(null);
   const canEdit = permissions.includes("edit");
+
+  async function openQuestionnaire(doc) {
+    setQuestionError("");
+    setGeneratedDraft(null);
+    const templatePath = doc.relativeFilePath || doc.matchedFilePath || "";
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-questions?documentId=${encodeURIComponent(doc.id)}&documentName=${encodeURIComponent(doc.documentName)}&templatePath=${encodeURIComponent(templatePath)}`);
+    const data = await response.json();
+    if (!response.ok) return setQuestionError(data.error || "Unable to load document questions.");
+    setQuestionnaire({ ...data, document: doc });
+    setQuestionAnswers(Object.fromEntries((data.questions || []).map((question) => [question.id, question.value || ""])));
+  }
+
+  async function generatePersonalizedDraft() {
+    if (!questionnaire) return;
+    setGeneratingDraft(true);
+    setQuestionError("");
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: questionnaire.document.id, documentName: questionnaire.document.documentName, templatePath: questionnaire.document.relativeFilePath || questionnaire.document.matchedFilePath || "", answers: questionAnswers })
+    });
+    const data = await response.json();
+    setGeneratingDraft(false);
+    if (!response.ok) return setQuestionError(data.error || "Unable to generate the personalized draft.");
+    setGeneratedDraft(data.draft);
+    setQuestionnaire((current) => ({ ...current, questions: data.questionnaire.questions }));
+    setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === questionnaire.document.id ? { ...item, readinessStatus: "draft_generated" } : item)])) : current);
+  }
 
   const pollSyncStatus = (initialMsg) => {
     setSyncingTemplates(true);
@@ -1398,6 +1431,15 @@ function MasterListWorkspace({
                               <FilePenLine size={14} />
                             </button>
                           )}
+                          {canEdit && !isEditing && (
+                            <button
+                              className="icon-button document-edit-button"
+                              title="Answer hospital questions and generate personalized draft"
+                              onClick={() => openQuestionnaire(doc)}
+                            >
+                              <ClipboardList size={14} />
+                            </button>
+                          )}
                           {canEdit && doc.relativeFilePath && (
                             <button
                               className="icon-button document-edit-button"
@@ -1634,6 +1676,42 @@ function MasterListWorkspace({
                 )}
               </tbody>
             </table>
+          </section>
+        </div>
+      )}
+      {questionnaire && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaire(null)}>
+          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label="Generate personalized draft" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Hospital-specific document generation</p>
+                <h2>{questionnaire.documentName}</h2>
+                <p className="editor-file-name">Answer the questions configured for this template, then submit your responses.</p>
+              </div>
+              <button className="icon-button" title="Close questions" onClick={() => setQuestionnaire(null)}><Close size={18} /></button>
+            </div>
+            {!generatedDraft ? (
+              <div className="profile-form">
+                {questionnaire.questions.map((question) => (
+                  <label key={question.id}>
+                    {question.label}{question.required && " *"}
+                    {question.type === "textarea" ? (
+                      <textarea rows={3} value={questionAnswers[question.id] || ""} disabled={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
+                    ) : (
+                      <input value={questionAnswers[question.id] || ""} readOnly={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
+                    )}
+                  </label>
+                ))}
+                {questionError && <p className="status error">{questionError}</p>}
+                <button className="primary-button" disabled={generatingDraft} onClick={generatePersonalizedDraft}>{generatingDraft ? "Submitting..." : "Submit answers and generate draft"}</button>
+              </div>
+            ) : (
+              <div className="profile-form">
+                <p className="access-message">Draft generated successfully. Review it before submitting the document for approval.</p>
+                <textarea rows={18} value={generatedDraft.content || ""} readOnly />
+                <button className="primary-button" onClick={() => setQuestionnaire(null)}>Done</button>
+              </div>
+            )}
           </section>
         </div>
       )}

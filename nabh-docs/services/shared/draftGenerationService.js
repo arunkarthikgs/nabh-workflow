@@ -1,7 +1,8 @@
 // Structured Q&A -> personalised draft document generation, plus the review/approve state machine
 // layered on top of documentStatusService's readiness pipeline.
-import { readDocumentDrafts, saveDocumentDrafts } from "./dataStore.js";
+import { readDocumentDrafts, saveDocumentAnswers, saveDocumentDrafts } from "./dataStore.js";
 import { getHospitalDocumentStatus, isValidDocumentStatus, setHospitalDocumentStatus } from "./documentStatusService.js";
+import { getDocumentQuestions, validateDocumentAnswers } from "./documentQuestionnaireService.js";
 
 // Which readiness statuses a guided action may move a document from -> to.
 const ACTION_TRANSITIONS = {
@@ -33,6 +34,11 @@ export async function generateDocumentDraft(hospital, documentId, documentName, 
   await saveDocumentDrafts({ ...all, [hospital.id]: hospitalDrafts });
   await setHospitalDocumentStatus(hospital.id, documentId, "draft_generated", "AI Draft Generator");
   return draft;
+}
+
+export async function prepareDocumentDraft(hospital, documentId, documentName, answers, templatePath) {
+  const questionnaire = await getDocumentQuestions(hospital, documentId, documentName, templatePath);
+  return { questionnaire, answers: validateDocumentAnswers(questionnaire, answers) };
 }
 
 export async function getDocumentDraft(hospitalId, documentId) {
