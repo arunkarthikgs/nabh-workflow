@@ -56,6 +56,7 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
 function AccreditationTab({ hospitalId, profileComplete, disabled }) {
   const [state, setState] = useState(null);
   const [decidedBy, setDecidedBy] = useState("");
+  const [decisionNotes, setDecisionNotes] = useState("");
   const [message, setMessage] = useState("");
   const [pendingProgramme, setPendingProgramme] = useState("");
 
@@ -67,43 +68,41 @@ function AccreditationTab({ hospitalId, profileComplete, disabled }) {
 
   async function confirmSelection() {
     const programme = pendingProgramme;
-    if (!programme) return;
+    if (!programme || !decidedBy.trim()) { setMessage("Enter the authorised representative's name before confirming."); return; }
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ programme, decidedBy })
+      body: JSON.stringify({ programme, decidedBy: decidedBy.trim(), notes: decisionNotes.trim() })
     });
     const data = await response.json();
     if (!response.ok) { setMessage(data.error); return; }
     setState((current) => ({ ...current, selection: data.selection }));
     setPendingProgramme("");
+    setDecisionNotes("");
     setMessage(data.job ? "Accreditation programme saved. Your document workspace is now being prepared - check the Documents tab shortly." : "Accreditation programme saved.");
   }
 
   if (!state) return <p className="empty">Loading recommendation...</p>;
 
   return (
-    <section className="admin-form">
-      <h2>Recommended NABH accreditation programme</h2>
-      <p className="access-message">Eligibility screening based on the facility profile. Confirm the final programme and all documentary evidence with NABH before applying.</p>
-      {!profileComplete && <p className="access-message">Complete the institutional profile for a more accurate recommendation.</p>}
-      <p><strong>{state.recommendation.programme}</strong></p>
-      <p>{state.recommendation.rationale}</p>
-      <p className="access-message"><strong>Status: {state.recommendation.status === "eligible" ? "Eligible based on recorded information" : state.recommendation.status === "conditional" ? "More evidence required" : "Not eligible based on recorded information"}</strong></p>
-      {state.recommendation.requirements?.length > 0 && <ul className="access-message">{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>}
-      <label>Your name (for the decision record)<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} /></label>
-      <label>NABH accreditation programme
-        <select value={state.selection?.programme || ""} disabled={disabled} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}>
-          <option value="">Select a programme</option>
-          {state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}
-        </select>
-      </label>
-      <div className="toolbar">
-        <button className="primary-button" disabled={disabled || !state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Accept recommendation</button>
-      </div>
-      {state.selection && <p className="access-message">Currently pursuing: <strong>{state.selection.programme}</strong> (selected by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()})</p>}
-      {message && <p className="access-message">{message}</p>}
-      {pendingProgramme && <div className="preview-backdrop" role="presentation" onClick={() => setPendingProgramme("")}><section className="preview-dialog accreditation-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="accreditation-confirmation-title" onClick={(event) => event.stopPropagation()}><div className="preview-header accreditation-confirm-header"><div className="accreditation-confirm-mark"><CheckCircle2 size={20} /></div><div><p className="eyebrow">Confirm NABH accreditation</p><h2 id="accreditation-confirmation-title">{pendingProgramme}</h2></div><button className="icon-button" type="button" title="Close confirmation" onClick={() => setPendingProgramme("")}><X size={18} /></button></div><div className="accreditation-confirm-body"><p>Confirm this as the NABH programme your hospital will pursue.</p><div className="accreditation-confirm-note">The decision is saved immediately and the programme-specific document workspace will begin preparing.</div><p className="accreditation-confirm-detail">You can change the programme later. Changing it resynchronizes the workspace with the newly selected programme.</p></div><div className="accreditation-confirm-actions"><button className="secondary-button" type="button" onClick={() => setPendingProgramme("")}>Cancel</button><button className="primary-button" type="button" onClick={confirmSelection}><CheckCircle2 size={16} /> Confirm accreditation</button></div></section></div>}
+    <section className="accreditation-workspace">
+      <section className="accreditation-section recommendation-section">
+        <div className="accreditation-section-heading"><div><p className="eyebrow">Eligibility assessment</p><h2>Recommended NABH accreditation programme</h2></div><span className={`accreditation-status accreditation-status-${state.recommendation.status}`}>{state.recommendation.status === "eligible" ? "Eligible" : state.recommendation.status === "conditional" ? "Conditional" : "Not eligible"}</span></div>
+        <p className="accreditation-intro">Based on the institutional profile recorded for this hospital, the system recommends:</p>
+        <div className="recommendation-callout"><CheckCircle2 size={20} /><div><strong>{state.recommendation.programme}</strong><p>{state.recommendation.rationale}</p></div></div>
+        {state.recommendation.requirements?.length > 0 && <div className="recommendation-details"><strong>Additional information or evidence required</strong><ul>{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul></div>}
+        {!profileComplete && <p className="access-message">Complete the institutional profile for a more accurate recommendation.</p>}
+        <p className="accreditation-disclaimer">This is an eligibility recommendation based on recorded information. Confirm the final programme and documentary evidence with NABH before applying.</p>
+        <button className="primary-button" disabled={disabled || !state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Use recommended programme</button>
+      </section>
+      <section className="accreditation-section desired-programme-section">
+        <div className="accreditation-section-heading"><div><p className="eyebrow">Programme selection</p><h2>Select the Desired accreditation programme type</h2></div></div>
+        <p className="accreditation-intro">Choose the programme your hospital intends to pursue. Your selection will be confirmed before the document workspace is prepared.</p>
+        <label className="programme-select-field">Desired accreditation programme<select value={state.selection?.programme || ""} disabled={disabled} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}><option value="">Select a programme type</option>{state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}</select></label>
+        {state.selection && <div className="current-programme"><span>Currently selected</span><strong>{state.selection.programme}</strong><small>Confirmed by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()}</small></div>}
+        {message && <p className="access-message">{message}</p>}
+      </section>
+      {pendingProgramme && <div className="preview-backdrop" role="presentation" onClick={() => setPendingProgramme("")}><section className="preview-dialog accreditation-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="accreditation-confirmation-title" onClick={(event) => event.stopPropagation()}><div className="preview-header accreditation-confirm-header"><div className="accreditation-confirm-mark"><CheckCircle2 size={20} /></div><div><p className="eyebrow">Confirm programme selection</p><h2 id="accreditation-confirmation-title">{pendingProgramme}</h2></div><button className="icon-button" type="button" title="Close confirmation" onClick={() => setPendingProgramme("")}><X size={18} /></button></div><div className="accreditation-confirm-body"><p>Confirm that this is the accreditation programme your hospital intends to pursue.</p><label>Authorised representative name<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} placeholder="Enter your full name" autoFocus /></label><label>Notes for this hospital<textarea rows={4} value={decisionNotes} onChange={(event) => setDecisionNotes(event.target.value)} placeholder="Add context, scope, or notes for the accreditation decision" /></label><div className="accreditation-confirm-note">The selection will be stored for this hospital and used to prepare its programme-specific document workspace.</div></div><div className="accreditation-confirm-actions"><button className="secondary-button" type="button" onClick={() => setPendingProgramme("")}>Cancel</button><button className="primary-button" type="button" onClick={confirmSelection}><CheckCircle2 size={16} /> Confirm programme</button></div></section></div>}
     </section>
   );
 }

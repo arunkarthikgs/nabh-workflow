@@ -105,12 +105,12 @@ export async function getAccreditationState(hospitalId) {
   return { recommendation: recommendAccreditationProgramme(hospital), selection: hospital.accreditation || null, programmes: NABH_ACCREDITATION_PROGRAMMES };
 }
 
-export async function selectAccreditationProgramme(hospitalId, programme, decidedBy) {
+export async function selectAccreditationProgramme(hospitalId, programme, decidedBy, notes) {
   if (!NABH_ACCREDITATION_PROGRAMMES.includes(programme)) throw new Error(`programme must be one of: ${NABH_ACCREDITATION_PROGRAMMES.join(", ")}`);
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return null;
-  hospital.accreditation = { programme, decidedBy: typeof decidedBy === "string" && decidedBy.trim() ? decidedBy.trim() : "Hospital", decidedAt: new Date().toISOString() };
+  hospital.accreditation = { programme, decidedBy: typeof decidedBy === "string" && decidedBy.trim() ? decidedBy.trim() : "Hospital", notes: typeof notes === "string" ? notes.trim() : "", decidedAt: new Date().toISOString() };
   hospital.updatedAt = hospital.accreditation.decidedAt;
   await saveHospital(hospital);
   return hospital.accreditation;

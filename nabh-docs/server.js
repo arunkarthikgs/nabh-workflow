@@ -531,7 +531,7 @@ app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, respo
     const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
-    const selection = await selectAccreditationProgramme(request.params.hospitalId, request.body?.programme, request.body?.decidedBy);
+    const selection = await selectAccreditationProgramme(request.params.hospitalId, request.body?.programme, request.body?.decidedBy, request.body?.notes);
     if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2HospitalAccreditation(hospital.code, selection);
     // Force a full resync so switching programmes always overwrites any same-named files
     // left over from a previously selected programme, instead of skipping existing ones.
