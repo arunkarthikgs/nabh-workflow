@@ -1460,7 +1460,7 @@ function MasterListWorkspace({
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
-                            {canEdit && !isEditing && <button className="icon-button questionnaire-document-action" title="Answer hospital questions and generate personalized draft" onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /></button>}
+                            {canEdit && !isEditing && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
                             {canEdit && doc.relativeFilePath && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                           </span>
                         </td>

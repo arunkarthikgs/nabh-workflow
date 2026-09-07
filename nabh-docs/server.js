@@ -476,6 +476,8 @@ function withDocumentStatus(departments, hospitalStatus) {
 async function loadHospitalDepartments(hospital) {
   if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
   const programme = hospital.accreditation?.programme;
+  const questionnaireSummaries = await readTemplateQuestionnaireSummaries(programme);
+  const questionCountByPath = new Map(questionnaireSummaries.map((item) => [item.templatePath, item.questionCount]));
   const [clientFiles, versionManifests] = await Promise.all([
     listR2ClientFiles(hospital.code, programme),
     getR2ClientVersionManifests(hospital.code, programme)
@@ -497,6 +499,7 @@ async function loadHospitalDepartments(hospital) {
       confidence: "high",
       matchedFilePath: templatePath,
       relativeFilePath: templatePath,
+      questionCount: questionCountByPath.get(templatePath) || 0,
       version: isApproved ? versionManifest.currentVersion : null,
       approved: isApproved,
       history: versionManifest?.history || []

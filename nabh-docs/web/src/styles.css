@@ -183,6 +183,8 @@ tr.history-row td { background: #f8f9ff; padding: 12px 16px; }
 .hospital-document-file-cell .hospital-document-actions .icon-button { padding: 6px; }
 .questionnaire-document-action { background: #e7f3f8 !important; border-color: #c8e1eb !important; color: #0b6e99 !important; }
 .questionnaire-document-action:hover { background: #d8edf4 !important; border-color: #8fc6d7 !important; }
+.questionnaire-document-action { gap: 4px; min-width: 42px; }
+.questionnaire-document-action span { align-items: center; background: #c8e1eb; border-radius: 999px; color: #0b6e99; display: inline-flex; font-size: 10px; font-weight: 700; justify-content: center; min-width: 17px; padding: 2px 4px; }
 .readiness-select { border-radius: 6px; font-weight: 700; min-width: 132px; padding: 7px 8px; }
 .questionnaire-report-dialog { height: min(88vh, 820px); max-width: 1100px; }
 .questionnaire-report-body { flex: 1; min-height: 0; overflow: auto; padding: 22px 28px; }
