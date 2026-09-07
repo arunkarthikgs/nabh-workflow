@@ -41,6 +41,17 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .panel-heading { align-items: center; border-bottom: 1px solid #eceeff; color: #3547d1; display: flex; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; }
 .panel-heading .count { margin-left: auto; }
 .readiness-dashboard { display: grid; gap: 22px; }
+.superadmin-home-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.superadmin-home-card { background: #ffffff; border: 1px solid #e9e9e7; border-radius: 6px; color: #37352f; cursor: pointer; display: grid; gap: 7px; padding: 20px; text-align: left; }
+.superadmin-home-card:hover { border-color: #2383e2; box-shadow: 0 0 0 1px #2383e2; }
+.superadmin-home-card > svg { color: #2383e2; }
+.superadmin-home-card strong { font-family: "Libre Baskerville", Georgia, serif; font-size: 30px; }
+.superadmin-home-card span { font-size: 13px; font-weight: 700; }
+.superadmin-home-card small { color: #787774; font-size: 11px; line-height: 1.45; }
+.superadmin-home-card.pending { background: #fff8e8; border-color: #f0d38a; }
+.superadmin-home-card.pending > svg, .superadmin-home-card.pending strong { color: #9a6700; }
+.superadmin-home-card.active { background: #f2f8f2; border-color: #cfe6d1; }
+.superadmin-home-card.active > svg, .superadmin-home-card.active strong { color: #2f6b47; }
 .workspace-status-banner { align-items: flex-start; border-left: 3px solid; display: grid; gap: 4px; padding: 13px 16px; }
 .workspace-status-banner strong { font-size: 13px; }
 .workspace-status-banner span { color: #5f5e5b; font-size: 12px; line-height: 1.5; }

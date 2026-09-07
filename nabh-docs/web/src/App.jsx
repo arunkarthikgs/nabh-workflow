@@ -33,6 +33,7 @@ import SetPassword from "./SetPassword.jsx";
 import PlatformWorkspace from "./PlatformWorkspace.jsx";
 import SuperAdminWorkspace from "./SuperAdminWorkspace.jsx";
 import SuperAdminUserManagement from "./SuperAdminUserManagement.jsx";
+import SuperAdminHome from "./SuperAdminHome.jsx";
 import TemplateLibrary from "./TemplateLibrary.jsx";
 import RoleManagement from "./RoleManagement.jsx";
 
@@ -2265,6 +2266,7 @@ function App() {
         <span>{session.hospitalName || session.role}</span>
         {isSuperAdmin ? (
           <>
+            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
               onClick={() => setView("admin")}
@@ -2324,7 +2326,9 @@ function App() {
         <button onClick={() => setSession(null)}>Sign out</button>
       </div>
       {isSuperAdmin ? (
-        view === "templates" ? (
+        view === "home" ? (
+          <SuperAdminHome onOpenHospitals={() => setView("admin")} onOpenUsers={() => setView("users")} />
+        ) : view === "templates" ? (
           <TemplateLibrary />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
