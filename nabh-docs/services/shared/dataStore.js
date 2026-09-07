@@ -63,12 +63,20 @@ export async function saveDocumentAudit(entries) {
   return (await store()).saveDocumentAudit(entries);
 }
 
+export async function appendDocumentAudit(entry) {
+  return (await store()).appendDocumentAudit(entry);
+}
+
 export async function readDocumentStatus() {
   return (await store()).readDocumentStatus();
 }
 
 export async function saveDocumentStatus(statusByHospital) {
   return (await store()).saveDocumentStatus(statusByHospital);
+}
+
+export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
+  return (await store()).saveDocumentStatusRecord(hospitalId, documentId, entry);
 }
 
 export async function readDocumentDrafts() {

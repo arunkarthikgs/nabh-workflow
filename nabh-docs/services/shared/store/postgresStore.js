@@ -408,6 +408,12 @@ export async function saveDocumentAudit(entries) {
   }
 }
 
+export async function appendDocumentAudit(entry) {
+  const client = await connect();
+  await client.query(`insert into document_audit (entry) values ($1::jsonb)`, [JSON.stringify(entry)]);
+  return entry;
+}
+
 export async function readDocumentStatus() {
   const client = await connect();
   const { rows } = await client.query(`select hospital_id, document_id, status, updated_at, updated_by, note from document_status`);
@@ -438,6 +444,21 @@ export async function saveDocumentStatus(statusByHospital) {
   } finally {
     client.release();
   }
+}
+
+export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
+  const client = await connect();
+  await client.query(
+    `insert into document_status (hospital_id, document_id, status, updated_at, updated_by, note)
+     values ($1, $2, $3, $4, $5, $6)
+     on conflict (hospital_id, document_id) do update set
+       status = excluded.status,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by,
+       note = excluded.note`,
+    [hospitalId, documentId, entry.status, isoDate(entry.updatedAt), entry.updatedBy || "system", entry.note || ""]
+  );
+  return entry;
 }
 
 export async function readDocumentDrafts() {

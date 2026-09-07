@@ -74,12 +74,25 @@ export async function saveDocumentAudit(entries) {
   await writeJson(documentAuditPath, entries);
 }
 
+export async function appendDocumentAudit(entry) {
+  const entries = await readDocumentAudit();
+  await writeJson(documentAuditPath, [entry, ...entries]);
+  return entry;
+}
+
 export async function readDocumentStatus() {
   return readJson(documentStatusPath, {});
 }
 
 export async function saveDocumentStatus(statusByHospital) {
   await writeJson(documentStatusPath, statusByHospital);
+}
+
+export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
+  const statusByHospital = await readDocumentStatus();
+  statusByHospital[hospitalId] = { ...(statusByHospital[hospitalId] || {}), [documentId]: entry };
+  await writeJson(documentStatusPath, statusByHospital);
+  return entry;
 }
 
 export async function readDocumentDrafts() {

@@ -120,6 +120,7 @@ export default function AdminWorkspace({
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
+  const isReadOnly = hospital?.status !== "active";
   const change = (event) =>
     setUser((current) => ({
       ...current,
@@ -140,7 +141,7 @@ export default function AdminWorkspace({
   }
   async function save(event) {
     event.preventDefault();
-    if (!hospital) return;
+    if (!hospital || isReadOnly) return setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.");
     const url = editingId
       ? `/api/admin/hospitals/${hospital.id}/users/${editingId}`
       : `/api/admin/hospitals/${hospital.id}/users`;
@@ -160,6 +161,7 @@ export default function AdminWorkspace({
     setMessage("User profile saved.");
   }
   async function remove(id) {
+    if (isReadOnly) return setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.");
     if (!window.confirm("Remove this user profile?")) return;
     await fetch(`/api/admin/hospitals/${hospital.id}/users/${id}`, {
       method: "DELETE",
@@ -168,6 +170,7 @@ export default function AdminWorkspace({
     setMessage("User profile removed.");
   }
   async function toggle(current) {
+    if (isReadOnly) return setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.");
     await fetch(`/api/admin/hospitals/${hospital.id}/users/${current.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -176,6 +179,7 @@ export default function AdminWorkspace({
     await load();
   }
   async function resetPassword(current) {
+    if (isReadOnly) return setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.");
     if (!window.confirm(`Send a new password setup link to ${current.email}? Any previous setup link will stop working.`)) return;
     setMessage(`Sending reset link to ${current.email}...`);
     const response = await fetch(`/api/admin/hospitals/${hospital.id}/users/${current.id}/reset-password`, { method: "POST" });
@@ -206,6 +210,7 @@ export default function AdminWorkspace({
         </p>
       </header>
       <section className="users-panel hospital-users">
+        {hospital && isReadOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
         <div className="user-tabs">
           <button
             className={tab === "assigned" ? "active" : ""}
@@ -213,7 +218,7 @@ export default function AdminWorkspace({
           >
             <Users size={16} /> Assigned users
           </button>
-          <button className={tab === "form" ? "active" : ""} onClick={startAdd}>
+          <button className={tab === "form" ? "active" : ""} disabled={isReadOnly} onClick={startAdd}>
             <Plus size={16} /> Add user
           </button>
         </div>
@@ -258,6 +263,7 @@ export default function AdminWorkspace({
                             : "user-status inactive-user"
                         }
                         onClick={() => toggle(current)}
+                        disabled={isReadOnly}
                       >
                         {current.active ? "Active" : "Inactive"}
                       </button>
@@ -266,6 +272,7 @@ export default function AdminWorkspace({
                         className="icon-button"
                         title="Edit user"
                         onClick={() => edit(current)}
+                        disabled={isReadOnly}
                       >
                         <Pencil size={15} />
                       </button>
@@ -274,6 +281,7 @@ export default function AdminWorkspace({
                         className="icon-button"
                         title={`Send password reset link to ${current.email}`}
                         onClick={() => resetPassword(current)}
+                        disabled={isReadOnly}
                       >
                         <KeyRound size={15} />
                       </button>
@@ -282,6 +290,7 @@ export default function AdminWorkspace({
                         className="icon-button"
                         title="Remove user"
                         onClick={() => remove(current.id)}
+                        disabled={isReadOnly}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -411,7 +420,7 @@ export default function AdminWorkspace({
                 Active access
               </label>
             </div>
-            <button className="primary-button">
+            <button className="primary-button" disabled={isReadOnly}>
               <UserPlus size={16} /> {editingId ? "Save user" : "Add user"}
             </button>
             <button

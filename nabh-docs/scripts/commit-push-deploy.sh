@@ -8,15 +8,6 @@ DIRECT_DEPLOY="${DIRECT_DEPLOY:-0}"
 
 cd "$REPO_ROOT"
 
-FILES=(
-  nabh-docs/scripts/commit-push-deploy.sh
-  nabh-docs/server.js
-  nabh-docs/web/src/App.jsx
-  nabh-docs/web/src/PlatformWorkspace.jsx
-  nabh-docs/web/src/SuperAdminHome.jsx
-  nabh-docs/web/src/SuperAdminWorkspace.jsx
-)
-
 echo "Validating nabh-docs..."
 cd "$APP_DIR"
 node --check server.js
@@ -24,8 +15,8 @@ npm run ui:build
 git diff --check
 
 cd "$REPO_ROOT"
-echo "Staging only the requested nabh-docs files..."
-git add -- "${FILES[@]}"
+echo "Staging all repository changes not excluded by .gitignore..."
+git add -A
 
 if git diff --cached --quiet; then
   echo "No staged changes to commit."

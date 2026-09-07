@@ -149,7 +149,7 @@ function WorkspaceOverviewTab({ hospitalId, hospitalStatus, onNavigateToDocument
   );
 }
 
-function ServicesTab({ hospitalId }) {
+function ServicesTab({ hospitalId, disabled }) {
   const [trainingCatalog, setTrainingCatalog] = useState([]);
   const [consultingCatalog, setConsultingCatalog] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -172,6 +172,7 @@ function ServicesTab({ hospitalId }) {
 
   async function submitBooking(event) {
     event.preventDefault();
+    if (disabled) { setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding."); return; }
     setMessage("");
     if (!form.serviceId) { setMessage("Choose a service."); return; }
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/bookings`, {
@@ -186,6 +187,7 @@ function ServicesTab({ hospitalId }) {
   }
 
   async function generatePack(serviceId) {
+    if (disabled) { setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding."); return; }
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/training/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -196,6 +198,7 @@ function ServicesTab({ hospitalId }) {
   }
 
   async function attachRecording(bookingId) {
+    if (disabled) { setMessage("Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding."); return; }
     const reference = window.prompt("Recording URL or storage path:");
     if (!reference) return;
     const consent = window.confirm("Confirm attendee/staff consent was obtained to record and store this session.");
@@ -212,33 +215,34 @@ function ServicesTab({ hospitalId }) {
   return (
     <section className="admin-form">
       <h2>Training &amp; Macula Healthcare consulting</h2>
+      {disabled && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
       <p>Generate hospital-customized training material yourself, or book a Macula Healthcare expert for training and consulting services.</p>
 
       <div className="admin-fields">
         <label>Category
-          <select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, serviceId: "" }))}>
+          <select value={form.category} disabled={disabled} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, serviceId: "" }))}>
             <option value="training">Training</option>
             <option value="consulting">Consulting</option>
           </select>
         </label>
         <label>Service
-          <select value={form.serviceId} onChange={(event) => setForm((current) => ({ ...current, serviceId: event.target.value }))}>
+          <select value={form.serviceId} disabled={disabled} onChange={(event) => setForm((current) => ({ ...current, serviceId: event.target.value }))}>
             <option value="">Select a service</option>
             {catalog.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
         <label>Mode
-          <select value={form.mode} onChange={(event) => setForm((current) => ({ ...current, mode: event.target.value }))}>
+          <select value={form.mode} disabled={disabled} onChange={(event) => setForm((current) => ({ ...current, mode: event.target.value }))}>
             <option value="virtual">Virtual</option>
             <option value="onsite">Onsite</option>
           </select>
         </label>
-        <label>Preferred date<input type="date" value={form.preferredDate} onChange={(event) => setForm((current) => ({ ...current, preferredDate: event.target.value }))} /></label>
+        <label>Preferred date<input type="date" disabled={disabled} value={form.preferredDate} onChange={(event) => setForm((current) => ({ ...current, preferredDate: event.target.value }))} /></label>
       </div>
-      <label>Notes<textarea rows={2} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
+      <label>Notes<textarea rows={2} disabled={disabled} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
       <div className="toolbar">
-        <button className="primary-button" onClick={submitBooking}>Request booking</button>
-        {form.category === "training" && form.serviceId && <button className="primary-button" type="button" onClick={() => generatePack(form.serviceId)}><GraduationCap size={16} /> Generate training material</button>}
+        <button className="primary-button" disabled={disabled} onClick={submitBooking}>Request booking</button>
+        {form.category === "training" && form.serviceId && <button className="primary-button" disabled={disabled} type="button" onClick={() => generatePack(form.serviceId)}><GraduationCap size={16} /> Generate training material</button>}
       </div>
       {message && <p className="access-message">{message}</p>}
 
@@ -265,7 +269,7 @@ function ServicesTab({ hospitalId }) {
                 <td>{booking.status}</td>
                 <td>
                   {booking.category === "training" ? (
-                    booking.recording ? <span title={booking.recording.reference}>Stored</span> : <button className="icon-button" title="Attach recording" onClick={() => attachRecording(booking.id)}>Attach</button>
+                    booking.recording ? <span title={booking.recording.reference}>Stored</span> : <button className="icon-button" disabled={disabled} title="Attach recording" onClick={() => attachRecording(booking.id)}>Attach</button>
                   ) : "-"}
                 </td>
               </tr>
@@ -310,11 +314,11 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
         <button className={tab === "services" ? "active" : ""} onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
       </div>}
       {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
-      {hospital?.status === "pending" && !homeOnly && <p className="access-message">This hospital is not yet onboarded. A Super Admin must approve onboarding before you can update the institutional profile or accreditation programme.</p>}
-      {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status === "pending"} />}
-      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status === "pending"} />}
+      {hospital?.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
+      {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status !== "active"} />}
+      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status !== "active"} />}
       {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
-      {tab === "services" && <ServicesTab hospitalId={hospitalId} />}
+      {tab === "services" && <ServicesTab hospitalId={hospitalId} disabled={hospital?.status !== "active"} />}
     </main>
   );
 }
