@@ -64,6 +64,11 @@ async function hydrateHospitalAccreditation(hospital) {
   return accreditation?.programme ? { ...hospital, accreditation } : hospital;
 }
 
+function requireActiveHospital(hospital) {
+  if (hospital?.status === "pending") throw new Error("Hospital is not yet onboarded. A Super Admin must approve onboarding before changes can be made.");
+  if (hospital?.status === "inactive") throw new Error("Hospital is inactive. Contact a Super Admin to restore access.");
+}
+
 // Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
 // programme templates into R2 can take minutes. Callers read progress via repositorySyncJobs.
 function startRepositoryProvisioning(hospital, { syncNewTemplates = false } = {}) {
@@ -128,6 +133,7 @@ app.post("/api/admin/hospitals/:hospitalId/client-repository", async (request, r
   try {
     const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     response.json({ repository: await provisionR2ClientRepository(hospital) });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -136,6 +142,7 @@ app.post("/api/admin/hospitals/:hospitalId/client-repository/sync", async (reque
   try {
     const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before syncing the document workspace.", reason: "accreditation_required" });
     response.status(202).json({ job: startRepositoryProvisioning(hospital, { syncNewTemplates: true }) });
   } catch (error) { next(error); }
@@ -454,6 +461,7 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     const { documentId, status, updatedBy, note } = request.body || {};
     const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
     const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note);
@@ -500,6 +508,7 @@ app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, respo
   try {
     const hospital = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     const selection = await selectAccreditationProgramme(request.params.hospitalId, request.body?.programme, request.body?.decidedBy);
     if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2HospitalAccreditation(hospital.code, selection);
     // Force a full resync so switching programmes always overwrites any same-named files
@@ -511,6 +520,9 @@ app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, respo
 
 app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, next) => {
   try {
+    const current = await hydrateHospitalAccreditation((await listHospitals()).find((item) => item.id === request.params.hospitalId));
+    if (!current) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(current);
     const hospital = await submitHospitalProfile(request.params.hospitalId, request.body?.details);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     response.json({ hospital, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
@@ -582,6 +594,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     const { documentId, action, updatedBy, note } = request.body || {};
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     const persistentStatus = await getPersistentDocumentStatus(hospital);
     const previousStatus = persistentStatus[documentId]?.status || "not_started";
     if (persistentStatus[documentId]) await setHospitalDocumentStatus(hospital.id, documentId, persistentStatus[documentId].status, persistentStatus[documentId].updatedBy, persistentStatus[documentId].note);
@@ -604,6 +617,7 @@ app.post("/api/admin/hospitals/:hospitalId/training/generate", async (request, r
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     response.json({ pack: request.body?.serviceId ? generateTrainingMaterial(hospital, request.body.serviceId) : generateTrainingPack(hospital, request.body?.topic) });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -616,6 +630,7 @@ app.post("/api/admin/hospitals/:hospitalId/bookings", async (request, response, 
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     response.status(201).json({ booking: await createBooking(hospital.id, request.body || {}) });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -640,6 +655,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
     const manifest = await approveR2ClientDocumentVersion({
       hospital,
       documentId: request.get("X-Document-Id"),

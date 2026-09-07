@@ -12,13 +12,13 @@ const empty = () => ({
   details: emptyHospitalDetails(),
 });
 
-export default function SuperAdminWorkspace() {
+export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
   const [hospitals, setHospitals] = useState([]),
     [id, setId] = useState(""),
     [form, setForm] = useState(empty()),
     [query, setQuery] = useState(""),
     [message, setMessage] = useState(""),
-    [statusFilter, setStatusFilter] = useState("all"),
+    [statusFilter, setStatusFilter] = useState(initialStatusFilter),
     [pendingApproval, setPendingApproval] = useState(null),
     [approving, setApproving] = useState(false);
   const selected = hospitals.find((item) => item.id === id);
@@ -37,6 +37,9 @@ export default function SuperAdminWorkspace() {
   useEffect(() => {
     load().catch((error) => setMessage(error.message));
   }, []);
+  useEffect(() => {
+    setStatusFilter(initialStatusFilter);
+  }, [initialStatusFilter]);
   useEffect(() => {
     if (selected)
       setForm({

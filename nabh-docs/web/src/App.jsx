@@ -2223,6 +2223,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 
 function App() {
   const [view, setView] = useState("home");
+  const [hospitalStatusFilter, setHospitalStatusFilter] = useState("all");
   const [session, setSession] = useState(null);
   const [auditEntries, setAuditEntries] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
@@ -2269,7 +2270,10 @@ function App() {
             <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
-              onClick={() => setView("admin")}
+              onClick={() => {
+                setHospitalStatusFilter("all");
+                setView("admin");
+              }}
             >
               <Building2 size={16} /> Hospitals
             </button>
@@ -2327,13 +2331,16 @@ function App() {
       </div>
       {isSuperAdmin ? (
         view === "home" ? (
-          <SuperAdminHome onOpenHospitals={() => setView("admin")} onOpenUsers={() => setView("users")} />
+          <SuperAdminHome onOpenHospitals={(status) => {
+            setHospitalStatusFilter(status);
+            setView("admin");
+          }} onOpenUsers={() => setView("users")} />
         ) : view === "templates" ? (
           <TemplateLibrary />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
         ) : (
-          <SuperAdminWorkspace />
+          <SuperAdminWorkspace initialStatusFilter={hospitalStatusFilter} />
         )
       ) : view === "home" ? (
         <PlatformWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} homeOnly onNavigateToDocuments={(category, status) => { const params = new URLSearchParams({ cat: category, status }); window.history.replaceState(null, "", `?${params.toString()}`); setView("master-list"); }} />

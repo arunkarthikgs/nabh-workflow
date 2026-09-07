@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Building2, CheckCircle2, ClipboardCheck, GraduationCap, Layers, X } from "lucide-react";
 import { institutionalProfileFields } from "./hospitalFormFields.js";
 
-function ProfileTab({ hospitalId, details, onSaved }) {
+function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [form, setForm] = useState(() => Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -48,12 +48,12 @@ function ProfileTab({ hospitalId, details, onSaved }) {
         ))}
       </div>
       {message && <p className="access-message">{message}</p>}
-      <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button>
+      <button className="primary-button" type="submit" disabled={saving || disabled}>{saving ? "Saving..." : "Save profile"}</button>
     </form>
   );
 }
 
-function AccreditationTab({ hospitalId, profileComplete }) {
+function AccreditationTab({ hospitalId, profileComplete, disabled }) {
   const [state, setState] = useState(null);
   const [decidedBy, setDecidedBy] = useState("");
   const [message, setMessage] = useState("");
@@ -93,13 +93,13 @@ function AccreditationTab({ hospitalId, profileComplete }) {
       {state.recommendation.requirements?.length > 0 && <ul className="access-message">{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>}
       <label>Your name (for the decision record)<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} /></label>
       <label>NABH accreditation programme
-        <select value={state.selection?.programme || ""} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}>
+        <select value={state.selection?.programme || ""} disabled={disabled} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}>
           <option value="">Select a programme</option>
           {state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}
         </select>
       </label>
       <div className="toolbar">
-        <button className="primary-button" disabled={!state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Accept recommendation</button>
+        <button className="primary-button" disabled={disabled || !state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Accept recommendation</button>
       </div>
       {state.selection && <p className="access-message">Currently pursuing: <strong>{state.selection.programme}</strong> (selected by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()})</p>}
       {message && <p className="access-message">{message}</p>}
@@ -310,8 +310,9 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
         <button className={tab === "services" ? "active" : ""} onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
       </div>}
       {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
-      {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} />}
-      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} />}
+      {hospital?.status === "pending" && !homeOnly && <p className="access-message">This hospital is not yet onboarded. A Super Admin must approve onboarding before you can update the institutional profile or accreditation programme.</p>}
+      {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status === "pending"} />}
+      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status === "pending"} />}
       {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
       {tab === "services" && <ServicesTab hospitalId={hospitalId} />}
     </main>
