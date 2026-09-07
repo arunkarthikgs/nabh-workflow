@@ -18,10 +18,22 @@ function sslOption() {
   return { rejectUnauthorized: true };
 }
 
+function connectionStringWithoutSslOptions(value) {
+  try {
+    const url = new URL(value);
+    for (const option of ["ssl", "sslmode", "sslrootcert", "sslcert", "sslkey"]) url.searchParams.delete(option);
+    return url.toString();
+  } catch {
+    return value;
+  }
+}
+
 function poolConfig() {
   const connectionString = configValue("POSTGRES_URL") || configValue("DATABASE_URL");
   const ssl = sslOption();
-  if (connectionString) return { connectionString, ssl };
+  // node-postgres lets URL sslmode settings overwrite config.ssl; remove them so POSTGRES_SSL
+  // is the single source of truth for local migrations and Worker runtime configuration.
+  if (connectionString) return { connectionString: connectionStringWithoutSslOptions(connectionString), ssl };
   return {
     host: configValue("POSTGRES_HOST", "127.0.0.1"),
     port: Number(configValue("POSTGRES_PORT", "5432")),

@@ -70,6 +70,8 @@ export async function getR2TemplateFile(relativePath) {
 
 export async function listR2ClientFiles(hospitalCode, programme) {
   const prefix = clientPrefix(hospitalCode, programme);
+  const index = await getJsonObject(config(), `${prefix}index.json`);
+  if (Array.isArray(index?.files)) return index.files;
   const objects = await listR2Objects(prefix);
   return objects
     .map((object) => object.Key.slice(prefix.length))
@@ -541,10 +543,19 @@ export async function provisionR2ClientRepository(hospital, { syncNewTemplates =
     copied,
     skipped
   };
+  const files = sourceObjects
+    .map((object) => object.Key.slice(sourcePrefix.length))
+    .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && relativePath !== "Master list of documents_TEMPLATE.xlsx" && !relativePath.startsWith("versions/"));
   await client().send(new PutObjectCommand({
     Bucket: settings.bucket,
     Key: `${destinationPrefix}client.json`,
     Body: JSON.stringify(metadata, null, 2),
+    ContentType: "application/json"
+  }));
+  await client().send(new PutObjectCommand({
+    Bucket: settings.bucket,
+    Key: `${destinationPrefix}index.json`,
+    Body: JSON.stringify({ hospitalCode: hospital.code, programme, indexedAt: new Date().toISOString(), files }, null, 2),
     ContentType: "application/json"
   }));
   return { mode: "r2", provisioned: true, ...metadata };
