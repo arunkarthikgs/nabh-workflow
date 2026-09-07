@@ -373,7 +373,7 @@ function programmeTemplateDepartments(templateFiles) {
     const category = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
     departments[category].push({
       documentName: path.basename(templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, ""),
-      documentId: "",
+      documentId: templatePath,
       templatePath,
       fileName: path.basename(templatePath),
       fileType: path.extname(templatePath).slice(1).toUpperCase(),

@@ -1310,7 +1310,7 @@ function MasterListWorkspace({
                       <tr
                         className={doc.active ? "doc-active" : "doc-inactive"}
                       >
-                        <td>
+                        <td className="hospital-document-name-cell">
                           <input
                             type="checkbox"
                             checked={selectedKeys.has(docKey(doc))}
@@ -1371,7 +1371,7 @@ function MasterListWorkspace({
                           <span className="dept-badge">{doc.department}</span>
                         </td>
                         <td
-                          className="file-cell"
+                          className="file-cell hospital-document-file-cell"
                           title={doc.matchedFilePath || ""}
                         >
                           {isEditing ? (
@@ -1402,7 +1402,7 @@ function MasterListWorkspace({
                           )}
                           {!isEditing &&
                             (doc.relativeFilePath || doc.matchedFilePath) && (
-                              <span className="policy-actions">
+                              <span className="policy-actions hospital-document-actions">
                                 <button
                                   className="icon-button"
                                   title="Preview document as PDF"
@@ -1434,7 +1434,7 @@ function MasterListWorkspace({
                           )}
                           {canEdit && !isEditing && (
                             <button
-                              className="icon-button document-edit-button"
+                              className="icon-button document-edit-button questionnaire-document-action"
                               title="Answer hospital questions and generate personalized draft"
                               onClick={() => openQuestionnaire(doc)}
                             >
@@ -1443,7 +1443,7 @@ function MasterListWorkspace({
                           )}
                           {canEdit && doc.relativeFilePath && (
                             <button
-                              className="icon-button document-edit-button"
+                              className="icon-button document-edit-button questionnaire-document-action"
                               title="Upload and approve new version"
                               onClick={() => {
                                 setApprovalDocument(doc);

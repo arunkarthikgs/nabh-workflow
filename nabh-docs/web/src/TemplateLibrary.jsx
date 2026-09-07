@@ -207,18 +207,15 @@ export default function TemplateLibrary() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Document</th><th>Template name</th><th>Stored template</th><th>Type</th><th>Questions</th><th aria-label="Actions" /></tr>
+                  <tr><th>Template name</th><th>Type</th><th aria-label="Actions" /></tr>
                 </thead>
                 <tbody>
                   {templates.map((template) => {
                     const Icon = typeIcons[template.fileType] || FileText;
                     return (
                       <tr key={`${selectedDepartment}-${template.documentId}`}>
-                        <td className="mono">{template.documentId}</td>
                         <td><strong>{template.documentName}</strong></td>
-                        <td className="file-cell" title={template.templatePath || ""}>{template.fileName || <span className="no-match">No file matched</span>}</td>
                         <td>{template.fileType && <span className="template-type"><Icon size={15} /> {template.fileType}</span>}</td>
-                        <td><span className={`question-count ${template.questionCount ? "has-questions" : ""}`}>{template.questionCount || 0}</span></td>
                         <td>{template.templatePath && (
                           <span className="template-actions">
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
