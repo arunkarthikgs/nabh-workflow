@@ -81,10 +81,12 @@ function AccreditationTab({ hospitalId, profileComplete }) {
   return (
     <section className="admin-form">
       <h2>Recommended NABH accreditation programme</h2>
-      <p className="access-message">Heuristic suggestion only — bed-count thresholds and hospital-type matching here are placeholders, not verified NABH eligibility criteria. Confirm against the official NABH programme requirements before relying on this.</p>
+      <p className="access-message">Eligibility screening based on the facility profile. Confirm the final programme and all documentary evidence with NABH before applying.</p>
       {!profileComplete && <p className="access-message">Complete the institutional profile for a more accurate recommendation.</p>}
       <p><strong>{state.recommendation.programme}</strong></p>
       <p>{state.recommendation.rationale}</p>
+      <p className="access-message"><strong>Status: {state.recommendation.status === "eligible" ? "Eligible based on recorded information" : state.recommendation.status === "conditional" ? "More evidence required" : "Not eligible based on recorded information"}</strong></p>
+      {state.recommendation.requirements?.length > 0 && <ul className="access-message">{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>}
       <label>Your name (for the decision record)<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} /></label>
       <label>NABH accreditation programme
         <select value={state.selection?.programme || ""} onChange={(event) => event.target.value && select(event.target.value)}>
@@ -93,7 +95,7 @@ function AccreditationTab({ hospitalId, profileComplete }) {
         </select>
       </label>
       <div className="toolbar">
-        <button className="primary-button" onClick={() => select(state.recommendation.programme)}>Accept recommendation</button>
+        <button className="primary-button" disabled={!state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => select(state.recommendation.programme)}>Accept recommendation</button>
       </div>
       {state.selection && <p className="access-message">Currently pursuing: <strong>{state.selection.programme}</strong> (selected by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()})</p>}
       {message && <p className="access-message">{message}</p>}

@@ -30,49 +30,72 @@ export const NABH_ACCREDITATION_PROGRAMMES = [
   "Wellness Centres"
 ];
 
-// Keyword hints from the hospital type field that point directly at a specialised programme,
-// checked before falling back to the bed-count based HCO vs SHCO split.
-const TYPE_HINTS = [
-  [/blood\s*(bank|centre|center)/i, "Blood Centres / Blood Banks"],
-  [/imaging|radiology|diagnostic/i, "Medical Imaging Services (MIS)"],
-  [/dental/i, "Dental Healthcare Service Providers"],
-  [/allopathic clinic|clinic/i, "Allopathic Clinics"],
-  [/ayush|ayurved|homeopath|unani|siddha|yoga|naturopathy/i, "AYUSH Hospitals"],
-  [/panchkarma/i, "Panchkarma Clinics"],
-  [/clinical trial|ethics committee/i, "Clinical Trials (Ethics Committees)"],
-  [/eye care|ophthalmic/i, "Eye Care Organisations"],
-  [/care home/i, "Care Homes"],
-  [/digital health|telemedicine/i, "Digital Health"],
-  [/oral substitution/i, "Oral Substitution Therapy Centres"],
-  [/community health|primary health/i, "Community Health Centres / Primary Health Centres"],
-  [/wellness/i, "Wellness Centres"]
-];
+const isYes = (value) => /^(yes|true|1)$/i.test(String(value || "").trim());
+const number = (value) => Number(value) || 0;
+const profileText = (details) => [details.hospitalType, details.specialties, details.servicesOffered].filter(Boolean).join(" ").toLowerCase();
+
+function result(programme, rationale, requirements = []) {
+  return { programme, rationale, requirements, status: requirements.length ? "conditional" : "eligible" };
+}
+
+function standaloneRequirements(details, label) {
+  const requirements = [];
+  if (!isYes(details.standaloneFacility)) requirements.push(`${label} must operate as a standalone dedicated facility.`);
+  return requirements;
+}
+
+function generalFacilityRecommendation(details, text) {
+  const beds = number(details.operationalBeds);
+  const requirements = [];
+  if (!beds) requirements.push("Record the sanctioned or operational bed count.");
+  if (number(details.operationalMonths) < 6) requirements.push("Provide at least 6 months of operational data.");
+  if (number(details.averageBedOccupancy) < 30) requirements.push("Demonstrate at least 30% average bed occupancy across the preceding 6 months.");
+  if (/polyclinic|standalone.*(diagnostic|imaging|radiology)/i.test(text)) {
+    return { programme: null, status: "ineligible", rationale: "Polyclinics and standalone diagnostic centres are excluded from the SHCO programme.", requirements: ["Use the applicable clinic or Medical Imaging Services programme instead."] };
+  }
+  if (beds > 50) return result("Hospitals (HCO)", `The facility reports ${beds} beds; Hospitals (HCO) applies only above 50 beds.`, requirements);
+  return result("Small Healthcare Organisations (SHCO) / Nursing Homes", beds ? `The facility reports ${beds} beds, within the SHCO/Nursing Home limit of 50 beds or fewer.` : "A bed count is required to distinguish SHCO from Hospitals (HCO).", requirements);
+}
 
 export function recommendAccreditationProgramme(hospital) {
   const details = hospital?.details || {};
-  const hospitalType = details.hospitalType || "";
-  for (const [pattern, programme] of TYPE_HINTS) {
-    if (pattern.test(hospitalType)) return { programme, rationale: `The declared hospital type ("${hospitalType}") matches the "${programme}" NABH programme.` };
+  const text = profileText(details);
+
+  if (/community health|primary health|\bchc\b|\bphc\b/.test(text)) {
+    if (!/public|government/.test(String(details.ownershipType || "").toLowerCase()) && !isYes(details.publicHealthNetwork)) {
+      return { programme: null, status: "ineligible", rationale: "CHC/PHC accreditation is reserved for government or public-health-sector networks and designated rural public-health facilities.", requirements: ["Confirm government/public-health-network eligibility."] };
+    }
+    return result("Community Health Centres / Primary Health Centres", "The facility is a declared public-sector CHC/PHC or public-health-network facility.");
   }
-  const beds = Number(details.operationalBeds) || 0;
-  if (beds <= 0) {
-    return {
-      programme: "Small Healthcare Organisations (SHCO) / Nursing Homes",
-      rationale: "Operational bed count has not been captured yet, so the SHCO/Nursing Home programme is recommended as the lightest-weight starting point while the institutional profile is completed."
-    };
+  if (/eye|ophthalm/.test(text)) {
+    const requirements = standaloneRequirements(details, "Eye care organisation");
+    if (isYes(details.otherClinicalSpecialties)) requirements.push("Eye Care Organisations cannot offer other clinical specialties.");
+    if (number(details.operationalMonths) < 3) requirements.push("Provide at least 3 months of functional operation.");
+    return result("Eye Care Organisations", "The declared service profile is eye care/ophthalmology.", requirements);
   }
-  if (beds <= 50) {
-    return {
-      programme: "Small Healthcare Organisations (SHCO) / Nursing Homes",
-      rationale: `With ${beds} operational bed(s), this facility falls within NABH's Small Healthcare Organisation (SHCO) scope.`
-    };
+  if (/dental/.test(text)) {
+    if (!isYes(details.standaloneFacility)) return generalFacilityRecommendation(details, text);
+    return result("Dental Healthcare Service Providers", "The declared service profile is a standalone dental facility.", standaloneRequirements(details, "Dental healthcare provider"));
   }
-  const hasIcu = Number(details.icuBeds) > 0;
-  const hasEmergency = /yes/i.test(details.emergencyServices || "");
-  return {
-    programme: "Hospitals (HCO)",
-    rationale: `With ${beds} operational beds${hasIcu ? ", ICU services" : ""}${hasEmergency ? ", and 24x7 emergency services" : ""}, this facility meets the scale for the full Hospitals (HCO) accreditation programme.`
-  };
+  if (/blood\s*(bank|centre|center)/.test(text)) {
+    const requirements = !isYes(details.dcgiBloodCentreLicense) ? ["Hold and record a valid DCGI blood-centre licence."] : [];
+    return result("Blood Centres / Blood Banks", "The declared service profile is a blood centre or blood bank.", requirements);
+  }
+  if (/imaging|radiology|\bdiagnostic/.test(text)) return result("Medical Imaging Services (MIS)", "The declared service profile is medical imaging or diagnostic radiology.", standaloneRequirements(details, "Medical Imaging Service"));
+  if (/oral substitution|\bost\b|opioid dependence/.test(text)) return result("Oral Substitution Therapy Centres", "The declared service profile is opioid-dependence treatment.", isYes(details.nacoOrStateRecognition) ? [] : ["Confirm recognition or support from NACO or the state health authority."]);
+  if (/panchkarma/.test(text)) return result("Panchkarma Clinics", "The declared service profile is a Panchkarma clinic.", standaloneRequirements(details, "Panchkarma clinic"));
+  if (/ayush|ayurved|homeopath|unani|siddha|yoga|naturopathy/.test(text)) return result("AYUSH Hospitals", "The declared service profile is an AYUSH system of medicine.", number(details.ayushInpatientBeds) > 0 ? [] : ["Provide inpatient beds dedicated to AYUSH therapies."]);
+  if (/clinical trial|ethics committee|\biec\b/.test(text)) return result("Clinical Trials (Ethics Committees)", "The declared service profile is an Institutional Ethics Committee or clinical-trial site.");
+  if (/care home|hospice|long.term care|geriatric|convalescent/.test(text)) return result("Care Homes", "The declared service profile is long-term, hospice, geriatric, disabled, or convalescent care.");
+  if (/digital health|telemedicine|e-pharmacy|epharmacy/.test(text)) return result("Digital Health", "The declared service profile is virtual-first healthcare or a digital-health workflow.");
+  if (/wellness|fitness|rejuvenation|preventive/.test(text)) return result("Wellness Centres", "The declared service profile is preventive, fitness, rejuvenation, or holistic wellness care.");
+  if (/allopathic clinic|\bopd\b|outpatient/.test(text)) {
+    const requirements = standaloneRequirements(details, "Allopathic clinic");
+    if (!isYes(details.outpatientOnly)) requirements.push("Confirm that the facility is outpatient-only (OPD/day-care). ");
+    if (isYes(details.otherClinicalSpecialties)) requirements.push("Standalone imaging and dental clinics are not eligible for the Allopathic Clinics programme.");
+    return result("Allopathic Clinics", "The declared service profile is an outpatient allopathic clinic or day-care practice.", requirements);
+  }
+  return generalFacilityRecommendation(details, text);
 }
 
 export async function getAccreditationState(hospitalId) {
