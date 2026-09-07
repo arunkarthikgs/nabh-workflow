@@ -135,6 +135,8 @@ function WorkspaceOverviewTab({ hospitalId, hospitalStatus, onNavigateToDocument
 
   if (error) return <p className="access-message">{error}</p>;
   if (!overview) return <p className="empty">Loading workspace overview...</p>;
+  const categoryRows = Object.entries(overview.categories);
+  const columnTotals = Object.fromEntries(READINESS_COLUMNS.map(([status]) => [status, categoryRows.reduce((total, [, counts]) => total + (counts[status] || 0), 0)]));
 
   return (
     <section className="readiness-dashboard">
@@ -142,9 +144,7 @@ function WorkspaceOverviewTab({ hospitalId, hospitalStatus, onNavigateToDocument
       {hospitalStatus === "inactive" && <div className="workspace-status-banner inactive"><strong>Hospital access is inactive</strong><span>Your hospital profile is currently inactive. Contact the platform administrator to restore active status.</span></div>}
       {hospitalStatus === "active" && <div className="workspace-status-banner active"><strong>Hospital is active</strong><span>Your organisation is active and can continue its NABH readiness work.</span></div>}
       <div className="readiness-summary"><div><p className="eyebrow">Workspace readiness</p><h2>NABH implementation dashboard</h2><p>{overview.total} tracked documents across {Object.keys(overview.categories).length} categories.</p></div><div className="readiness-score"><strong>{overview.readinessPercent}%</strong><span>approved or further</span></div></div>
-      <div className="readiness-grid">
-        {Object.entries(overview.categories).map(([category, counts]) => <section className="readiness-category" key={category}><h3>{category}</h3><div className="readiness-counts">{READINESS_COLUMNS.map(([status, label]) => <button key={status} type="button" className={`readiness-count readiness-${status}`} onClick={() => onNavigateToDocuments(category, status)}><strong>{counts[status] || 0}</strong><span>{label}</span></button>)}</div></section>)}
-      </div>
+      <div className="readiness-table-wrap"><table className="readiness-table"><thead><tr><th>Category</th>{READINESS_COLUMNS.map(([, label]) => <th key={label}>{label}</th>)}<th>Total</th></tr></thead><tbody>{categoryRows.map(([category, counts]) => { const rowTotal = READINESS_COLUMNS.reduce((total, [status]) => total + (counts[status] || 0), 0); return <tr key={category}><th scope="row">{category}</th>{READINESS_COLUMNS.map(([status, label]) => <td key={status}><button type="button" className={`readiness-cell readiness-${status}`} title={`View ${label.toLowerCase()} documents in ${category}`} onClick={() => onNavigateToDocuments(category, status)}>{counts[status] || 0}</button></td>)}<td className="readiness-total">{rowTotal}</td></tr>; })}</tbody><tfoot><tr><th scope="row">Total</th>{READINESS_COLUMNS.map(([status]) => <td className="readiness-total" key={status}>{columnTotals[status]}</td>)}<td className="readiness-grand-total">{overview.total}</td></tr></tfoot></table></div>
     </section>
   );
 }
