@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
 import { dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
@@ -22,7 +22,7 @@ import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBoo
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2ProgrammeTemplateFile, getR2TemplateFile, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -36,6 +36,12 @@ const masterListTemplatePath = path.join(templateRoot, masterListTemplateFile);
 const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
+
+async function persistHospitalLogo(hospital) {
+  if (!hospital?.logoDataUrl) return hospital;
+  if (r2TemplateStorageEnabled()) await saveR2HospitalLogo(hospital.code, hospital.logoDataUrl);
+  return setHospitalLogoPath(hospital.id, `/api/admin/hospitals/${encodeURIComponent(hospital.id)}/logo`);
+}
 
 // Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
 // programme templates into R2 can take minutes. Callers read progress via repositorySyncJobs.
@@ -91,7 +97,7 @@ app.get("/api/admin/hospitals", async (_request, response, next) => {
 
 app.post("/api/admin/hospitals", async (request, response, next) => {
   try {
-    const hospital = await createHospital(request.body || {});
+    const hospital = await persistHospitalLogo(await createHospital(request.body || {}));
     response.status(201).json({ hospital, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" } });
   }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -125,7 +131,7 @@ app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (requ
 });
 
 app.patch("/api/admin/hospitals/:hospitalId", async (request, response, next) => {
-  try { const hospital = await updateHospital(request.params.hospitalId, request.body || {}); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); response.json({ hospital }); }
+  try { const hospital = await updateHospital(request.params.hospitalId, request.body || {}); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); response.json({ hospital: await persistHospitalLogo(hospital) }); }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -145,6 +151,24 @@ app.patch("/api/admin/hospitals/:hospitalId/users/:userId", async (request, resp
 
 app.delete("/api/admin/hospitals/:hospitalId/users/:userId", async (request, response, next) => {
   try { const deleted = await deleteHospitalUser(request.params.hospitalId, request.params.userId); if (deleted === undefined) return response.status(404).json({ error: "Hospital not found." }); if (!deleted) return response.status(404).json({ error: "User not found." }); response.status(204).end(); } catch (error) { next(error); }
+});
+
+app.get("/api/admin/users", async (_request, response, next) => {
+  try {
+    const hospitals = await listHospitals();
+    response.json({ users: hospitals.flatMap((hospital) => (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }))) });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/users/:userId/reset-password", async (request, response, next) => {
+  try {
+    const found = await resetHospitalUserPassword(request.params.userId);
+    if (!found) return response.status(404).json({ error: "User not found." });
+    const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
+    const setupLink = `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`;
+    const email = await sendEmail(buildWelcomeEmail(found.hospital, found.user, setupLink));
+    response.json({ user: { id: found.user.id, name: found.user.name, email: found.user.email }, email });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/admin/hospitals/:hospitalId/roles", async (request, response, next) => {
@@ -389,7 +413,7 @@ app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, 
 
 app.post("/api/register", async (request, response, next) => {
   try {
-    const hospital = await registerHospital(request.body || {});
+    const hospital = await persistHospitalLogo(await registerHospital(request.body || {}));
     const user = hospital.users[0];
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
@@ -399,6 +423,21 @@ app.post("/api/register", async (request, response, next) => {
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
     response.status(201).json({ hospital: { ...hospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/logo", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).end();
+    if (r2TemplateStorageEnabled()) {
+      const logo = await getR2HospitalLogo(hospital.code);
+      if (!logo) return response.status(404).end();
+      return response.type(logo.contentType).send(logo.bytes);
+    }
+    const match = String(hospital.logoDataUrl || "").match(/^data:(image\/(png|jpeg|webp));base64,(.+)$/i);
+    if (!match) return response.status(404).end();
+    response.type(match[1]).send(Buffer.from(match[2], "base64"));
+  } catch (error) { next(error); }
 });
 
 app.get("/api/set-password/:token", async (request, response, next) => {
@@ -514,6 +553,24 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
       bytes: request.body,
       approvedBy: request.get("X-Approved-By"),
       note: request.get("X-Approval-Note")
+    });
+    response.status(201).json({ document: manifest });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/template-library/versions", async (request, response, next) => {
+  try {
+    const programme = String(request.query.programme || "").trim();
+    const relativePath = String(request.query.path || "");
+    if (!programme || !relativePath) return response.status(400).json({ error: "Programme and template path are required." });
+    response.json({ document: await getR2TemplateVersionManifest(programme, relativePath) });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/template-library/approve", express.raw({ type: "application/octet-stream", limit: "50mb" }), async (request, response, next) => {
+  try {
+    const manifest = await approveR2TemplateDocumentVersion({
+      programme: request.get("X-Programme"), documentId: request.get("X-Document-Id"), documentName: request.get("X-Document-Name"), department: request.get("X-Department"), relativePath: request.get("X-Document-Path"), fileName: request.get("X-File-Name"), bytes: request.body, approvedBy: request.get("X-Approved-By"), note: request.get("X-Approval-Note")
     });
     response.status(201).json({ document: manifest });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -808,7 +865,12 @@ app.get("/api/admin/template-library/preview", async (request, response, next) =
 });
 
 app.get("/api/document-audit", async (_request, response, next) => {
-  try { response.json({ entries: await onlyOffice.listAudit() }); } catch (error) { next(error); }
+  try {
+    if (!r2TemplateStorageEnabled()) return response.json({ entries: await onlyOffice.listAudit() });
+    const hospitals = await listHospitals();
+    const clientEntries = await Promise.all(hospitals.filter((hospital) => hospital.accreditation?.programme).map(async (hospital) => (await listR2ClientAuditEvents(hospital.code, hospital.accreditation.programme)).map((entry) => ({ ...entry, hospitalCode: hospital.code, hospitalName: hospital.name }))));
+    response.json({ entries: [...await listR2TemplateAuditEvents(), ...clientEntries.flat()].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp))) });
+  } catch (error) { next(error); }
 });
 
 app.post("/api/documents/:department/:id/onlyoffice", async (request, response, next) => {

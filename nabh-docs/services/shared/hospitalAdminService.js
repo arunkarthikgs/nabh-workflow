@@ -70,7 +70,7 @@ export async function listHospitals() {
         if (!Array.isArray(role.permissions)) { role.permissions = defaultPermissions(role.name); changed = true; }
       });
       const [logoFile, logoName] = seededLogos[hospitalIndex] || [];
-      if (logoFile && hospital.logoPath !== `/logos/${logoFile}`) { hospital.logoPath = `/logos/${logoFile}`; hospital.name = logoName; changed = true; }
+      if (logoFile && !hospital.logoPath) { hospital.logoPath = `/logos/${logoFile}`; hospital.name = logoName; changed = true; }
       const address = `${101 + hospitalIndex * 17}, ${hospital.details?.city || "Bengaluru"} Main Road, Karnataka ${560001 + hospitalIndex * 111}`;
       if (!hospital.details?.addressLine1) { hospital.details = { ...hospital.details, addressLine1: address, pinCode: String(560001 + hospitalIndex * 111), mainPhone: `080-4${hospitalIndex}20-1000`, officialEmail: `contact@${hospital.code.toLowerCase()}.example.test` }; changed = true; }
       hospital.users.forEach((user, userIndex) => {
@@ -121,6 +121,16 @@ export async function updateHospital(id, input) {
   if (!name || !code) throw new Error("Hospital name and client code are required.");
   if (hospitals.some((item) => item.id !== id && item.code === code)) throw new Error("Client code already exists.");
   Object.assign(hospital, { name, code, location: text(input.location), status: input.status === "inactive" ? "inactive" : "active", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, updatedAt: new Date().toISOString() });
+  await saveHospitals(hospitals);
+  return hospital;
+}
+
+export async function setHospitalLogoPath(id, logoPath) {
+  const hospitals = await readHospitals();
+  const hospital = hospitals.find((item) => item.id === id);
+  if (!hospital) return null;
+  hospital.logoPath = text(logoPath);
+  hospital.updatedAt = new Date().toISOString();
   await saveHospitals(hospitals);
   return hospital;
 }
@@ -299,6 +309,21 @@ export async function completePasswordSetup(token, password) {
   hospital.updatedAt = new Date().toISOString();
   await saveHospitals(hospitals);
   return { hospital, user };
+}
+
+export async function resetHospitalUserPassword(userId) {
+  const hospitals = await readHospitals();
+  for (const hospital of hospitals) {
+    const user = hospital.users?.find((item) => item.id === userId);
+    if (!user) continue;
+    user.passwordSet = false;
+    user.passwordSetupToken = generateSetupToken();
+    user.passwordSetupExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    hospital.updatedAt = new Date().toISOString();
+    await saveHospitals(hospitals);
+    return { hospital, user };
+  }
+  return null;
 }
 
 // Verifies a hospital administrator's password: real hash if set, otherwise the legacy demo password.

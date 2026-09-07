@@ -81,6 +81,33 @@ export async function getR2ClientFile(hospitalCode, relativePath, programme) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
+function hospitalAssetPrefix(code) {
+  const normalized = String(code || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,12}$/.test(normalized)) throw new Error("Hospital client code must contain 2-12 uppercase letters or numbers.");
+  const baseFolder = process.env.R2_CLIENT_FOLDER || DEFAULT_CLIENT_FOLDER;
+  return `${baseFolder.replace(/^\/+|\/+$/g, "")}/${normalized}/`;
+}
+
+export async function saveR2HospitalLogo(hospitalCode, dataUrl) {
+  if (!isEnabled()) return null;
+  const match = String(dataUrl || "").match(/^data:(image\/(png|jpeg|webp));base64,([a-z0-9+/=]+)$/i);
+  if (!match) throw new Error("Logo must be a PNG, JPEG, or WebP image.");
+  const extension = match[2].toLowerCase() === "jpeg" ? "jpg" : match[2].toLowerCase();
+  const key = `${hospitalAssetPrefix(hospitalCode)}logo.${extension}`;
+  await client().send(new PutObjectCommand({ Bucket: config().bucket, Key: key, Body: Buffer.from(match[3], "base64"), ContentType: match[1].toLowerCase(), CacheControl: "no-cache" }));
+  return key;
+}
+
+export async function getR2HospitalLogo(hospitalCode) {
+  const settings = config();
+  const prefix = hospitalAssetPrefix(hospitalCode);
+  const objects = await listR2Objects(prefix);
+  const logo = objects.find((object) => /^logo\.(png|jpg|jpeg|webp)$/i.test(object.Key.slice(prefix.length)));
+  if (!logo) return null;
+  const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: logo.Key }));
+  return { bytes: Buffer.from(await result.Body.transformToByteArray()), contentType: result.ContentType || "application/octet-stream" };
+}
+
 export async function getR2ClientVersionFile(hospitalCode, objectKey, programme) {
   const settings = config();
   const allowedPrefix = `${clientPrefix(hospitalCode, programme)}versions/`;
@@ -167,6 +194,16 @@ export async function listR2ClientAuditEvents(hospitalCode, programme) {
   return events.filter(Boolean).sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
 }
 
+export async function listR2TemplateAuditEvents() {
+  if (!isEnabled()) return [];
+  const settings = config();
+  const events = await Promise.all(NABH_ACCREDITATION_PROGRAMMES.map(async (programme) => {
+    const objects = await listR2Objects(`${programmeSourcePrefix(settings, programme)}audit/`);
+    return Promise.all(objects.filter((object) => object.Key.endsWith(".json")).map((object) => getJsonObject(settings, object.Key)));
+  }));
+  return events.flat().filter(Boolean).sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
+}
+
 export async function approveR2ClientDocumentVersion({ hospital, documentId, documentName, department, relativePath, fileName, bytes, approvedBy, note }) {
   if (!isEnabled()) throw new Error("R2 document versioning requires R2_ENABLED=true.");
   const programme = hospital?.accreditation?.programme;
@@ -204,6 +241,52 @@ export async function approveR2ClientDocumentVersion({ hospital, documentId, doc
   return manifest;
 }
 
+export async function getR2TemplateVersionManifest(programme, relativePath) {
+  if (!isEnabled()) return null;
+  const settings = config();
+  const templatePath = safeRelativePath(relativePath);
+  return getJsonObject(settings, `${templateVersionPrefix(programme, getDocumentKey("", "", templatePath))}manifest.json`);
+}
+
+function templateVersionPrefix(programme, documentKey) {
+  const key = createHash("sha256").update(String(documentKey)).digest("hex").slice(0, 24);
+  return `${programmeSourcePrefix(config(), programme)}versions/${key}/`;
+}
+
+export async function approveR2TemplateDocumentVersion({ programme, documentId, documentName, department, relativePath, fileName, bytes, approvedBy, note }) {
+  if (!isEnabled()) throw new Error("Template versioning requires R2_ENABLED=true.");
+  const settings = config();
+  const templatePath = safeRelativePath(relativePath);
+  const originalExtension = path.extname(templatePath).toLowerCase();
+  if (path.extname(String(fileName || "")).toLowerCase() !== originalExtension) throw new Error(`Upload a ${originalExtension} file for this template.`);
+  if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error("Select a non-empty template file.");
+
+  const docKey = getDocumentKey(documentId, documentName, templatePath);
+  const prefix = templateVersionPrefix(programme, docKey);
+  const manifestKey = `${prefix}manifest.json`;
+  const existingManifest = await getJsonObject(settings, manifestKey);
+  const templateKey = `${programmeSourcePrefix(settings, programme)}${templatePath}`;
+  const history = existingManifest?.history || [];
+  if (!history.length) {
+    if (!await objectExists(settings.bucket, templateKey)) throw new Error("The master template file was not found.");
+    const baselineKey = `${prefix}v1${originalExtension}`;
+    if (!await objectExists(settings.bucket, baselineKey)) await client().send(new CopyObjectCommand({ Bucket: settings.bucket, Key: baselineKey, CopySource: `${settings.bucket}/${encodeURIComponent(templateKey).replace(/%2F/g, "/")}` }));
+    history.push({ version: 1, objectKey: baselineKey, fileName: path.basename(templatePath), createdAt: existingManifest?.createdAt || new Date().toISOString(), action: "template baseline" });
+  }
+  const timestamp = new Date().toISOString();
+  const nextVersion = Math.max(...history.map((entry) => entry.version), 0) + 1;
+  const versionKey = `${prefix}v${nextVersion}${originalExtension}`;
+  const fileHash = createHash("sha256").update(bytes).digest("hex");
+  const approval = { version: nextVersion, objectKey: versionKey, fileName: path.basename(String(fileName)), approvedBy: String(approvedBy || "Super Admin"), note: String(note || "Approved template update"), timestamp, fileHash, action: "approved template upload" };
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: versionKey, Body: bytes, ContentType: "application/vnd.openxmlformats-officedocument", Metadata: { documentid: String(documentId || ""), version: String(nextVersion), approvedby: approval.approvedBy } }));
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: templateKey, Body: bytes, ContentType: "application/vnd.openxmlformats-officedocument" }));
+  history.push(approval);
+  const manifest = { documentKey: docKey, documentId, documentName, department: department || "", templatePath, programme, currentVersion: nextVersion, currentObjectKey: versionKey, createdAt: existingManifest?.createdAt || timestamp, updatedAt: timestamp, history };
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: manifestKey, Body: JSON.stringify(manifest, null, 2), ContentType: "application/json" }));
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: `${programmeSourcePrefix(settings, programme)}audit/${timestamp.replace(/[:.]/g, "-")}-${randomUUID()}.json`, Body: JSON.stringify({ scope: "template", programme, documentId, documentName, department: department || "", templatePath, ...approval }, null, 2), ContentType: "application/json" }));
+  return manifest;
+}
+
 async function listR2Objects(prefix) {
   const settings = config();
   const objects = [];
@@ -238,7 +321,7 @@ export async function listR2ProgrammeTemplateFiles(programme) {
   const objects = await listR2Objects(prefix);
   return objects
     .map((object) => object.Key.slice(prefix.length))
-    .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && !relativePath.startsWith("metadata/"));
+    .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && !relativePath.startsWith("metadata/") && !relativePath.startsWith("versions/"));
 }
 
 export async function getR2ProgrammeTemplateFile(programme, relativePath) {

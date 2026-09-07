@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Eye, FileSearch, FileSpreadsheet, FileText, FolderOpen, Presentation, Search, X } from "lucide-react";
+import { CheckCircle2, ClipboardList, Download, Eye, FileSearch, FileSpreadsheet, FileText, FolderOpen, History, Presentation, Search, Upload, X } from "lucide-react";
 import hospitalLogo from "./assets/logo.png";
 
 const typeIcons = { DOCX: FileText, XLSX: FileSpreadsheet, PPTX: Presentation };
@@ -33,6 +33,13 @@ export default function TemplateLibrary() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(null);
+  const [approval, setApproval] = useState(null);
+  const [approvalFile, setApprovalFile] = useState(null);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [approvalMessage, setApprovalMessage] = useState("");
+  const [history, setHistory] = useState(null);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditEntries, setAuditEntries] = useState([]);
 
   useEffect(() => {
     if (!programme) { setDepartments(null); setLibraryMessage(""); setSelectedDepartment(""); return; }
@@ -58,6 +65,32 @@ export default function TemplateLibrary() {
   const total = useMemo(() => departmentEntries.reduce((count, [, documents]) => count + documents.length, 0), [departmentEntries]);
   const available = useMemo(() => templates.filter((template) => template.templatePath).length, [templates]);
 
+  async function approveTemplate(event) {
+    event.preventDefault();
+    if (!approvalFile) { setApprovalMessage("Select the approved template file."); return; }
+    setApprovalMessage("Saving approved template...");
+    const response = await fetch("/api/admin/template-library/approve", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-Programme": programme, "X-Document-Id": approval.documentId || "", "X-Document-Name": approval.documentName, "X-Department": selectedDepartment, "X-Document-Path": approval.templatePath, "X-File-Name": approvalFile.name, "X-Approved-By": "Super Admin", "X-Approval-Note": approvalNote }, body: approvalFile });
+    const result = await response.json();
+    if (!response.ok) { setApprovalMessage(result.error || "Unable to approve the template."); return; }
+    setApproval(null); setApprovalFile(null); setApprovalNote(""); setApprovalMessage("");
+  }
+
+  async function showHistory(template) {
+    const response = await fetch(`/api/admin/template-library/versions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
+    const result = await response.json();
+    if (!response.ok) { setError(result.error || "Unable to load template history."); return; }
+    setHistory({ template, document: result.document });
+  }
+
+  async function toggleAudit() {
+    if (auditOpen) { setAuditOpen(false); return; }
+    const response = await fetch("/api/document-audit");
+    const result = await response.json();
+    if (!response.ok) { setError(result.error || "Unable to load the audit log."); return; }
+    setAuditEntries(result.entries || []);
+    setAuditOpen(true);
+  }
+
   if (error) return <main className="admin-main"><p className="status error">{error}</p></main>;
 
   return (
@@ -71,6 +104,7 @@ export default function TemplateLibrary() {
           </div>
         </div>
         <p className="intro">Each NABH accreditation programme has its own template set. Select a programme to browse it.</p>
+        <button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Template library" : "Audit log"}</button>
         <label className="filter-box">
           NABH accreditation programme
           <select value={programme} onChange={(event) => setProgramme(event.target.value)}>
@@ -81,6 +115,12 @@ export default function TemplateLibrary() {
         {departments && <p className="intro">{departmentEntries.length} departments &middot; {total} Master List documents &middot; <span className="active-count">finalized templates</span></p>}
       </header>
 
+      {auditOpen ? (
+        <section className="document-panel">
+          <div className="panel-heading"><ClipboardList size={18} /><h2>Global approval activity</h2><span className="count">{auditEntries.length} entries</span></div>
+          {auditEntries.length === 0 ? <p className="empty">No template or hospital approval events have been recorded.</p> : <table><thead><tr><th>When</th><th>Scope</th><th>Document</th><th>Version</th><th>Approved by</th><th>Action</th><th>Note</th></tr></thead><tbody>{auditEntries.map((entry) => <tr key={entry.objectKey || `${entry.timestamp}-${entry.documentId}`}><td>{new Date(entry.timestamp).toLocaleString()}</td><td>{entry.scope === "template" ? "Master template" : entry.hospitalCode || "Hospital"}</td><td><strong>{entry.documentName || "-"}</strong><br /><span className="mono">{entry.documentId || "-"}</span></td><td>v{entry.version || "-"}</td><td>{entry.approvedBy || "System"}</td><td>{entry.action || "-"}</td><td>{entry.note || "-"}</td></tr>)}</tbody></table>}
+        </section>
+      ) : <>
       {!programme && <p className="empty">Select an NABH accreditation programme to browse its templates.</p>}
       {programme && loading && <p className="empty">Loading templates for "{programme}"...</p>}
       {programme && !loading && libraryMessage && <p className="access-message">{libraryMessage}</p>}
@@ -139,6 +179,8 @@ export default function TemplateLibrary() {
                           <span className="template-actions">
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
+                            <button className="icon-button" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={17} /></button>
+                            <button className="icon-button" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
                           </span>
                         )}</td>
                       </tr>
@@ -150,7 +192,27 @@ export default function TemplateLibrary() {
           </section>
         </section>
       )}
+      </>}
 
+      {approval && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setApproval(null)}>
+          <form className="preview-dialog admin-form" onSubmit={approveTemplate} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header"><div><p className="eyebrow">Template approval</p><h2>{approval.documentName}</h2><p className="editor-file-name">{approval.fileName}</p></div><button className="icon-button" type="button" title="Close approval" onClick={() => setApproval(null)}><X size={18} /></button></div>
+            <label>Approved replacement file<input type="file" accept={`.${approval.fileType?.toLowerCase() || "docx"}`} onChange={(event) => setApprovalFile(event.target.files?.[0] || null)} required /></label>
+            <label>Approval note<textarea value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>
+            {approvalMessage && <p className="access-message">{approvalMessage}</p>}
+            <button className="primary-button" type="submit"><CheckCircle2 size={16} /> Approve new version</button>
+          </form>
+        </div>
+      )}
+      {history && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setHistory(null)}>
+          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label={`Version history for ${history.template.documentName}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header"><div><p className="eyebrow">Template version history</p><h2>{history.template.documentName}</h2></div><button className="icon-button" title="Close version history" onClick={() => setHistory(null)}><X size={18} /></button></div>
+            {!history.document ? <p className="empty">No approved versions yet.</p> : <table><thead><tr><th>Version</th><th>When</th><th>Approved by</th><th>Action</th><th>Note</th></tr></thead><tbody>{history.document.history.map((version) => <tr key={version.version}><td>v{version.version}</td><td>{new Date(version.timestamp || version.createdAt).toLocaleString()}</td><td>{version.approvedBy || "System"}</td><td>{version.action}</td><td>{version.note || "-"}</td></tr>)}</tbody></table>}
+          </section>
+        </div>
+      )}
       {preview && (
         <div className="preview-backdrop" role="presentation" onClick={() => setPreview(null)}>
           <section className="preview-dialog" role="dialog" aria-modal="true" aria-label={`PDF preview of ${preview.documentName}`} onClick={(event) => event.stopPropagation()}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, ClipboardCheck, GraduationCap, Layers } from "lucide-react";
+import { Building2, ClipboardCheck, GraduationCap, Layers, X } from "lucide-react";
 import { institutionalProfileFields } from "./hospitalFormFields.js";
 
 function ProfileTab({ hospitalId, details, onSaved }) {
@@ -57,6 +57,7 @@ function AccreditationTab({ hospitalId, profileComplete }) {
   const [state, setState] = useState(null);
   const [decidedBy, setDecidedBy] = useState("");
   const [message, setMessage] = useState("");
+  const [pendingProgramme, setPendingProgramme] = useState("");
 
   useEffect(() => {
     fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`)
@@ -64,7 +65,9 @@ function AccreditationTab({ hospitalId, profileComplete }) {
       .then(setState);
   }, [hospitalId]);
 
-  async function select(programme) {
+  async function confirmSelection() {
+    const programme = pendingProgramme;
+    if (!programme) return;
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,6 +76,7 @@ function AccreditationTab({ hospitalId, profileComplete }) {
     const data = await response.json();
     if (!response.ok) { setMessage(data.error); return; }
     setState((current) => ({ ...current, selection: data.selection }));
+    setPendingProgramme("");
     setMessage(data.job ? "Accreditation programme saved. Your document workspace is now being prepared - check the Documents tab shortly." : "Accreditation programme saved.");
   }
 
@@ -89,16 +93,17 @@ function AccreditationTab({ hospitalId, profileComplete }) {
       {state.recommendation.requirements?.length > 0 && <ul className="access-message">{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul>}
       <label>Your name (for the decision record)<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} /></label>
       <label>NABH accreditation programme
-        <select value={state.selection?.programme || ""} onChange={(event) => event.target.value && select(event.target.value)}>
+        <select value={state.selection?.programme || ""} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}>
           <option value="">Select a programme</option>
           {state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}
         </select>
       </label>
       <div className="toolbar">
-        <button className="primary-button" disabled={!state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => select(state.recommendation.programme)}>Accept recommendation</button>
+        <button className="primary-button" disabled={!state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Accept recommendation</button>
       </div>
       {state.selection && <p className="access-message">Currently pursuing: <strong>{state.selection.programme}</strong> (selected by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()})</p>}
       {message && <p className="access-message">{message}</p>}
+      {pendingProgramme && <div className="preview-backdrop" role="presentation" onClick={() => setPendingProgramme("")}><section className="preview-dialog" role="dialog" aria-modal="true" aria-label="Confirm accreditation programme" onClick={(event) => event.stopPropagation()}><div className="preview-header"><div><p className="eyebrow">Confirm NABH accreditation</p><h2>{pendingProgramme}</h2></div><button className="icon-button" type="button" title="Cancel" onClick={() => setPendingProgramme("")}><X size={18} /></button></div><p>Confirming this programme saves the accreditation decision and begins preparation of its document workspace. You can change the programme later, but the workspace will be resynchronized.</p><div className="toolbar"><button className="secondary-button" type="button" onClick={() => setPendingProgramme("")}>Cancel</button><button className="primary-button" type="button" onClick={confirmSelection}>Confirm accreditation</button></div></section></div>}
     </section>
   );
 }

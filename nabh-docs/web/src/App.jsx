@@ -1231,6 +1231,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
             <thead>
               <tr>
                 <th>When</th>
+                {!hospitalId && <th>Scope</th>}
                 <th>Document</th>
                 <th>Department</th>
                 <th>Version</th>
@@ -1246,6 +1247,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                 return (
                   <tr key={entry.id || entry.objectKey || `${entry.documentId}-${entry.version}-${entry.timestamp}`}>
                     <td>{new Date(entry.timestamp).toLocaleString()}</td>
+                    {!hospitalId && <td>{entry.scope === "template" ? "Master template" : entry.hospitalCode || "System"}</td>}
                     <td>
                       <strong>{entry.documentName}</strong>
                       <br />
