@@ -106,6 +106,7 @@ function readUrlState() {
     category: params.get("cat") || null,
     documentSearch: params.get("q") || "",
     confidenceFilter: params.get("conf") || "all",
+    readinessStatusFilter: params.get("status") || "all",
     onlyInactive: params.get("onlyInactive") === "1",
     sortColumn: params.get("sort") || null,
     sortDirection: params.get("dir") || "asc",
@@ -296,6 +297,9 @@ function MasterListWorkspace({
   const [confidenceFilter, setConfidenceFilter] = useState(
     initialUrlState.confidenceFilter,
   );
+  const [readinessStatusFilter, setReadinessStatusFilter] = useState(
+    initialUrlState.readinessStatusFilter,
+  );
   const [onlyInactive, setOnlyInactive] = useState(
     initialUrlState.onlyInactive,
   );
@@ -457,6 +461,7 @@ function MasterListWorkspace({
     if (selected) params.set("cat", selected);
     if (documentSearch) params.set("q", documentSearch);
     if (confidenceFilter !== "all") params.set("conf", confidenceFilter);
+    if (readinessStatusFilter !== "all") params.set("status", readinessStatusFilter);
     if (onlyInactive) params.set("onlyInactive", "1");
     if (sortColumn) {
       params.set("sort", sortColumn);
@@ -473,6 +478,7 @@ function MasterListWorkspace({
     selected,
     documentSearch,
     confidenceFilter,
+    readinessStatusFilter,
     onlyInactive,
     sortColumn,
     sortDirection,
@@ -515,6 +521,10 @@ function MasterListWorkspace({
     let result = documents;
     if (confidenceFilter !== "all")
       result = result.filter((doc) => doc.confidence === confidenceFilter);
+    if (readinessStatusFilter !== "all")
+      result = result.filter(
+        (doc) => (doc.readinessStatus || "not_started") === readinessStatusFilter,
+      );
     if (onlyInactive) result = result.filter((doc) => !doc.active);
     if (query) {
       result = result.filter(
@@ -541,6 +551,7 @@ function MasterListWorkspace({
     documents,
     documentSearch,
     confidenceFilter,
+    readinessStatusFilter,
     onlyInactive,
     sortColumn,
     sortDirection,
@@ -1057,13 +1068,22 @@ function MasterListWorkspace({
         )}
         {totals && (
           <p className="intro readiness-summary">
+            <button
+              type="button"
+              className={`readiness-chip ${readinessStatusFilter === "all" ? "active" : ""}`}
+              onClick={() => setReadinessStatusFilter("all")}
+            >
+              All: {Object.values(readinessCounts).reduce((total, count) => total + count, 0)}
+            </button>
             {READINESS_STATUSES.map((status) => (
-              <span
+              <button
                 key={status}
-                className={`readiness-chip readiness-${status}`}
+                type="button"
+                className={`readiness-chip readiness-${status} ${readinessStatusFilter === status ? "active" : ""}`}
+                onClick={() => setReadinessStatusFilter(status)}
               >
                 {READINESS_LABELS[status]}: {readinessCounts[status]}
-              </span>
+              </button>
             ))}
           </p>
         )}
@@ -2200,7 +2220,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 }
 
 function App() {
-  const [view, setView] = useState("admin");
+  const [view, setView] = useState("platform");
   const [session, setSession] = useState(null);
   const [auditEntries, setAuditEntries] = useState([]);
   const [showRegister, setShowRegister] = useState(false);
@@ -2331,6 +2351,11 @@ function App() {
         <PlatformWorkspace
           hospitalId={session.hospitalId}
           hospitalName={session.hospitalName}
+          onNavigateToDocuments={(category, status) => {
+            const params = new URLSearchParams({ cat: category, status });
+            window.history.replaceState(null, "", `?${params.toString()}`);
+            setView("master-list");
+          }}
         />
       ) : canViewDocuments ? (
         <MasterListWorkspace

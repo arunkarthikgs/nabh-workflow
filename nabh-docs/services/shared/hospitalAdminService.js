@@ -106,7 +106,7 @@ export async function createHospital(input) {
   const hospitals = await readHospitals();
   if (hospitals.some((hospital) => hospital.code === code)) throw new Error("Client code already exists.");
   const now = new Date().toISOString();
-  const hospital = { id: randomUUID(), name, code, location: text(input.location), status: input.status === "inactive" ? "inactive" : "active", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, users: [], createdAt: now, updatedAt: now };
+  const hospital = { id: randomUUID(), name, code, location: text(input.location), status: "pending", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, users: [], createdAt: now, updatedAt: now };
   hospitals.push(hospital);
   await saveHospitals(hospitals);
   return hospital;
@@ -121,6 +121,18 @@ export async function updateHospital(id, input) {
   if (!name || !code) throw new Error("Hospital name and client code are required.");
   if (hospitals.some((item) => item.id !== id && item.code === code)) throw new Error("Client code already exists.");
   Object.assign(hospital, { name, code, location: text(input.location), status: input.status === "inactive" ? "inactive" : "active", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, updatedAt: new Date().toISOString() });
+  await saveHospitals(hospitals);
+  return hospital;
+}
+
+export async function approveHospitalOnboarding(id) {
+  const hospitals = await readHospitals();
+  const hospital = hospitals.find((item) => item.id === id);
+  if (!hospital) return null;
+  if (hospital.status !== "pending") throw new Error("Only pending hospitals can be approved.");
+  hospital.status = "active";
+  hospital.registrationStatus = "approved";
+  hospital.updatedAt = new Date().toISOString();
   await saveHospitals(hospitals);
   return hospital;
 }
@@ -267,7 +279,7 @@ export async function registerHospital(input) {
   const now = new Date().toISOString();
   const setupToken = generateSetupToken();
   const hospital = {
-    id: randomUUID(), name, code, location: text(input.location), status: "active", registrationStatus: "self_registered",
+    id: randomUUID(), name, code, location: text(input.location), status: "pending", registrationStatus: "self_registered",
     logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: "", branch: "main" }, details: input.details && typeof input.details === "object" ? input.details : {},
     users: [{
       id: randomUUID(), name: adminName, email: adminEmail, role: "Hospital Administrator", active: true, createdAt: now,

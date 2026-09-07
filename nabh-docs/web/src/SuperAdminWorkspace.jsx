@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Plus, Save, Search, Trash2 } from "lucide-react";
+import { Building2, CheckCircle2, Plus, Save, Search, Trash2, X } from "lucide-react";
 import {
   emptyHospitalDetails,
   hospitalRegistrationSections,
@@ -8,7 +8,7 @@ import {
 const empty = () => ({
   name: "",
   code: "",
-  status: "active",
+  status: "pending",
   details: emptyHospitalDetails(),
 });
 
@@ -17,7 +17,10 @@ export default function SuperAdminWorkspace() {
     [id, setId] = useState(""),
     [form, setForm] = useState(empty()),
     [query, setQuery] = useState(""),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [statusFilter, setStatusFilter] = useState("all"),
+    [pendingApproval, setPendingApproval] = useState(null),
+    [approving, setApproving] = useState(false);
   const selected = hospitals.find((item) => item.id === id);
   async function load() {
     const response = await fetch("/api/admin/hospitals");
@@ -91,10 +94,22 @@ export default function SuperAdminWorkspace() {
     await load();
     setForm(empty());
   }
+  async function approveOnboarding() {
+    if (!pendingApproval) return;
+    setApproving(true);
+    const response = await fetch(`/api/admin/hospitals/${pendingApproval.id}/approve-onboarding`, { method: "POST" });
+    const result = await response.json();
+    setApproving(false);
+    if (!response.ok) { setMessage(result.error || "Unable to approve hospital onboarding."); return; }
+    setPendingApproval(null);
+    await load();
+    setId(result.hospital.id);
+    setMessage(`${result.hospital.name} is now active.`);
+  }
   const filtered = hospitals.filter((item) =>
     `${item.name} ${item.code} ${item.details?.city} ${item.details?.state}`
       .toLowerCase()
-      .includes(query.toLowerCase()),
+      .includes(query.toLowerCase()) && (statusFilter === "all" || item.status === statusFilter),
   );
   return (
     <main className="admin-main">
@@ -138,6 +153,7 @@ export default function SuperAdminWorkspace() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
+          <label className="hospital-status-filter">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
           {filtered.map((item) => (
             <button
               className={`hospital-row ${item.id === id ? "selected" : ""}`}
@@ -154,6 +170,7 @@ export default function SuperAdminWorkspace() {
               <span>
                 <strong>{item.name}</strong>
                 <small>{item.code}</small>
+                <small className={`hospital-status hospital-status-${item.status || "active"}`}>{item.status || "active"}</small>
               </span>
             </button>
           ))}
@@ -192,6 +209,7 @@ export default function SuperAdminWorkspace() {
               <label>
                 Status
                 <select name="status" value={form.status} onChange={change}>
+                  <option value="pending">Pending</option>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
@@ -249,9 +267,11 @@ export default function SuperAdminWorkspace() {
           <button className="primary-button">
             <Save size={16} /> Save hospital
           </button>
+          {selected?.status === "pending" && <button className="secondary-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button>}
           {message && <p className="admin-message">{message}</p>}
         </form>
       </section>
+      {pendingApproval && <div className="preview-backdrop" role="presentation" onClick={() => setPendingApproval(null)}><section className="preview-dialog onboarding-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-confirmation-title" onClick={(event) => event.stopPropagation()}><div className="preview-header onboarding-confirm-header"><div className="onboarding-confirm-mark"><CheckCircle2 size={20} /></div><div><p className="eyebrow">Approve hospital onboarding</p><h2 id="onboarding-confirmation-title">{pendingApproval.name}</h2></div><button className="icon-button" type="button" title="Close confirmation" onClick={() => setPendingApproval(null)}><X size={18} /></button></div><div className="onboarding-confirm-body"><p>Approve this hospital to activate its platform access.</p><div className="onboarding-confirm-note">The hospital administrator can sign in after approval. The hospital can then select its accreditation programme and prepare its document workspace.</div></div><div className="onboarding-confirm-actions"><button className="secondary-button" type="button" disabled={approving} onClick={() => setPendingApproval(null)}>Cancel</button><button className="primary-button" type="button" disabled={approving} onClick={approveOnboarding}><CheckCircle2 size={16} /> {approving ? "Approving..." : "Approve onboarding"}</button></div></section></div>}
     </main>
   );
 }

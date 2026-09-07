@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
 import { dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
@@ -141,6 +141,14 @@ app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (requ
 app.patch("/api/admin/hospitals/:hospitalId", async (request, response, next) => {
   try { const hospital = await updateHospital(request.params.hospitalId, request.body || {}); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); response.json({ hospital: await persistHospitalLogo(hospital) }); }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/approve-onboarding", async (request, response, next) => {
+  try {
+    const hospital = await approveHospitalOnboarding(request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    response.json({ hospital });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.delete("/api/admin/hospitals/:hospitalId", async (request, response, next) => {

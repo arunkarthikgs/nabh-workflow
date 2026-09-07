@@ -108,7 +108,17 @@ function AccreditationTab({ hospitalId, profileComplete }) {
   );
 }
 
-function WorkspaceOverviewTab({ hospitalId }) {
+const READINESS_COLUMNS = [
+  ["not_started", "Not started"],
+  ["information_required", "Info required"],
+  ["draft_generated", "Draft"],
+  ["under_review", "Under review"],
+  ["approved", "Approved"],
+  ["implemented", "Implemented"],
+  ["evidence_available", "Evidence available"]
+];
+
+function WorkspaceOverviewTab({ hospitalId, hospitalStatus, onNavigateToDocuments }) {
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
 
@@ -127,28 +137,14 @@ function WorkspaceOverviewTab({ hospitalId }) {
   if (!overview) return <p className="empty">Loading workspace overview...</p>;
 
   return (
-    <section className="admin-form">
-      <h2>NABH implementation workspace</h2>
-      <p>{overview.total} tracked documents across {Object.keys(overview.categories).length} categories &middot; <strong>{overview.readinessPercent}%</strong> approved or further along.</p>
-      <table>
-        <thead>
-          <tr><th>Category</th><th>Not Started</th><th>Info Required</th><th>Draft</th><th>Under Review</th><th>Approved</th><th>Implemented</th><th>Evidence Available</th></tr>
-        </thead>
-        <tbody>
-          {Object.entries(overview.categories).map(([category, counts]) => (
-            <tr key={category}>
-              <td>{category}</td>
-              <td>{counts.not_started}</td>
-              <td>{counts.information_required}</td>
-              <td>{counts.draft_generated}</td>
-              <td>{counts.under_review}</td>
-              <td>{counts.approved}</td>
-              <td>{counts.implemented}</td>
-              <td>{counts.evidence_available}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <section className="readiness-dashboard">
+      {hospitalStatus === "pending" && <div className="workspace-status-banner pending"><strong>Onboarding pending approval</strong><span>Your hospital profile has been received. A Super Admin must approve onboarding before your organisation is marked active.</span></div>}
+      {hospitalStatus === "inactive" && <div className="workspace-status-banner inactive"><strong>Hospital access is inactive</strong><span>Your hospital profile is currently inactive. Contact the platform administrator to restore active status.</span></div>}
+      {hospitalStatus === "active" && <div className="workspace-status-banner active"><strong>Hospital is active</strong><span>Your organisation is active and can continue its NABH readiness work.</span></div>}
+      <div className="readiness-summary"><div><p className="eyebrow">Workspace readiness</p><h2>NABH implementation dashboard</h2><p>{overview.total} tracked documents across {Object.keys(overview.categories).length} categories.</p></div><div className="readiness-score"><strong>{overview.readinessPercent}%</strong><span>approved or further</span></div></div>
+      <div className="readiness-grid">
+        {Object.entries(overview.categories).map(([category, counts]) => <section className="readiness-category" key={category}><h3>{category}</h3><div className="readiness-counts">{READINESS_COLUMNS.map(([status, label]) => <button key={status} type="button" className={`readiness-count readiness-${status}`} onClick={() => onNavigateToDocuments(category, status)}><strong>{counts[status] || 0}</strong><span>{label}</span></button>)}</div></section>)}
+      </div>
     </section>
   );
 }
@@ -281,8 +277,8 @@ function ServicesTab({ hospitalId }) {
   );
 }
 
-export default function PlatformWorkspace({ hospitalId, hospitalName }) {
-  const [tab, setTab] = useState("profile");
+export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigateToDocuments }) {
+  const [tab, setTab] = useState("overview");
   const [hospital, setHospital] = useState(null);
 
   function loadHospital() {
@@ -316,7 +312,7 @@ export default function PlatformWorkspace({ hospitalId, hospitalName }) {
       {!profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
       {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} />}
       {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} />}
-      {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} />}
+      {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
       {tab === "services" && <ServicesTab hospitalId={hospitalId} />}
     </main>
   );
