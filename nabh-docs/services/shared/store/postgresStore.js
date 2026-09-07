@@ -239,6 +239,20 @@ export async function initialize() {
   await connect();
 }
 
+export async function resetHospitalDomain() {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    await client.query("truncate table hospitals cascade");
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export function info() {
   const config = poolConfig();
   if (config.connectionString) {

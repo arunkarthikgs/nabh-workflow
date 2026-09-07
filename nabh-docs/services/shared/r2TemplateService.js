@@ -78,6 +78,21 @@ export async function listR2ClientFiles(hospitalCode, programme) {
     .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && relativePath !== "Master list of documents_TEMPLATE.xlsx" && !relativePath.startsWith("versions/"));
 }
 
+export async function deleteR2HospitalFolder(hospitalCode) {
+  if (!isEnabled()) return { deleted: 0 };
+  const settings = config();
+  const prefix = hospitalAssetPrefix(hospitalCode);
+  const objects = await listR2Objects(prefix);
+  let deleted = 0;
+  for (let index = 0; index < objects.length; index += 1000) {
+    const batch = objects.slice(index, index + 1000).map((object) => ({ Key: object.Key }));
+    if (!batch.length) continue;
+    await client().send(new DeleteObjectsCommand({ Bucket: settings.bucket, Delete: { Objects: batch, Quiet: true } }));
+    deleted += batch.length;
+  }
+  return { prefix, deleted };
+}
+
 export async function getR2ClientFile(hospitalCode, relativePath, programme) {
   const settings = config();
   const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode, programme)}${relativePath}` }));
