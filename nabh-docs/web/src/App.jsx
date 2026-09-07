@@ -2336,6 +2336,11 @@ function App() {
   return (
     <>
       <div className="workspace-switcher">
+        <img
+          className="application-navigation-logo"
+          src={hospitalLogo}
+          alt="NABH Readiness System"
+        />
         {session.hospitalLogoPath && (
           <img
             className="navigation-logo"

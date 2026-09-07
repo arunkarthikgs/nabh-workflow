@@ -308,8 +308,10 @@ tr.history-row td { background: #f8f9ff; padding: 12px 16px; }
 @media (max-width: 560px) { .workspace-switcher button { flex: 1; justify-content: center; }.admin-main { padding-top: 26px; }.admin-form, .users-panel { padding: 18px 14px; }.admin-fields, .user-grid, .user-form { grid-template-columns: 1fr; }.admin-fields .wide { grid-column: span 1; }.user-form .primary-button { width: 100%; justify-content: center; }.user-card { flex-direction: column; gap: 11px; }.user-card > div:last-child { width: 100%; }.user-card .icon-button { margin-left: auto; } }
 
 .logo-upload { align-items: center; background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 5px; display: flex; gap: 14px; padding: 12px; }.logo-upload img { background: #fff; border: 1px solid #d9dcf3; border-radius: 4px; height: 58px; object-fit: contain; padding: 5px; width: 58px; }.logo-upload strong { color: #3a3f6b; display: block; font-size: 12px; }.logo-upload p { color: #8a8dc7; font-size: 11px; margin: 3px 0 7px; }.upload-button, .text-button { background: #fff; border: 1px solid #c7cdf7; border-radius: 4px; color: #3547d1; cursor: pointer; display: inline-block; font: 600 11px Poppins; margin-right: 7px; padding: 6px 8px; }.upload-button input { display: none; }.text-button { background: transparent; }.hospital-mini-logo { background: #fff; border: 1px solid #e2e4fb; border-radius: 5px; height: 56px; object-fit: contain; padding: 4px; width: 56px; }.hospital-row { gap: 10px; min-height: 72px; }
-.hospital-brand-logo { background: #fff; border: 1px solid #d9dcf3; border-radius: 6px; height: 96px; object-fit: contain; padding: 6px; width: 96px; }
+.hospital-brand-logo { background: #fff; border: 1px solid #d9dcf3; border-radius: 6px; height: 112px; object-fit: contain; padding: 7px; width: 112px; }
 .navigation-logo { background: #fff; border-radius: 4px; height: 42px; object-fit: contain; padding: 3px; width: 64px; }
+.application-navigation-logo { background: #ffffff; border: 1px solid rgba(255, 255, 255, .6); border-radius: 8px; height: 62px; object-fit: contain; padding: 5px; width: 90px; }
+.application-brand img { height: 80px; width: 120px; }
 .user-tabs { border-bottom: 1px solid #eceeff; display: flex; gap: 6px; margin: -4px 0 20px; padding-bottom: 12px; }.user-tabs button { align-items: center; background: transparent; border: 0; color: #6c6fb0; cursor: pointer; display: flex; font: 600 13px Poppins; gap: 7px; padding: 9px 11px; }.user-tabs button.active { background: #eef0ff; color: #3547d1; }
 .role-layout { display: grid; gap: 24px; grid-template-columns: 1.2fr .8fr; }.role-list { display: grid; gap: 8px; }.role-row { align-items: center; background: #f8f9ff; border: 1px solid #eceeff; border-radius: 5px; display: flex; justify-content: space-between; padding: 12px; }.role-row strong { color: #3a3f6b; font-size: 13px; }.role-row p { color: #6c6fb0; font-size: 11px; margin: 4px 0 0; }.role-row > div:last-child { display: flex; }.role-name { color: #4a4e82; display: block; font-size: 12px; font-weight: 600; }.role-name input { background: #fbfbff; border: 1px solid #d9dcf3; border-radius: 5px; display: block; font: 13px Poppins; margin: 6px 0 18px; padding: 9px; width: 100%; }.report-picker { border: 1px solid #e2e4fb; border-radius: 5px; display: grid; gap: 10px; margin: 0 0 18px; padding: 12px; }.report-picker legend { color: #4a4e82; font-size: 12px; font-weight: 600; }.report-picker label { color: #4a4e82; font-size: 12px; }.report-picker input { accent-color: #3547d1; }
 .role-name select { background: #fbfbff; border: 1px solid #d9dcf3; border-radius: 5px; display: block; font: 13px Poppins; margin: 6px 0 18px; padding: 9px; width: 100%; }.document-picker { border: 1px solid #e2e4fb; border-radius: 5px; display: grid; gap: 8px; margin: 0 0 18px; max-height: 390px; overflow: auto; padding: 12px; }.document-picker legend { align-items: center; color: #4a4e82; display: flex; font-size: 12px; font-weight: 600; gap: 6px; }.document-picker label { align-items: flex-start; border-top: 1px solid #eef0ff; color: #4a4e82; display: flex; font-size: 12px; gap: 8px; padding: 9px 0 0; }.document-picker label:first-of-type { border-top: 0; }.document-picker input { accent-color: #3547d1; margin-top: 3px; }.document-picker strong, .document-picker small { display: block; }.document-picker small { color: #8a8dc7; font-size: 10px; margin-top: 2px; }
@@ -654,12 +656,14 @@ tr.history-row td { background: #f7f7f5; }
   .workspace-switcher { border-bottom: 1px solid #e9e9e7; border-right: 0; flex-direction: row; min-height: 0; overflow-x: auto; padding: 8px 12px; position: sticky; width: 100%; }
   .workspace-switcher button { flex: 0 0 auto; }
   .workspace-switcher > span { display: none; }
+  .application-navigation-logo { height: 52px; width: 74px; }
+  .navigation-logo { height: 48px; width: 70px; }
 }
 
 @media (max-width: 780px) {
   main { padding: 26px 16px 48px; }
   .brand { align-items: flex-start; }
-  .brand img.hospital-brand-logo { height: 64px; width: 64px; }
+  .brand img.hospital-brand-logo { height: 78px; width: 78px; }
   h1 { font-size: 24px; }
   .layout { gap: 22px; }
   .department-list { border-bottom: 1px solid #e9e9e7; border-right: 0; max-height: 260px; padding: 0 0 12px; }
