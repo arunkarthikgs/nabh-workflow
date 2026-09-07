@@ -132,7 +132,8 @@ export default function TemplateLibrary() {
 
   return (
     <main className="template-library">
-      <header>
+      <header className="template-library-header">
+        <div className="template-library-title-row">
         <div className="brand">
           <img src={hospitalLogo} alt="NABH Docs" />
           <div>
@@ -140,15 +141,17 @@ export default function TemplateLibrary() {
             <h1>Template library</h1>
           </div>
         </div>
-        <p className="intro">Each NABH accreditation programme has its own template set. Select a programme to browse it. Super Admins can configure document questionnaires from each template row.</p>
-        <div className="template-library-header-actions"><button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Template library" : "Audit log"}</button><button className="secondary-button" type="button" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading report..." : "Questionnaire report"}</button><a className="secondary-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
-        <label className="filter-box">
-          NABH accreditation programme
-          <select value={programme} onChange={(event) => setProgramme(event.target.value)}>
+        <div className="template-library-header-actions"><button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Back to library" : "Audit log"}</button><button className="secondary-button" type="button" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
+        </div>
+        <p className="intro template-library-description">Browse programme-specific master templates and configure the questions hospitals must answer for each document.</p>
+        <div className="template-library-selector">
+          <label htmlFor="programme-select">Programme</label>
+          <select id="programme-select" value={programme} onChange={(event) => setProgramme(event.target.value)}>
             <option value="">Select a programme</option>
             {NABH_ACCREDITATION_PROGRAMMES.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-        </label>
+          {!programme && <span>Choose a programme to view its template categories.</span>}
+        </div>
         {departments && <p className="intro">{departmentEntries.length} workspace categories &middot; {total} templates &middot; <span className="active-count">available</span></p>}
       </header>
 

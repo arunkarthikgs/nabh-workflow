@@ -159,6 +159,16 @@ tr.history-row td { background: #f8f9ff; padding: 12px 16px; }
 .preview-backdrop { align-items: center; background: rgba(36, 39, 76, 0.56); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 20; }
 .preview-dialog { background: #ffffff; border-radius: 12px; box-shadow: 0 24px 80px rgba(30, 31, 74, 0.34); display: flex; flex-direction: column; height: min(90vh, 980px); max-width: 1100px; width: 100%; }
 .template-library-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.template-library-header { margin-bottom: 30px; }
+.template-library-title-row { align-items: flex-start; display: flex; gap: 20px; justify-content: space-between; }
+.template-library-title-row .brand { margin-bottom: 0; }
+.template-library-description { max-width: 760px; }
+.template-library-selector { align-items: center; background: #ffffff; border: 1px solid #dfe2eb; border-radius: 10px; box-shadow: 0 8px 22px rgba(48, 54, 102, .08); display: flex; gap: 14px; margin-top: 20px; max-width: 760px; padding: 12px 15px; }
+.template-library-selector label { color: #56607d; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.template-library-selector select { background: #f8f9fc; border: 1px solid #cfd5e3; border-radius: 6px; color: #303753; flex: 1; font: 13px Manrope, sans-serif; min-width: 240px; padding: 10px 12px; }
+.template-library-selector select:focus { border-color: #6572dc; box-shadow: 0 0 0 3px rgba(101, 114, 220, .12); outline: 0; }
+.template-library-selector span { color: #8a90a5; font-size: 11px; }
+@media (max-width: 760px) { .template-library-title-row { align-items: stretch; flex-direction: column; }.template-library-header-actions { width: 100%; }.template-library-selector { align-items: stretch; flex-direction: column; gap: 7px; }.template-library-selector select { min-width: 0; } }
 .question-count { align-items: center; background: #f1f2f4; border-radius: 999px; color: #787774; display: inline-flex; font-size: 11px; font-weight: 700; justify-content: center; min-width: 24px; padding: 4px 8px; }
 .question-count.has-questions { background: #e7f3f8; color: #0b6e99; }
 .questionnaire-action { align-items: center; background: transparent; border: 0; border-radius: 6px; color: #8a8dc7; cursor: pointer; display: inline-flex; gap: 4px; padding: 4px; }
