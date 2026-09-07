@@ -22,7 +22,7 @@ import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBoo
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -339,32 +339,34 @@ function withDocumentStatus(departments, hospitalStatus) {
 async function loadHospitalDepartments(hospital) {
   if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
   const programme = hospital.accreditation?.programme;
-  const [masterListBuffer, clientFiles, versionManifests] = await Promise.all([
-    getR2ClientFile(hospital.code, masterListTemplateFile, programme),
+  const [clientFiles, versionManifests] = await Promise.all([
     listR2ClientFiles(hospital.code, programme),
     getR2ClientVersionManifests(hospital.code, programme)
   ]);
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(masterListBuffer);
-  const masterList = extractMasterListDepartments(workbook);
-  return Object.fromEntries(Object.entries(masterList).map(([department, documents]) => [department, documents.map((document) => {
-    const match = matchTemplate(document, department, clientFiles);
-    const templatePath = match?.templatePath || null;
-    const docKey = getDocumentKey(document.documentId, document.documentName, templatePath);
-    const versionManifest = versionManifests.get(docKey) || (templatePath ? versionManifests.get(templatePath) : null) || (!document.documentId.includes("[") ? versionManifests.get(document.documentId) : null);
+  const departments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
+  for (const templatePath of clientFiles) {
+    if (path.basename(templatePath) === masterListTemplateFile) continue;
+    const [folder] = templatePath.split("/");
+    const department = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
+    const documentName = path.basename(templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, "");
+    const docKey = getDocumentKey("", documentName, templatePath);
+    const versionManifest = versionManifests.get(docKey) || versionManifests.get(templatePath);
     const isApproved = Boolean(versionManifest && versionManifest.history && versionManifest.history.some((entry) => entry.action && entry.action !== "template baseline"));
-    return {
-      ...document,
+    departments[department].push({
+      documentName,
+      documentId: "",
       id: `${department}:${docKey}`,
       active: true,
-      confidence: match?.score >= 0.6 ? "high" : match?.score >= 0.35 ? "medium" : "low",
+      confidence: "high",
       matchedFilePath: templatePath,
       relativeFilePath: templatePath,
       version: isApproved ? versionManifest.currentVersion : null,
       approved: isApproved,
       history: versionManifest?.history || []
-    };
-  })]));
+    });
+  }
+  for (const documents of Object.values(departments)) documents.sort((left, right) => left.documentName.localeCompare(right.documentName));
+  return departments;
 }
 
 async function recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action) {
@@ -387,6 +389,16 @@ async function recordDocumentStatusAudit(hospital, documentId, previousStatus, e
   return auditEntry;
 }
 
+async function getPersistentDocumentStatus(hospital) {
+  return r2TemplateStorageEnabled() ? getR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme) : getHospitalDocumentStatus(hospital.id);
+}
+
+async function persistDocumentStatus(hospital, documentId, status, updatedBy, note) {
+  const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
+  if (r2TemplateStorageEnabled()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...await getPersistentDocumentStatus(hospital), [documentId]: entry });
+  return entry;
+}
+
 app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
@@ -394,7 +406,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
-    const hospitalStatus = await getHospitalDocumentStatus(hospital.id);
+    const hospitalStatus = await getPersistentDocumentStatus(hospital);
     const departments = await loadHospitalDepartments(hospital);
     response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository });
   } catch (error) { next(error); }
@@ -404,7 +416,7 @@ app.get("/api/admin/hospitals/:hospitalId/document-status", async (request, resp
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    response.json({ status: await getHospitalDocumentStatus(hospital.id), statuses: DOCUMENT_STATUSES });
+    response.json({ status: await getPersistentDocumentStatus(hospital), statuses: DOCUMENT_STATUSES });
   } catch (error) { next(error); }
 });
 
@@ -413,8 +425,8 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const { documentId, status, updatedBy, note } = request.body || {};
-    const previousStatus = (await getHospitalDocumentStatus(hospital.id))[documentId]?.status || "not_started";
-    const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
+    const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
+    const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note);
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry);
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -427,7 +439,7 @@ app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, r
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
-    const [departments, hospitalStatus] = await Promise.all([loadHospitalDepartments(hospital), getHospitalDocumentStatus(hospital.id)]);
+    const [departments, hospitalStatus] = await Promise.all([loadHospitalDepartments(hospital), getPersistentDocumentStatus(hospital)]);
     const categories = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, Object.fromEntries(DOCUMENT_STATUSES.map((status) => [status, 0]))]));
     let total = 0, ready = 0;
     for (const documents of Object.values(departments)) {
@@ -535,8 +547,11 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     const { documentId, action, updatedBy, note } = request.body || {};
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    const previousStatus = (await getHospitalDocumentStatus(hospital.id))[documentId]?.status || "not_started";
+    const persistentStatus = await getPersistentDocumentStatus(hospital);
+    const previousStatus = persistentStatus[documentId]?.status || "not_started";
+    if (persistentStatus[documentId]) await setHospitalDocumentStatus(hospital.id, documentId, persistentStatus[documentId].status, persistentStatus[documentId].updatedBy, persistentStatus[documentId].note);
     const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note);
+    if (r2TemplateStorageEnabled()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [documentId]: entry });
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }

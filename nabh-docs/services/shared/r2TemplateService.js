@@ -205,6 +205,19 @@ export async function recordR2ClientAuditEvent(hospital, event) {
   return payload;
 }
 
+export async function getR2ClientDocumentStatuses(hospitalCode, programme) {
+  if (!isEnabled()) return {};
+  const settings = config();
+  return (await getJsonObject(settings, `${clientPrefix(hospitalCode, programme)}status/document-status.json`)) || {};
+}
+
+export async function saveR2ClientDocumentStatuses(hospitalCode, programme, statuses) {
+  if (!isEnabled()) return null;
+  const settings = config();
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode, programme)}status/document-status.json`, Body: JSON.stringify(statuses, null, 2), ContentType: "application/json" }));
+  return statuses;
+}
+
 export async function listR2TemplateAuditEvents() {
   if (!isEnabled()) return [];
   const settings = config();
