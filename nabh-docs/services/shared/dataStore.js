@@ -33,6 +33,20 @@ export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);
 }
 
+export async function addHospital(hospital) {
+  return (await store()).addHospital(hospital);
+}
+
+export async function saveHospital(hospital) {
+  return (await store()).saveHospital(hospital);
+}
+
+export async function saveHospitalUser(hospitalId, user) { return (await store()).saveHospitalUser(hospitalId, user); }
+export async function deleteHospitalUserRecord(hospitalId, userId) { return (await store()).deleteHospitalUserRecord(hospitalId, userId); }
+export async function saveHospitalRole(hospitalId, role) { return (await store()).saveHospitalRole(hospitalId, role); }
+export async function deleteHospitalRoleRecord(hospitalId, roleId) { return (await store()).deleteHospitalRoleRecord(hospitalId, roleId); }
+export async function deleteHospitalRecord(hospitalId) { return (await store()).deleteHospitalRecord(hospitalId); }
+
 export async function readDocumentMatches() {
   return (await store()).readDocumentMatches();
 }

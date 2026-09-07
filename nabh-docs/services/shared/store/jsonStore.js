@@ -35,6 +35,29 @@ export async function saveHospitals(hospitals) {
   await writeJson(hospitalsPath, hospitals);
 }
 
+export async function addHospital(hospital) {
+  const hospitals = await readHospitals();
+  hospitals.push(hospital);
+  await saveHospitals(hospitals);
+  return hospital;
+}
+
+export async function saveHospital(hospital) {
+  const hospitals = await readHospitals();
+  const index = hospitals.findIndex((item) => item.id === hospital.id);
+  if (index === -1) return null;
+  hospitals[index] = hospital;
+  await saveHospitals(hospitals);
+  return hospital;
+}
+
+async function mutateHospital(hospitalId, mutate) { const hospitals = await readHospitals(); const hospital = hospitals.find((item) => item.id === hospitalId); if (!hospital) return null; const result = mutate(hospital); await saveHospitals(hospitals); return result; }
+export async function saveHospitalUser(hospitalId, user) { return mutateHospital(hospitalId, (hospital) => { const index = (hospital.users || []).findIndex((item) => item.id === user.id); if (index === -1) hospital.users.push(user); else hospital.users[index] = user; hospital.updatedAt = new Date().toISOString(); return user; }); }
+export async function deleteHospitalUserRecord(hospitalId, userId) { return mutateHospital(hospitalId, (hospital) => { const before = hospital.users.length; hospital.users = hospital.users.filter((user) => user.id !== userId); return hospital.users.length !== before; }); }
+export async function saveHospitalRole(hospitalId, role) { return mutateHospital(hospitalId, (hospital) => { hospital.roles ||= []; const index = hospital.roles.findIndex((item) => item.id === role.id); if (index === -1) hospital.roles.push(role); else hospital.roles[index] = role; return role; }); }
+export async function deleteHospitalRoleRecord(hospitalId, roleId) { return mutateHospital(hospitalId, (hospital) => { const before = hospital.roles.length; hospital.roles = hospital.roles.filter((role) => role.id !== roleId); return hospital.roles.length !== before; }); }
+export async function deleteHospitalRecord(hospitalId) { const hospitals = await readHospitals(); const remaining = hospitals.filter((hospital) => hospital.id !== hospitalId); if (remaining.length === hospitals.length) return false; await saveHospitals(remaining); return true; }
+
 export async function readDocumentMatches() {
   return readJson(documentMatchesPath, null);
 }

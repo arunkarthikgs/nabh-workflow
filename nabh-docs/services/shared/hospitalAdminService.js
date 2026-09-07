@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
-import { readDocumentMatches, readHospitals, saveHospitals } from "../shared/dataStore.js";
+import { addHospital, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
@@ -88,9 +88,7 @@ export async function createHospital(input) {
   if (hospitals.some((hospital) => hospital.code === code)) throw new Error("Client code already exists.");
   const now = new Date().toISOString();
   const hospital = { id: randomUUID(), name, code, location: text(input.location), status: "pending", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, users: [], createdAt: now, updatedAt: now };
-  hospitals.push(hospital);
-  await saveHospitals(hospitals);
-  return hospital;
+  return addHospital(hospital);
 }
 
 export async function updateHospital(id, input) {
@@ -102,8 +100,7 @@ export async function updateHospital(id, input) {
   if (!name || !code) throw new Error("Hospital name and client code are required.");
   if (hospitals.some((item) => item.id !== id && item.code === code)) throw new Error("Client code already exists.");
   Object.assign(hospital, { name, code, location: text(input.location), status: input.status === "inactive" ? "inactive" : "active", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, updatedAt: new Date().toISOString() });
-  await saveHospitals(hospitals);
-  return hospital;
+  return saveHospital(hospital);
 }
 
 export async function approveHospitalOnboarding(id) {
@@ -114,8 +111,7 @@ export async function approveHospitalOnboarding(id) {
   hospital.status = "active";
   hospital.registrationStatus = "approved";
   hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return hospital;
+  return saveHospital(hospital);
 }
 
 export async function setHospitalLogoPath(id, logoPath) {
@@ -124,16 +120,11 @@ export async function setHospitalLogoPath(id, logoPath) {
   if (!hospital) return null;
   hospital.logoPath = text(logoPath);
   hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return hospital;
+  return saveHospital(hospital);
 }
 
 export async function deleteHospital(id) {
-  const hospitals = await readHospitals();
-  const remaining = hospitals.filter((hospital) => hospital.id !== id);
-  if (remaining.length === hospitals.length) return false;
-  await saveHospitals(remaining);
-  return true;
+  return deleteHospitalRecord(id);
 }
 
 export async function addHospitalUser(hospitalId, input) {
@@ -144,9 +135,7 @@ export async function addHospitalUser(hospitalId, input) {
   if (!hospital) return null;
   if (hospital.users.some((user) => user.email === email)) throw new Error("A user with this email already exists for this hospital.");
   const user = { id: randomUUID(), name, email, role, active: input.active !== false, dateOfBirth: text(input.dateOfBirth), gender: text(input.gender), mobileNumber: text(input.mobileNumber), address: text(input.address), employeeId: text(input.employeeId), department: text(input.department), dateOfJoining: text(input.dateOfJoining), employmentType: text(input.employmentType), createdAt: new Date().toISOString() };
-  hospital.users.push(user); hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return user;
+  return saveHospitalUser(hospital.id, user);
 }
 
 export async function updateHospitalUser(hospitalId, userId, input) {
@@ -158,9 +147,8 @@ export async function updateHospitalUser(hospitalId, userId, input) {
   const name = text(input.name), email = text(input.email).toLowerCase(), role = text(input.role);
   if (!name || !email || !role) throw new Error("User name, email, and role are required.");
   if (hospital.users.some((item) => item.id !== userId && item.email === email)) throw new Error("A user with this email already exists for this hospital.");
-  Object.assign(user, { name, email, role, active: input.active !== false, dateOfBirth: text(input.dateOfBirth), gender: text(input.gender), mobileNumber: text(input.mobileNumber), address: text(input.address), employeeId: text(input.employeeId), department: text(input.department), dateOfJoining: text(input.dateOfJoining), employmentType: text(input.employmentType) }); hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return user;
+  Object.assign(user, { name, email, role, active: input.active !== false, dateOfBirth: text(input.dateOfBirth), gender: text(input.gender), mobileNumber: text(input.mobileNumber), address: text(input.address), employeeId: text(input.employeeId), department: text(input.department), dateOfJoining: text(input.dateOfJoining), employmentType: text(input.employmentType) });
+  return saveHospitalUser(hospital.id, user);
 }
 
 export async function deleteHospitalUser(hospitalId, userId) {
@@ -169,9 +157,7 @@ export async function deleteHospitalUser(hospitalId, userId) {
   if (!hospital) return undefined;
   const users = hospital.users.filter((user) => user.id !== userId);
   if (users.length === hospital.users.length) return false;
-  hospital.users = users; hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return true;
+  return deleteHospitalUserRecord(hospital.id, userId);
 }
 
 export async function listHospitalRoles(hospitalId) {
@@ -194,7 +180,7 @@ export async function listHospitalRoles(hospitalId) {
       changed = true;
     }
   });
-  if (changed) await saveHospitals(hospitals);
+  if (changed) await Promise.all(roles.map((role) => saveHospitalRole(hospital.id, role)));
   return roles;
 }
 
@@ -207,7 +193,7 @@ export async function createHospitalRole(hospitalId, input) {
   const roles = rolesForHospital(hospital);
   if (roles.some((role) => role.name.toLowerCase() === name.toLowerCase())) throw new Error("This role already exists.");
   const role = { id: randomUUID(), name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), permissions: permissions(input.permissions, name) };
-  roles.push(role); await saveHospitals(hospitals); return role;
+  return saveHospitalRole(hospital.id, role);
 }
 
 export async function updateHospitalRole(hospitalId, roleId, input) {
@@ -219,7 +205,7 @@ export async function updateHospitalRole(hospitalId, roleId, input) {
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
   Object.assign(role, { name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), permissions: permissions(input.permissions, name) });
-  await saveHospitals(hospitals); return role;
+  return saveHospitalRole(hospital.id, role);
 }
 
 export async function deleteHospitalRole(hospitalId, roleId) {
@@ -229,7 +215,7 @@ export async function deleteHospitalRole(hospitalId, roleId) {
   const roles = rolesForHospital(hospital);
   const remaining = roles.filter((role) => role.id !== roleId);
   if (remaining.length === roles.length) return false;
-  hospital.roles = remaining; await saveHospitals(hospitals); return true;
+  return deleteHospitalRoleRecord(hospital.id, roleId);
 }
 
 const requiredProfileFields = ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"];
@@ -268,9 +254,7 @@ export async function registerHospital(input) {
     }],
     createdAt: now, updatedAt: now
   };
-  hospitals.push(hospital);
-  await saveHospitals(hospitals);
-  return hospital;
+  return addHospital(hospital);
 }
 
 // Locates the hospital + user owning a still-valid password setup token, without exposing tokens elsewhere.
@@ -300,7 +284,7 @@ export async function completePasswordSetup(token, password) {
   delete user.passwordSetupToken;
   delete user.passwordSetupExpiresAt;
   hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
+  await saveHospitalUser(hospital.id, user);
   return { hospital, user };
 }
 
@@ -313,7 +297,7 @@ export async function resetHospitalUserPassword(userId) {
     user.passwordSetupToken = generateSetupToken();
     user.passwordSetupExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     hospital.updatedAt = new Date().toISOString();
-    await saveHospitals(hospitals);
+    await saveHospitalUser(hospital.id, user);
     return { hospital, user };
   }
   return null;
@@ -338,6 +322,5 @@ export async function submitHospitalProfile(hospitalId, details) {
   if (!hospital) return null;
   hospital.details = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
   hospital.updatedAt = new Date().toISOString();
-  await saveHospitals(hospitals);
-  return hospital;
+  return saveHospital(hospital);
 }

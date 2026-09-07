@@ -314,6 +314,48 @@ export async function saveHospitals(hospitals) {
   }
 }
 
+export async function addHospital(hospital) {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    const { rows: [position] } = await client.query(`select coalesce(max(ordinal), -1) + 1 as ordinal from hospitals`);
+    await client.query(
+      `insert into hospitals (id, ordinal, name, code, location, status, logo_data_url, logo_path, repository, details, roles_seeded, registration_status, accreditation, created_at, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13::jsonb, $14, $15)`,
+      [hospital.id, position.ordinal, hospital.name, hospital.code, hospital.location || "", hospital.status || "pending", hospital.logoDataUrl || "", hospital.logoPath || "", JSON.stringify(hospital.repository || {}), JSON.stringify(hospital.details || {}), Array.isArray(hospital.roles), hospital.registrationStatus || "", JSON.stringify(hospital.accreditation || {}), isoDate(hospital.createdAt), isoDate(hospital.updatedAt)]
+    );
+    for (const [index, user] of (hospital.users || []).entries()) {
+      await client.query(
+        `insert into hospital_users (id, hospital_id, ordinal, name, email, role, active, profile, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+        [user.id, hospital.id, index, user.name, user.email, user.role, user.active !== false, JSON.stringify(profileOf(user)), isoDate(user.createdAt)]
+      );
+    }
+    await client.query("commit");
+    return hospital;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function saveHospital(hospital) {
+  const client = await connect();
+  const result = await client.query(
+    `update hospitals set name = $2, code = $3, location = $4, status = $5, logo_data_url = $6, logo_path = $7,
+       repository = $8::jsonb, details = $9::jsonb, registration_status = $10, accreditation = $11::jsonb, updated_at = $12 where id = $1`,
+    [hospital.id, hospital.name, hospital.code, hospital.location || "", hospital.status || "active", hospital.logoDataUrl || "", hospital.logoPath || "", JSON.stringify(hospital.repository || {}), JSON.stringify(hospital.details || {}), hospital.registrationStatus || "", JSON.stringify(hospital.accreditation || {}), isoDate(hospital.updatedAt)]
+  );
+  return result.rowCount ? hospital : null;
+}
+
+export async function saveHospitalUser(hospitalId, user) { const client = await connect(); await client.query(`insert into hospital_users (id, hospital_id, ordinal, name, email, role, active, profile, created_at) values ($1,$2,coalesce((select max(ordinal)+1 from hospital_users where hospital_id=$2),0),$3,$4,$5,$6,$7::jsonb,$8) on conflict (id) do update set name=excluded.name,email=excluded.email,role=excluded.role,active=excluded.active,profile=excluded.profile`, [user.id, hospitalId, user.name, user.email, user.role, user.active !== false, JSON.stringify(profileOf(user)), isoDate(user.createdAt)]); return user; }
+export async function deleteHospitalUserRecord(hospitalId, userId) { const client = await connect(); return Boolean((await client.query(`delete from hospital_users where hospital_id=$1 and id=$2`, [hospitalId, userId])).rowCount); }
+export async function saveHospitalRole(hospitalId, role) { const client = await connect(); await client.query(`insert into hospital_roles (id,hospital_id,ordinal,name,reports,document_access,permissions,default_access_applied) values ($1,$2,coalesce((select max(ordinal)+1 from hospital_roles where hospital_id=$2),0),$3,$4::jsonb,$5::jsonb,$6::jsonb,$7) on conflict (id) do update set name=excluded.name,reports=excluded.reports,document_access=excluded.document_access,permissions=excluded.permissions,default_access_applied=excluded.default_access_applied`, [role.id,hospitalId,role.name,JSON.stringify(role.reports || []),JSON.stringify(role.documentAccess || {}),JSON.stringify(role.permissions || []),Boolean(role.defaultAccessApplied)]); return role; }
+export async function deleteHospitalRoleRecord(hospitalId, roleId) { const client = await connect(); return Boolean((await client.query(`delete from hospital_roles where hospital_id=$1 and id=$2`, [hospitalId, roleId])).rowCount); }
+export async function deleteHospitalRecord(hospitalId) { const client = await connect(); return Boolean((await client.query(`delete from hospitals where id=$1`, [hospitalId])).rowCount); }
+
 export async function readDocumentMatches() {
   const client = await connect();
   const { rows } = await client.query(`select department, document from document_matches order by department_ordinal, ordinal`);

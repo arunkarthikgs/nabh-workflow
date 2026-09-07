@@ -1,5 +1,5 @@
 // Rule-based recommendation of the applicable NABH accreditation programme from the institutional profile.
-import { readHospitals, saveHospitals } from "./dataStore.js";
+import { readHospitals, saveHospital } from "./dataStore.js";
 
 // R2 stores templates per accreditation programme under Templates/<slug>/ - this must stay in sync
 // with how client repositories are provisioned in r2TemplateService.js.
@@ -112,6 +112,6 @@ export async function selectAccreditationProgramme(hospitalId, programme, decide
   if (!hospital) return null;
   hospital.accreditation = { programme, decidedBy: typeof decidedBy === "string" && decidedBy.trim() ? decidedBy.trim() : "Hospital", decidedAt: new Date().toISOString() };
   hospital.updatedAt = hospital.accreditation.decidedAt;
-  await saveHospitals(hospitals);
+  await saveHospital(hospital);
   return hospital.accreditation;
 }
