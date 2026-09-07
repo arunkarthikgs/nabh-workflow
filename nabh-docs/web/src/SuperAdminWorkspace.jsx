@@ -132,6 +132,7 @@ export default function SuperAdminWorkspace() {
           </div>
         </div>
         <p className="intro">Register and maintain client hospitals.</p>
+        <a className="secondary-button" href="#application-users"><Users size={16} /> Application users</a>
       </header>
       <section className="admin-layout">
         <aside className="hospital-list">
@@ -270,7 +271,7 @@ export default function SuperAdminWorkspace() {
           {message && <p className="admin-message">{message}</p>}
         </form>
       </section>
-      <section className="document-panel">
+      <section className="document-panel" id="application-users">
         <div className="panel-heading"><Users size={18} /><h2>Application users</h2><span className="count">{matchingUsers.length} users</span></div>
         <label className="filter-box document-search"><Search size={14} /><input value={userQuery} onChange={(event) => setUserQuery(event.target.value)} placeholder="Search name, email, hospital, or client code" /></label>
         {matchingUsers.length === 0 ? <p className="empty">No users match this search.</p> : <table><thead><tr><th>User</th><th>Hospital</th><th>Role</th><th>Status</th><th aria-label="Actions" /></tr></thead><tbody>{matchingUsers.map((user) => <tr key={user.id}><td><strong>{user.name}</strong><br /><span className="mono">{user.email}</span></td><td>{user.hospitalName}<br /><span className="mono">{user.hospitalCode}</span></td><td>{user.role}</td><td>{user.active === false ? "Inactive" : "Active"}</td><td><button className="icon-button" title={`Send password reset link to ${user.email}`} onClick={() => resetPassword(user)}><KeyRound size={17} /></button></td></tr>)}</tbody></table>}
