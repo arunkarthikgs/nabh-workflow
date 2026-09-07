@@ -1283,21 +1283,7 @@ function MasterListWorkspace({
                     />
                   </th>
                   <th>Active</th>
-                  <th
-                    className="sortable"
-                    onClick={() => setSort("documentId")}
-                  >
-                    Document ID {sortIndicator("documentId")}
-                  </th>
                   <th>Document Name</th>
-                  <th>Department</th>
-                  <th>Matched File</th>
-                  <th
-                    className="sortable"
-                    onClick={() => setSort("confidence")}
-                  >
-                    Confidence {sortIndicator("confidence")}
-                  </th>
                   <th>Readiness</th>
                   <th>Version</th>
                 </tr>
@@ -1335,22 +1321,6 @@ function MasterListWorkspace({
                             {doc.active ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="mono">
-                          {isEditing ? (
-                            <input
-                              className="edit-input"
-                              value={editDraft.documentId}
-                              onChange={(event) =>
-                                setEditDraft((current) => ({
-                                  ...current,
-                                  documentId: event.target.value,
-                                }))
-                              }
-                            />
-                          ) : (
-                            doc.documentId
-                          )}
-                        </td>
                         <td className="hospital-document-name-cell">
                           {isEditing ? (
                             <input
@@ -1366,72 +1336,10 @@ function MasterListWorkspace({
                           ) : (
                             doc.documentName
                           )}
-                        </td>
-                        <td className="dept-badge-cell">
-                          <span className="dept-badge">{doc.department}</span>
-                        </td>
-                        <td
-                          className="file-cell hospital-document-file-cell"
-                          title={doc.matchedFilePath || ""}
-                        >
-                          {isEditing ? (
-                            <input
-                              className="edit-input"
-                              value={editDraft.matchedFilePath}
-                              onChange={(event) =>
-                                setEditDraft((current) => ({
-                                  ...current,
-                                  matchedFilePath: event.target.value,
-                                }))
-                              }
-                            />
-                          ) : doc.matchedFilePath ? (
-                            <span>
-                              {(doc.relativeFilePath || doc.matchedFilePath)
-                                .split("/")
-                                .pop()}
-                            </span>
-                          ) : (
-                            <span className="no-match">No file matched</span>
-                          )}
-                          {!isEditing && doc.reusedAcrossDocuments && (
-                            <span className="reused">
-                              {" "}
-                              (reused x{doc.reusedAcrossDocuments})
-                            </span>
-                          )}
-                          {!isEditing &&
-                            (doc.relativeFilePath || doc.matchedFilePath) && (
-                              <span className="policy-actions hospital-document-actions">
-                                <button
-                                  className="icon-button"
-                                  title="Preview document as PDF"
-                                  onClick={() => setPreviewDocument(doc)}
-                                >
-                                  <Eye size={14} />
-                                </button>
-                                <a
-                                  className="icon-button"
-                                  href={
-                                    isAacPolicy(doc)
-                                      ? "/api/documents/aac-policy/download"
-                                      : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`
-                                  }
-                                  title={`Download original file (${(doc.relativeFilePath || doc.matchedFilePath).split(".").pop().toUpperCase()})`}
-                                >
-                                  <Download size={14} />
-                                </a>
-                              </span>
-                            )}
-                          {canEdit && !isEditing && doc.matchedFilePath && (
-                            <button
-                              className="icon-button document-edit-button"
-                              title="Open and edit document"
-                              onClick={() => startDocumentEdit(doc)}
-                            >
-                              <FilePenLine size={14} />
-                            </button>
-                          )}
+                          {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <span className="hospital-document-actions">
+                            <button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={15} /></button>
+                            <a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={15} /></a>
+                          </span>}
                           {canEdit && !isEditing && (
                             <button
                               className="icon-button document-edit-button questionnaire-document-action"
@@ -1455,11 +1363,6 @@ function MasterListWorkspace({
                               <Upload size={14} />
                             </button>
                           )}
-                        </td>
-                        <td>
-                          <span className={confidenceClass(doc.confidence)}>
-                            {doc.confidence}
-                          </span>
                         </td>
                         <td>
                           <select
@@ -1577,15 +1480,6 @@ function MasterListWorkspace({
                                   Not approved
                                 </span>
                               )}
-                              {canEdit && (
-                                <button
-                                  className="icon-button"
-                                  title="Edit"
-                                  onClick={() => startEdit(doc)}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                              )}
                             </span>
                           )}
                         </td>
@@ -1593,7 +1487,7 @@ function MasterListWorkspace({
                       {expandedHistoryId === doc.id &&
                         isApprovedDocument(doc) && (
                           <tr className="history-row">
-                            <td colSpan={9}>
+                            <td colSpan={5}>
                               <table className="history-table">
                                 <thead>
                                   <tr>
