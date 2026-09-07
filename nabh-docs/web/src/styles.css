@@ -69,6 +69,17 @@ tr.doc-inactive td.mono { color: #c5c7e0; }
 .badge-medium { background: #fff4dd; color: #b0791e; }
 .badge-low { background: #ffe9ec; color: #c23a56; }
 
+.readiness-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.readiness-chip { border-radius: 999px; font-size: 11px; font-weight: 600; padding: 3px 10px; }
+.readiness-not_started { background: #efeff4; color: #6b6f80; }
+.readiness-information_required { background: #ffe9ec; color: #c23a56; }
+.readiness-draft_generated { background: #fff4dd; color: #b0791e; }
+.readiness-under_review { background: #e6ecff; color: #3547d1; }
+.readiness-approved { background: #e4f7ec; color: #1e9e5c; }
+.readiness-implemented { background: #dcf5f0; color: #147d68; }
+.readiness-evidence_available { background: #ede4ff; color: #6a3fc2; }
+.readiness-select { border: 1px solid #e2e4fb; border-radius: 8px; font: 500 11px Poppins; padding: 4px 6px; }
+
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: #3547d1; }
 th.sortable svg { vertical-align: -1px; }

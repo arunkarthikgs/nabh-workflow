@@ -14,3 +14,13 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # OnlyOffice integration.
 # ONLYOFFICE_DOCUMENT_SERVER_URL=https://onlyoffice.example.test
 # ONLYOFFICE_JWT_SECRET=your-onlyoffice-jwt-secret
+
+# Outbound email (welcome/set-password links). Without these, mail falls back to a local
+# dev outbox (output/outbox/*.json) - NOT usable in production, since container storage
+# is ephemeral. Set as Cloudflare Worker secrets in production, same as the keys above.
+# SMTP_HOST=smtp.example.test
+# SMTP_PORT=587
+# SMTP_SECURE=false
+# SMTP_USER=your-smtp-username
+# SMTP_PASS=your-smtp-password
+# SMTP_FROM=NABH Readiness Platform <no-reply@your-domain.test>

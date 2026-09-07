@@ -14,7 +14,13 @@ const forwardedKeys = [
   "ONLYOFFICE_DOCUMENT_SERVER_URL",
   "ONLYOFFICE_JWT_SECRET",
   "POSTGRES_URL",
-  "POSTGRES_SSL"
+  "POSTGRES_SSL",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_SECURE",
+  "SMTP_USER",
+  "SMTP_PASS",
+  "SMTP_FROM"
 ];
 
 export class NabhApp extends Container {

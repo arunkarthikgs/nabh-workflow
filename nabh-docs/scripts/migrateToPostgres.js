@@ -33,5 +33,23 @@ if (audit.length) {
   console.log(`Imported ${audit.length} audit entr(ies).`);
 }
 
+const documentStatus = await readJson("documentStatus.json", null);
+if (documentStatus && Object.keys(documentStatus).length) {
+  await postgresStore.saveDocumentStatus(documentStatus);
+  console.log(`Imported readiness status for ${Object.keys(documentStatus).length} hospital(s).`);
+}
+
+const documentDrafts = await readJson("documentDrafts.json", null);
+if (documentDrafts && Object.keys(documentDrafts).length) {
+  await postgresStore.saveDocumentDrafts(documentDrafts);
+  console.log(`Imported document drafts for ${Object.keys(documentDrafts).length} hospital(s).`);
+}
+
+const bookings = await readJson("bookings.json", []);
+if (bookings.length) {
+  await postgresStore.saveBookings(bookings);
+  console.log(`Imported ${bookings.length} booking(s).`);
+}
+
 await postgresStore.close();
 console.log("Migration complete.");

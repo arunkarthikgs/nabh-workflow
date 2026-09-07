@@ -49,6 +49,30 @@ export async function saveDocumentAudit(entries) {
   return (await store()).saveDocumentAudit(entries);
 }
 
+export async function readDocumentStatus() {
+  return (await store()).readDocumentStatus();
+}
+
+export async function saveDocumentStatus(statusByHospital) {
+  return (await store()).saveDocumentStatus(statusByHospital);
+}
+
+export async function readDocumentDrafts() {
+  return (await store()).readDocumentDrafts();
+}
+
+export async function saveDocumentDrafts(draftsByHospital) {
+  return (await store()).saveDocumentDrafts(draftsByHospital);
+}
+
+export async function readBookings() {
+  return (await store()).readBookings();
+}
+
+export async function saveBookings(bookings) {
+  return (await store()).saveBookings(bookings);
+}
+
 export async function closeDataStore() {
   if (!storePromise) return;
   const active = await storePromise;

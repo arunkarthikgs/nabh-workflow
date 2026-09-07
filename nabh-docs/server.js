@@ -8,14 +8,21 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, listHospitalRoles, listHospitals, updateHospital, updateHospitalRole, updateHospitalUser } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { buildWelcomeEmail, sendEmail } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
 import { dataStoreDriver, dataStoreInfo, readDocumentAudit, readDocumentMatches, saveDocumentAudit, saveDocumentMatches } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
+import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
+import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
+import { NABH_WORKSPACE_CATEGORIES, classifyDocument } from "./services/shared/documentCategoryService.js";
+import { generateDocumentDraft, getDocumentDraft, performDocumentAction } from "./services/shared/draftGenerationService.js";
+import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
+import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2TemplateFile, listR2ClientAuditEvents, listR2ClientFiles, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, getDocumentKey, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifests, getR2ProgrammeTemplateFile, getR2TemplateFile, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -29,6 +36,21 @@ const masterListTemplatePath = path.join(templateRoot, masterListTemplateFile);
 const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
+
+// Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
+// programme templates into R2 can take minutes. Callers read progress via repositorySyncJobs.
+function startRepositoryProvisioning(hospital, { syncNewTemplates = false } = {}) {
+  const existingJob = repositorySyncJobs.get(hospital.id);
+  if (existingJob?.status === "running") return existingJob;
+  const job = { status: "running", hospitalCode: hospital.code, startedAt: new Date().toISOString(), copied: 0, skipped: 0 };
+  repositorySyncJobs.set(hospital.id, job);
+  provisionR2ClientRepository(hospital, { syncNewTemplates })
+    .then((repository) => Object.assign(job, repository.provisioned === false
+      ? { status: "failed", completedAt: new Date().toISOString(), error: repository.error || "No templates found.", ...repository }
+      : { status: "complete", completedAt: new Date().toISOString(), ...repository }))
+    .catch((error) => Object.assign(job, { status: "failed", completedAt: new Date().toISOString(), error: error.message }));
+  return job;
+}
 
 loadConfig();
 const onlyOffice = createOnlyOfficeService({
@@ -70,8 +92,7 @@ app.get("/api/admin/hospitals", async (_request, response, next) => {
 app.post("/api/admin/hospitals", async (request, response, next) => {
   try {
     const hospital = await createHospital(request.body || {});
-    const repository = await provisionR2ClientRepository(hospital);
-    response.status(201).json({ hospital, repository });
+    response.status(201).json({ hospital, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" } });
   }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -81,21 +102,15 @@ app.post("/api/admin/hospitals/:hospitalId/client-repository", async (request, r
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     response.json({ repository: await provisionR2ClientRepository(hospital) });
-  } catch (error) { next(error); }
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/client-repository/sync", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    const existingJob = repositorySyncJobs.get(hospital.id);
-    if (existingJob?.status === "running") return response.status(202).json({ job: existingJob });
-    const job = { status: "running", hospitalCode: hospital.code, startedAt: new Date().toISOString(), copied: 0, skipped: 0 };
-    repositorySyncJobs.set(hospital.id, job);
-    provisionR2ClientRepository(hospital, { syncNewTemplates: true })
-      .then((repository) => Object.assign(job, { status: "complete", completedAt: new Date().toISOString(), ...repository }))
-      .catch((error) => Object.assign(job, { status: "failed", completedAt: new Date().toISOString(), error: error.message }));
-    response.status(202).json({ job });
+    if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before syncing the document workspace.", reason: "accreditation_required" });
+    response.status(202).json({ job: startRepositoryProvisioning(hospital, { syncNewTemplates: true }) });
   } catch (error) { next(error); }
 });
 
@@ -104,7 +119,7 @@ app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (requ
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const job = repositorySyncJobs.get(hospital.id);
-    const repository = await getR2ClientRepositoryStatus(hospital.code);
+    const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
     response.json({ repository, job: job || null });
   } catch (error) { next(error); }
 });
@@ -173,8 +188,10 @@ async function listTemplateFiles(directory = templateRoot, relativePath = "") {
   return files;
 }
 
-async function getTemplateFiles() {
-  return r2TemplateStorageEnabled() ? listR2TemplateFiles() : listTemplateFiles();
+async function getTemplateFiles(programme) {
+  if (r2TemplateStorageEnabled()) return programme ? listR2ProgrammeTemplateFiles(programme) : listR2TemplateFiles();
+  const root = programme ? path.join(templateRoot, accreditationProgrammeSlug(programme)) : templateRoot;
+  try { return await listTemplateFiles(root); } catch (error) { if (error.code === "ENOENT") return []; throw error; }
 }
 
 async function getTemplateBuffer(relativePath) {
@@ -189,10 +206,15 @@ function normalizeTemplateName(value) {
     .toLowerCase();
 }
 
-async function readTemplateMasterList() {
+async function readTemplateMasterList(programme) {
   const workbook = new ExcelJS.Workbook();
-  if (r2TemplateStorageEnabled()) await workbook.xlsx.load(await getR2TemplateFile(masterListTemplateFile));
-  else await workbook.xlsx.readFile(masterListTemplatePath);
+  if (r2TemplateStorageEnabled()) {
+    const buffer = programme ? await getR2ProgrammeTemplateFile(programme, masterListTemplateFile) : await getR2TemplateFile(masterListTemplateFile);
+    await workbook.xlsx.load(buffer);
+  } else {
+    const root = programme ? path.join(templateRoot, accreditationProgrammeSlug(programme)) : templateRoot;
+    await workbook.xlsx.readFile(path.join(root, masterListTemplateFile));
+  }
   return extractMasterListDepartments(workbook);
 }
 
@@ -220,9 +242,15 @@ function matchTemplate(document, department, templateFiles) {
   return best;
 }
 
-app.get("/api/admin/template-library", async (_request, response, next) => {
+app.get("/api/admin/template-library", async (request, response, next) => {
+  const programme = typeof request.query.programme === "string" && request.query.programme.trim() ? request.query.programme.trim() : "";
   try {
-    const [masterList, templateFiles] = await Promise.all([readTemplateMasterList(), getTemplateFiles()]);
+    if (programme && !NABH_ACCREDITATION_PROGRAMMES.includes(programme)) return response.status(400).json({ error: "Unknown NABH accreditation programme." });
+    const templateFiles = await getTemplateFiles(programme || undefined);
+    if (programme && !templateFiles.length) {
+      return response.json({ departments: {}, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0, error: `No templates found yet for the "${programme}" programme. Ask an administrator to upload templates for this programme.` });
+    }
+    const masterList = await readTemplateMasterList(programme || undefined);
     const matchedFiles = new Set();
     const departments = Object.fromEntries(Object.entries(masterList).map(([department, documents]) => [department, documents.map((document) => {
       const match = matchTemplate(document, department, templateFiles);
@@ -230,51 +258,246 @@ app.get("/api/admin/template-library", async (_request, response, next) => {
       if (templatePath) matchedFiles.add(templatePath);
       return { ...document, templatePath, fileName: templatePath ? path.basename(templatePath) : null, fileType: templatePath ? path.extname(templatePath).slice(1).toUpperCase() : null, matchScore: match ? Number(match.score.toFixed(3)) : 0 };
     })]));
-    response.json({ departments, masterListPath: r2TemplateStorageEnabled() ? `${r2TemplateStorageInfo().prefix}${masterListTemplateFile}` : masterListTemplatePath, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: templateFiles.length - matchedFiles.size });
+    response.json({ departments, programmes: NABH_ACCREDITATION_PROGRAMMES, programme: programme || null, masterListPath: r2TemplateStorageEnabled() ? `${r2TemplateStorageInfo().prefix}${programme ? `${accreditationProgrammeSlug(programme)}/` : ""}${masterListTemplateFile}` : masterListTemplatePath, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: templateFiles.length - matchedFiles.size });
   } catch (error) {
-    if (error.code === "ENOENT") return response.status(404).json({ error: `Master List template not found: ${masterListTemplatePath}` });
+    if (error.code === "ENOENT" || error.name === "NoSuchKey" || error.name === "NotFound") {
+      return response.json({ departments: {}, programmes: NABH_ACCREDITATION_PROGRAMMES, programme: programme || null, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0, error: programme ? `No Master List template found yet for the "${programme}" programme.` : `Master List template not found: ${masterListTemplatePath}` });
+    }
     next(error);
   }
 });
+
+function withDocumentStatus(departments, hospitalStatus) {
+  return Object.fromEntries(Object.entries(departments).map(([department, documents]) => [
+    department,
+    documents.map((document) => ({ ...document, readinessStatus: hospitalStatus[document.id]?.status || "not_started", category: classifyDocument(document.documentName) }))
+  ]));
+}
+
+async function loadHospitalDepartments(hospital) {
+  if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
+  const programme = hospital.accreditation?.programme;
+  const [masterListBuffer, clientFiles, versionManifests] = await Promise.all([
+    getR2ClientFile(hospital.code, masterListTemplateFile, programme),
+    listR2ClientFiles(hospital.code, programme),
+    getR2ClientVersionManifests(hospital.code, programme)
+  ]);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(masterListBuffer);
+  const masterList = extractMasterListDepartments(workbook);
+  return Object.fromEntries(Object.entries(masterList).map(([department, documents]) => [department, documents.map((document) => {
+    const match = matchTemplate(document, department, clientFiles);
+    const templatePath = match?.templatePath || null;
+    const docKey = getDocumentKey(document.documentId, document.documentName, templatePath);
+    const versionManifest = versionManifests.get(docKey) || (templatePath ? versionManifests.get(templatePath) : null) || (!document.documentId.includes("[") ? versionManifests.get(document.documentId) : null);
+    const isApproved = Boolean(versionManifest && versionManifest.history && versionManifest.history.some((entry) => entry.action && entry.action !== "template baseline"));
+    return {
+      ...document,
+      id: `${department}:${docKey}`,
+      active: true,
+      confidence: match?.score >= 0.6 ? "high" : match?.score >= 0.35 ? "medium" : "low",
+      matchedFilePath: templatePath,
+      relativeFilePath: templatePath,
+      version: isApproved ? versionManifest.currentVersion : null,
+      approved: isApproved,
+      history: versionManifest?.history || []
+    };
+  })]));
+}
 
 app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    const repository = await getR2ClientRepositoryStatus(hospital.code);
-    if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository });
-    if (!r2TemplateStorageEnabled()) {
-      const departments = await readDocumentMatches();
-      return response.json({ departments: departments || {}, repository });
-    }
-    const [masterListBuffer, clientFiles, versionManifests] = await Promise.all([
-      getR2ClientFile(hospital.code, masterListTemplateFile),
-      listR2ClientFiles(hospital.code),
-      getR2ClientVersionManifests(hospital.code)
-    ]);
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(masterListBuffer);
-    const masterList = extractMasterListDepartments(workbook);
-    const departments = Object.fromEntries(Object.entries(masterList).map(([department, documents]) => [department, documents.map((document) => {
-      const match = matchTemplate(document, department, clientFiles);
-      const templatePath = match?.templatePath || null;
-      const docKey = getDocumentKey(document.documentId, document.documentName, templatePath);
-      const versionManifest = versionManifests.get(docKey) || (templatePath ? versionManifests.get(templatePath) : null) || (!document.documentId.includes("[") ? versionManifests.get(document.documentId) : null);
-      const isApproved = Boolean(versionManifest && versionManifest.history && versionManifest.history.some((entry) => entry.action && entry.action !== "template baseline"));
-      return {
-        ...document,
-        id: `${department}:${docKey}`,
-        active: true,
-        confidence: match?.score >= 0.6 ? "high" : match?.score >= 0.35 ? "medium" : "low",
-        matchedFilePath: templatePath,
-        relativeFilePath: templatePath,
-        version: isApproved ? versionManifest.currentVersion : null,
-        approved: isApproved,
-        history: versionManifest?.history || []
-      };
-    })]));
-    response.json({ departments, repository });
+    if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
+    const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
+    if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
+    const hospitalStatus = await getHospitalDocumentStatus(hospital.id);
+    const departments = await loadHospitalDepartments(hospital);
+    response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository });
   } catch (error) { next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/document-status", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    response.json({ status: await getHospitalDocumentStatus(hospital.id), statuses: DOCUMENT_STATUSES });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const { documentId, status, updatedBy, note } = request.body || {};
+    const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
+    response.json({ documentId, entry });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
+    const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
+    if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
+    const [departments, hospitalStatus] = await Promise.all([loadHospitalDepartments(hospital), getHospitalDocumentStatus(hospital.id)]);
+    const categories = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, Object.fromEntries(DOCUMENT_STATUSES.map((status) => [status, 0]))]));
+    let total = 0, ready = 0;
+    for (const documents of Object.values(departments)) {
+      for (const document of documents) {
+        const category = classifyDocument(document.documentName);
+        const status = hospitalStatus[document.id]?.status || "not_started";
+        categories[category][status]++;
+        total++;
+        if (status === "approved" || status === "implemented" || status === "evidence_available") ready++;
+      }
+    }
+    response.json({ categories, total, readinessPercent: total ? Math.round((ready / total) * 100) : 0, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/accreditation", async (request, response, next) => {
+  try {
+    const state = await getAccreditationState(request.params.hospitalId);
+    if (!state) return response.status(404).json({ error: "Hospital not found." });
+    response.json(state);
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const selection = await selectAccreditationProgramme(request.params.hospitalId, request.body?.programme, request.body?.decidedBy);
+    // Force a full resync so switching programmes always overwrites any same-named files
+    // left over from a previously selected programme, instead of skipping existing ones.
+    const job = r2TemplateStorageEnabled() ? startRepositoryProvisioning({ ...hospital, accreditation: selection }, { syncNewTemplates: true }) : null;
+    response.json({ selection, job });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, next) => {
+  try {
+    const hospital = await submitHospitalProfile(request.params.hospitalId, request.body?.details);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    response.json({ hospital, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/register", async (request, response, next) => {
+  try {
+    const hospital = await registerHospital(request.body || {});
+    const user = hospital.users[0];
+    const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
+    const setupLink = `${origin}/?setPasswordToken=${user.passwordSetupToken}`;
+    const email = await sendEmail(buildWelcomeEmail(hospital, user, setupLink)).catch((error) => ({ delivered: false, error: error.message }));
+    const { passwordSetupToken, passwordSetupExpiresAt, ...safeUser } = user;
+    // The document workspace is not provisioned yet: it requires an accepted accreditation
+    // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
+    response.status(201).json({ hospital: { ...hospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/set-password/:token", async (request, response, next) => {
+  try {
+    const found = await findUserBySetupToken(request.params.token);
+    if (!found) return response.status(404).json({ error: "Invalid or expired setup link." });
+    if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) return response.status(410).json({ error: "This setup link has expired." });
+    response.json({ hospitalName: found.hospital.name, email: found.user.email });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/set-password", async (request, response, next) => {
+  try {
+    const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password);
+    const role = hospital.roles?.find((item) => item.name === user.role);
+    response.json({ session: { role: user.role, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath } });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/login", async (request, response, next) => {
+  try {
+    const userId = String(request.body?.userId || "").trim().toLowerCase();
+    const password = String(request.body?.password || "");
+    if (!userId.endsWith("-admin")) return response.status(401).json({ error: "Invalid credentials." });
+    const hospital = await verifyHospitalAdminPassword(userId.slice(0, -6), password);
+    if (!hospital) return response.status(401).json({ error: "Invalid credentials." });
+    const role = hospital.roles?.find((item) => item.name === "Hospital Administrator");
+    response.json({ session: { role: "Hospital Administrator", permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath } });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/documents/draft", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    if (!isProfileComplete(hospital)) return response.status(400).json({ error: "Complete the institutional profile before generating documents.", missingProfileFields: missingProfileFields(hospital) });
+    const { documentId, documentName, answers } = request.body || {};
+    const draft = await generateDocumentDraft(hospital, documentId, documentName, answers);
+    response.status(201).json({ draft });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/documents/draft", async (request, response, next) => {
+  try {
+    const draft = await getDocumentDraft(request.params.hospitalId, request.query.documentId);
+    response.json({ draft });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, response, next) => {
+  try {
+    const { documentId, action, updatedBy, note } = request.body || {};
+    const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note);
+    response.json({ documentId, entry });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/training/catalog", (_request, response) => {
+  response.json({ topics: TRAINING_TOPICS, catalog: TRAINING_CATALOG });
+});
+
+app.get("/api/consulting/catalog", (_request, response) => {
+  response.json({ catalog: CONSULTING_CATALOG });
+});
+
+app.post("/api/admin/hospitals/:hospitalId/training/generate", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    response.json({ pack: request.body?.serviceId ? generateTrainingMaterial(hospital, request.body.serviceId) : generateTrainingPack(hospital, request.body?.topic) });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/bookings", async (request, response, next) => {
+  try { response.json({ bookings: await listBookings(request.params.hospitalId) }); } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/bookings", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    response.status(201).json({ booking: await createBooking(hospital.id, request.body || {}) });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.patch("/api/admin/bookings/:bookingId", async (request, response, next) => {
+  try {
+    const booking = await updateBookingStatus(request.params.bookingId, request.body?.status, request.body?.updatedBy);
+    if (!booking) return response.status(404).json({ error: "Booking not found." });
+    response.json({ booking });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/bookings/:bookingId/recording", async (request, response, next) => {
+  try {
+    const booking = await attachBookingRecording(request.params.bookingId, request.body || {});
+    if (!booking) return response.status(404).json({ error: "Booking not found." });
+    response.json({ booking });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ type: "application/octet-stream", limit: "50mb" }), async (request, response, next) => {
@@ -310,7 +533,7 @@ async function findHospital(request) {
   return hospital;
 }
 
-async function resolveMasterTemplateBuffer(relativePath) {
+async function resolveMasterTemplateBuffer(relativePath, programme) {
   const norm = String(relativePath || "").replace(/\\/g, "/").trim();
   if (!norm) return null;
 
@@ -326,18 +549,19 @@ async function resolveMasterTemplateBuffer(relativePath) {
   if (r2TemplateStorageEnabled()) {
     for (const cand of candidates) {
       try {
-        const buffer = await getR2TemplateFile(cand);
+        const buffer = programme ? await getR2ProgrammeTemplateFile(programme, cand) : await getR2TemplateFile(cand);
         return { buffer, relativePath: cand };
       } catch {}
     }
     try {
-      const templateFiles = await listR2TemplateFiles();
+      const templateFiles = programme ? await listR2ProgrammeTemplateFiles(programme) : await listR2TemplateFiles();
       const match = templateFiles.find((f) => path.basename(f, path.extname(f)).replace(/_TEMPLATE$/i, "").toLowerCase() === baseName);
-      if (match) return { buffer: await getR2TemplateFile(match), relativePath: match };
+      if (match) return { buffer: programme ? await getR2ProgrammeTemplateFile(programme, match) : await getR2TemplateFile(match), relativePath: match };
     } catch {}
   } else {
+    const root = programme ? path.join(templateRoot, accreditationProgrammeSlug(programme)) : templateRoot;
     for (const cand of candidates) {
-      const localPath = path.resolve(templateRoot, cand);
+      const localPath = path.resolve(root, cand);
       try {
         await access(localPath);
         const buffer = await readFile(localPath);
@@ -371,7 +595,7 @@ async function resolveDocumentBuffer(hospital, relativePath) {
   if (r2TemplateStorageEnabled()) {
     for (const cand of candidates) {
       try {
-        const buffer = await getR2ClientFile(hospital.code, cand);
+        const buffer = await getR2ClientFile(hospital.code, cand, hospital.accreditation?.programme);
         return { buffer, relativePath: cand, source: "client" };
       } catch {}
       try {
@@ -381,10 +605,10 @@ async function resolveDocumentBuffer(hospital, relativePath) {
     }
 
     try {
-      const clientFiles = await listR2ClientFiles(hospital.code);
+      const clientFiles = await listR2ClientFiles(hospital.code, hospital.accreditation?.programme);
       const match = clientFiles.find((f) => path.basename(f, path.extname(f)).replace(/_TEMPLATE$/i, "").toLowerCase() === baseName);
       if (match) {
-        return { buffer: await getR2ClientFile(hospital.code, match), relativePath: match, source: "client" };
+        return { buffer: await getR2ClientFile(hospital.code, match, hospital.accreditation?.programme), relativePath: match, source: "client" };
       }
     } catch {}
 
@@ -449,7 +673,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version/download", async (re
   try {
     const hospital = await findHospital(request);
     const objectKey = String(request.query.key || "");
-    response.attachment(path.basename(objectKey)).send(await getR2ClientVersionFile(hospital.code, objectKey));
+    response.attachment(path.basename(objectKey)).send(await getR2ClientVersionFile(hospital.code, objectKey, hospital.accreditation?.programme));
   } catch (error) { response.status(error.status || 400).json({ error: error.message }); }
 });
 
@@ -462,7 +686,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version/preview", async (req
     const pdfPath = path.join(cacheDirectory, `${path.basename(sourcePath, path.extname(sourcePath))}.pdf`);
     await mkdir(cacheDirectory, { recursive: true });
     try { await access(pdfPath); } catch {
-      await writeFile(sourcePath, await getR2ClientVersionFile(hospital.code, objectKey));
+      await writeFile(sourcePath, await getR2ClientVersionFile(hospital.code, objectKey, hospital.accreditation?.programme));
       await execFileAsync(process.env.SOFFICE_PATH || "soffice", ["--headless", "--convert-to", "pdf", "--outdir", cacheDirectory, sourcePath]);
     }
     response.type("application/pdf").send(await readFile(pdfPath));
@@ -514,7 +738,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/preview", async (request, re
 app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, response, next) => {
   try {
     const hospital = await findHospital(request);
-    const entries = r2TemplateStorageEnabled() ? await listR2ClientAuditEvents(hospital.code) : await onlyOffice.listAudit();
+    const entries = r2TemplateStorageEnabled() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await onlyOffice.listAudit();
     response.json({ entries });
   } catch (error) { next(error); }
 });
@@ -522,9 +746,10 @@ app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, respo
 app.get("/api/admin/template-library/download", async (request, response, next) => {
   try {
     const relativePath = String(request.query.path || "");
+    const programme = typeof request.query.programme === "string" && request.query.programme.trim() ? request.query.programme.trim() : undefined;
     if (!relativePath) return response.status(400).json({ error: "Template path is required." });
 
-    const resolved = await resolveMasterTemplateBuffer(relativePath);
+    const resolved = await resolveMasterTemplateBuffer(relativePath, programme);
     if (!resolved) return response.status(404).json({ error: "Template not found." });
 
     response.attachment(path.basename(resolved.relativePath)).send(resolved.buffer);
@@ -546,13 +771,14 @@ function resolveTemplatePath(relativePath) {
 app.get("/api/admin/template-library/preview", async (request, response, next) => {
   try {
     const relativePath = String(request.query.path || "");
+    const programme = typeof request.query.programme === "string" && request.query.programme.trim() ? request.query.programme.trim() : undefined;
     if (!relativePath) return response.status(400).json({ error: "Template path is required." });
 
-    const cacheKey = createHash("sha256").update(`template:${relativePath}`).digest("hex");
+    const cacheKey = createHash("sha256").update(`template:${programme || ""}:${relativePath}`).digest("hex");
     const cacheDirectory = path.join(previewCacheRoot, "templates", cacheKey);
     await mkdir(cacheDirectory, { recursive: true });
 
-    const resolved = await resolveMasterTemplateBuffer(relativePath);
+    const resolved = await resolveMasterTemplateBuffer(relativePath, programme);
     if (!resolved) return response.status(404).json({ error: "Template not found." });
 
     const sourcePath = path.join(cacheDirectory, path.basename(resolved.relativePath));

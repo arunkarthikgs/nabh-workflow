@@ -10,6 +10,11 @@ config.properties
 # Runtime-only controlled-document revisions and audit records.
 output/controlled-documents/
 output/documentAudit.json
+output/documentStatus.json
+output/documentDrafts.json
+output/bookings.json
+# Local dev email outbox (see emailService.js) - contains real addresses when SMTP isn't configured.
+output/outbox/
 
 # Generated standalone artifact. Rebuild with: npm run prototype
 prototype.html

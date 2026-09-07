@@ -1,7 +1,8 @@
-import { CopyObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CopyObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
 import path from "path";
 import { customizeDocumentTemplate } from "./documentCustomizer.js";
+import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug } from "./accreditationService.js";
 
 const DEFAULT_BUCKET = "nbah-repo";
 const DEFAULT_PREFIX = "Templates/";
@@ -66,32 +67,33 @@ export async function getR2TemplateFile(relativePath) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
-export async function listR2ClientFiles(hospitalCode) {
-  const prefix = clientPrefix(hospitalCode);
+export async function listR2ClientFiles(hospitalCode, programme) {
+  const prefix = clientPrefix(hospitalCode, programme);
   const objects = await listR2Objects(prefix);
   return objects
     .map((object) => object.Key.slice(prefix.length))
     .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && relativePath !== "Master list of documents_TEMPLATE.xlsx" && !relativePath.startsWith("versions/"));
 }
 
-export async function getR2ClientFile(hospitalCode, relativePath) {
+export async function getR2ClientFile(hospitalCode, relativePath, programme) {
   const settings = config();
-  const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode)}${relativePath}` }));
+  const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode, programme)}${relativePath}` }));
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
-export async function getR2ClientVersionFile(hospitalCode, objectKey) {
+export async function getR2ClientVersionFile(hospitalCode, objectKey, programme) {
   const settings = config();
-  const allowedPrefix = `${clientPrefix(hospitalCode)}versions/`;
+  const allowedPrefix = `${clientPrefix(hospitalCode, programme)}versions/`;
   if (!String(objectKey || "").startsWith(allowedPrefix)) throw new Error("Invalid document version path.");
   const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: objectKey }));
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
-export async function getR2ClientRepositoryStatus(hospitalCode) {
+export async function getR2ClientRepositoryStatus(hospitalCode, programme) {
   if (!isEnabled()) return { mode: "local", exists: true, status: "ready" };
+  if (!programme) return { mode: "r2", exists: false, status: "accreditation_required" };
   const settings = config();
-  const destinationPrefix = clientPrefix(hospitalCode);
+  const destinationPrefix = clientPrefix(hospitalCode, programme);
   const metadata = await readClientMetadata(settings, destinationPrefix);
   return {
     mode: "r2",
@@ -123,9 +125,9 @@ export function getDocumentKey(documentId, documentName, relativePath) {
   return cleanName || cleanId;
 }
 
-function versionPrefix(hospitalCode, documentKey) {
+function versionPrefix(hospitalCode, documentKey, programme) {
   const key = createHash("sha256").update(String(documentKey)).digest("hex").slice(0, 24);
-  return `${clientPrefix(hospitalCode)}versions/${key}/`;
+  return `${clientPrefix(hospitalCode, programme)}versions/${key}/`;
 }
 
 async function getJsonObject(settings, key) {
@@ -138,10 +140,10 @@ async function getJsonObject(settings, key) {
   }
 }
 
-export async function getR2ClientVersionManifests(hospitalCode) {
+export async function getR2ClientVersionManifests(hospitalCode, programme) {
   if (!isEnabled()) return new Map();
   const settings = config();
-  const prefix = `${clientPrefix(hospitalCode)}versions/`;
+  const prefix = `${clientPrefix(hospitalCode, programme)}versions/`;
   const objects = await listR2Objects(prefix);
   const manifestKeys = objects.map((object) => object.Key).filter((key) => key.endsWith("/manifest.json"));
   const manifests = await Promise.all(manifestKeys.map((key) => getJsonObject(settings, key)));
@@ -154,10 +156,10 @@ export async function getR2ClientVersionManifests(hospitalCode) {
   return map;
 }
 
-export async function listR2ClientAuditEvents(hospitalCode) {
+export async function listR2ClientAuditEvents(hospitalCode, programme) {
   if (!isEnabled()) return [];
   const settings = config();
-  const objects = await listR2Objects(`${clientPrefix(hospitalCode)}audit/`);
+  const objects = await listR2Objects(`${clientPrefix(hospitalCode, programme)}audit/`);
   const events = await Promise.all(objects
     .map((object) => object.Key)
     .filter((key) => key.endsWith(".json"))
@@ -167,6 +169,7 @@ export async function listR2ClientAuditEvents(hospitalCode) {
 
 export async function approveR2ClientDocumentVersion({ hospital, documentId, documentName, department, relativePath, fileName, bytes, approvedBy, note }) {
   if (!isEnabled()) throw new Error("R2 document versioning requires R2_ENABLED=true.");
+  const programme = hospital?.accreditation?.programme;
   const settings = config();
   const clientPath = safeRelativePath(relativePath);
   const originalExtension = path.extname(clientPath).toLowerCase();
@@ -175,10 +178,10 @@ export async function approveR2ClientDocumentVersion({ hospital, documentId, doc
   if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error("Select a non-empty document file.");
 
   const docKey = getDocumentKey(documentId, documentName, clientPath);
-  const prefix = versionPrefix(hospital.code, docKey);
+  const prefix = versionPrefix(hospital.code, docKey, programme);
   const manifestKey = `${prefix}manifest.json`;
   const existingManifest = await getJsonObject(settings, manifestKey);
-  const originalKey = `${clientPrefix(hospital.code)}${clientPath}`;
+  const originalKey = `${clientPrefix(hospital.code, programme)}${clientPath}`;
   const versionOneKey = `${prefix}v1${originalExtension}`;
   const history = existingManifest?.history || [];
   if (!history.length) {
@@ -197,7 +200,7 @@ export async function approveR2ClientDocumentVersion({ hospital, documentId, doc
   history.push(approval);
   const manifest = { documentKey: docKey, documentId, documentName, department: department || "", templatePath: clientPath, currentVersion: nextVersion, currentObjectKey: versionKey, createdAt: existingManifest?.createdAt || timestamp, updatedAt: timestamp, history };
   await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: manifestKey, Body: JSON.stringify(manifest, null, 2), ContentType: "application/json" }));
-  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospital.code)}audit/${timestamp.replace(/[:.]/g, "-")}-${randomUUID()}.json`, Body: JSON.stringify({ hospitalId: hospital.id, hospitalCode: hospital.code, documentId, documentName, department: department || "", templatePath: clientPath, ...approval }, null, 2), ContentType: "application/json" }));
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospital.code, programme)}audit/${timestamp.replace(/[:.]/g, "-")}-${randomUUID()}.json`, Body: JSON.stringify({ hospitalId: hospital.id, hospitalCode: hospital.code, documentId, documentName, department: department || "", templatePath: clientPath, ...approval }, null, 2), ContentType: "application/json" }));
   return manifest;
 }
 
@@ -213,11 +216,109 @@ async function listR2Objects(prefix) {
   return objects;
 }
 
-function clientPrefix(code) {
+function clientPrefix(code, programme) {
   const normalized = String(code || "").trim().toUpperCase();
   if (!/^[A-Z0-9]{2,12}$/.test(normalized)) throw new Error("Hospital client code must contain 2-12 uppercase letters or numbers.");
+  const slug = accreditationProgrammeSlug(programme);
+  if (!slug) throw new Error("Select and accept an NABH accreditation programme before the document workspace can be created.");
   const baseFolder = process.env.R2_CLIENT_FOLDER || DEFAULT_CLIENT_FOLDER;
-  return `${baseFolder.replace(/^\/+|\/+$/g, "")}/${normalized}/`;
+  return `${baseFolder.replace(/^\/+|\/+$/g, "")}/${normalized}/${slug}/`;
+}
+
+// Each NABH accreditation programme has its own template set: Templates/<programme-slug>/...
+function programmeSourcePrefix(settings, programme) {
+  const slug = accreditationProgrammeSlug(programme);
+  if (!slug) throw new Error("Select and accept an NABH accreditation programme before the document workspace can be created.");
+  return `${settings.prefix}${slug}/`;
+}
+
+export async function listR2ProgrammeTemplateFiles(programme) {
+  const settings = config();
+  const prefix = programmeSourcePrefix(settings, programme);
+  const objects = await listR2Objects(prefix);
+  return objects
+    .map((object) => object.Key.slice(prefix.length))
+    .filter((relativePath) => /\.(docx|xlsx|pptx)$/i.test(relativePath) && !relativePath.startsWith("metadata/"));
+}
+
+export async function getR2ProgrammeTemplateFile(programme, relativePath) {
+  const settings = config();
+  const prefix = programmeSourcePrefix(settings, programme);
+  const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: `${prefix}${relativePath}` }));
+  return Buffer.from(await result.Body.transformToByteArray());
+}
+
+// Creates an empty placeholder object per NABH accreditation programme (S3/R2 has no real folders,
+// so a zero-byte key ending in "/" is what makes the "folder" show up in bucket browsers).
+export async function ensureProgrammeTemplateFolders() {
+  if (!isEnabled()) return { mode: "local", created: [], existing: [] };
+  const settings = config();
+  const created = [];
+  const existing = [];
+  for (const programme of NABH_ACCREDITATION_PROGRAMMES) {
+    const prefix = programmeSourcePrefix(settings, programme);
+    if (await objectExists(settings.bucket, prefix)) { existing.push({ programme, prefix }); continue; }
+    await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: prefix, Body: "", ContentType: "application/x-directory" }));
+    created.push({ programme, prefix });
+  }
+  return { mode: "r2", created, existing };
+}
+
+// Seeds a programme folder from the flat legacy Templates/ set as a starting point until
+// programme-specific content is uploaded. Skips objects that belong to any programme folder
+// (so re-running against multiple programmes never copies a programme's own content into another).
+export async function copyFlatTemplatesIntoProgramme(programme, { overwrite = false } = {}) {
+  if (!isEnabled()) return { mode: "local", copied: 0, skipped: 0 };
+  const settings = config();
+  const destinationPrefix = programmeSourcePrefix(settings, programme);
+  const sourceObjects = flatTemplateRootObjects(settings, await listR2Objects(settings.prefix));
+  let copied = 0;
+  let skipped = 0;
+  const copyOne = async (sourceObject) => {
+    const relativePath = sourceObject.Key.slice(settings.prefix.length);
+    const destinationKey = `${destinationPrefix}${relativePath}`;
+    if (!overwrite && await objectExists(settings.bucket, destinationKey)) return "skipped";
+    await client().send(new CopyObjectCommand({ Bucket: settings.bucket, Key: destinationKey, CopySource: `${settings.bucket}/${encodeURIComponent(sourceObject.Key).replace(/%2F/g, "/")}` }));
+    return "copied";
+  };
+  for (let index = 0; index < sourceObjects.length; index += 12) {
+    const results = await Promise.all(sourceObjects.slice(index, index + 12).map(copyOne));
+    copied += results.filter((result) => result === "copied").length;
+    skipped += results.filter((result) => result === "skipped").length;
+  }
+  return { mode: "r2", programme, sourcePrefix: settings.prefix, destinationPrefix, total: sourceObjects.length, copied, skipped };
+}
+
+function flatTemplateRootObjects(settings, objects) {
+  const programmeSlugs = new Set(NABH_ACCREDITATION_PROGRAMMES.map((item) => accreditationProgrammeSlug(item)));
+  return objects.filter((object) => {
+    const relativePath = object.Key.slice(settings.prefix.length);
+    return relativePath && !programmeSlugs.has(relativePath.split("/")[0]);
+  });
+}
+
+// Lists the legacy flat files directly under Templates/ (i.e. not inside any programme
+// subfolder), without deleting anything. Useful to preview before calling the delete below.
+export async function listFlatTemplateRootFiles() {
+  if (!isEnabled()) return [];
+  const settings = config();
+  const objects = flatTemplateRootObjects(settings, await listR2Objects(settings.prefix));
+  return objects.map((object) => object.Key.slice(settings.prefix.length));
+}
+
+// Permanently deletes the legacy flat files directly under Templates/, keeping only the
+// per-programme subfolders. Destructive and not reversible without R2 bucket versioning.
+export async function deleteFlatTemplateRootFiles() {
+  if (!isEnabled()) return { mode: "local", deleted: 0, total: 0 };
+  const settings = config();
+  const targets = flatTemplateRootObjects(settings, await listR2Objects(settings.prefix));
+  let deleted = 0;
+  for (let index = 0; index < targets.length; index += 1000) {
+    const batch = targets.slice(index, index + 1000);
+    await client().send(new DeleteObjectsCommand({ Bucket: settings.bucket, Delete: { Objects: batch.map((object) => ({ Key: object.Key })) } }));
+    deleted += batch.length;
+  }
+  return { mode: "r2", deleted, total: targets.length };
 }
 
 async function objectExists(bucket, key) {
@@ -246,10 +347,13 @@ async function readClientMetadata(settings, destinationPrefix) {
 
 export async function provisionR2ClientRepository(hospital, { syncNewTemplates = false } = {}) {
   if (!isEnabled()) return { mode: "local", provisioned: false, copied: 0, skipped: 0 };
+  const programme = hospital?.accreditation?.programme;
+  if (!programme) throw new Error("Select and accept an NABH accreditation programme before the document workspace can be created.");
   const settings = config();
-  const destinationPrefix = clientPrefix(hospital.code);
+  const sourcePrefix = programmeSourcePrefix(settings, programme);
+  const destinationPrefix = clientPrefix(hospital.code, programme);
   const existingMetadata = await readClientMetadata(settings, destinationPrefix);
-  if (!syncNewTemplates && existingMetadata?.hospitalCode === hospital.code && existingMetadata?.sourcePrefix === settings.prefix) {
+  if (!syncNewTemplates && existingMetadata?.hospitalCode === hospital.code && existingMetadata?.sourcePrefix === sourcePrefix) {
     return {
       ...existingMetadata,
       mode: "r2",
@@ -258,11 +362,21 @@ export async function provisionR2ClientRepository(hospital, { syncNewTemplates =
       skipped: existingMetadata.templateObjects || 0
     };
   }
-  const sourceObjects = await listR2Objects(settings.prefix);
+  const sourceObjects = await listR2Objects(sourcePrefix);
+  if (!sourceObjects.length) {
+    return {
+      mode: "r2",
+      provisioned: false,
+      templatesFound: 0,
+      programme,
+      sourcePrefix,
+      error: `No templates found yet for the "${programme}" programme. Ask an administrator to upload templates under ${sourcePrefix} in R2.`
+    };
+  }
   let copied = 0;
   let skipped = 0;
   const copyObject = async (sourceObject) => {
-    const relativePath = sourceObject.Key.slice(settings.prefix.length);
+    const relativePath = sourceObject.Key.slice(sourcePrefix.length);
     const destinationKey = `${destinationPrefix}${relativePath}`;
     if (!syncNewTemplates && await objectExists(settings.bucket, destinationKey)) return "skipped";
 
@@ -297,7 +411,8 @@ export async function provisionR2ClientRepository(hospital, { syncNewTemplates =
     hospitalId: hospital.id,
     hospitalCode: hospital.code,
     hospitalName: hospital.name,
-    sourcePrefix: settings.prefix,
+    programme,
+    sourcePrefix,
     destinationPrefix,
     provisionedAt: new Date().toISOString(),
     lastSyncedAt: new Date().toISOString(),

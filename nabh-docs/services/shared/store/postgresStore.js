@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { configValue } from "../config.js";
 
 const outputDirectory = fileURLToPath(new URL("../../../output", import.meta.url));
-const profileFields = ["dateOfBirth", "gender", "mobileNumber", "address", "employeeId", "department", "dateOfJoining", "employmentType"];
+const profileFields = ["dateOfBirth", "gender", "mobileNumber", "address", "employeeId", "department", "dateOfJoining", "employmentType", "passwordHash", "passwordSalt", "passwordSet", "passwordSetupToken", "passwordSetupExpiresAt"];
 
 let pool = null;
 let ready = null;
@@ -45,6 +45,8 @@ const schemaStatements = [
      repository jsonb not null default '{}'::jsonb,
      details jsonb not null default '{}'::jsonb,
      roles_seeded boolean not null default false,
+     registration_status text not null default '',
+     accreditation jsonb not null default '{}'::jsonb,
      created_at timestamptz not null default now(),
      updated_at timestamptz not null default now(),
      constraint hospitals_code_key unique (code) deferrable initially deferred
@@ -82,8 +84,33 @@ const schemaStatements = [
      seq bigserial primary key,
      entry jsonb not null
    )`,
+  `create table if not exists document_status (
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     document_id text not null,
+     status text not null default 'not_started',
+     updated_at timestamptz not null default now(),
+     updated_by text not null default 'system',
+     note text not null default '',
+     primary key (hospital_id, document_id)
+   )`,
+  `create table if not exists document_drafts (
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     document_id text not null,
+     draft jsonb not null,
+     primary key (hospital_id, document_id)
+   )`,
+  `create table if not exists service_bookings (
+     id uuid primary key,
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     ordinal integer not null default 0,
+     booking jsonb not null
+   )`,
   `create index if not exists hospital_users_hospital_idx on hospital_users (hospital_id)`,
-  `create index if not exists hospital_roles_hospital_idx on hospital_roles (hospital_id)`
+  `create index if not exists hospital_roles_hospital_idx on hospital_roles (hospital_id)`,
+  // ADD COLUMN IF NOT EXISTS handles upgrading a database created before these columns existed;
+  // "create table if not exists" above alone would skip them on an already-existing table.
+  `alter table hospitals add column if not exists registration_status text not null default ''`,
+  `alter table hospitals add column if not exists accreditation jsonb not null default '{}'::jsonb`
 ];
 
 async function createPool() {
@@ -134,6 +161,21 @@ async function seedFromJsonFiles() {
     const audit = await readJsonFile("documentAudit.json");
     if (Array.isArray(audit) && audit.length) await saveDocumentAudit(audit);
   }
+  const { rows: [statusCount] } = await pool.query(`select count(*) as count from document_status`);
+  if (Number(statusCount.count) === 0) {
+    const status = await readJsonFile("documentStatus.json");
+    if (status && Object.keys(status).length) await saveDocumentStatus(status);
+  }
+  const { rows: [draftCount] } = await pool.query(`select count(*) as count from document_drafts`);
+  if (Number(draftCount.count) === 0) {
+    const drafts = await readJsonFile("documentDrafts.json");
+    if (drafts && Object.keys(drafts).length) await saveDocumentDrafts(drafts);
+  }
+  const { rows: [bookingCount] } = await pool.query(`select count(*) as count from service_bookings`);
+  if (Number(bookingCount.count) === 0) {
+    const bookings = await readJsonFile("bookings.json");
+    if (Array.isArray(bookings) && bookings.length) await saveBookings(bookings);
+  }
 }
 
 export async function initialize() {
@@ -179,6 +221,8 @@ function toHospital(row, users, roles) {
     createdAt: isoDate(row.created_at),
     updatedAt: isoDate(row.updated_at)
   };
+  if (row.registration_status) hospital.registrationStatus = row.registration_status;
+  if (row.accreditation && Object.keys(row.accreditation).length) hospital.accreditation = row.accreditation;
   if (row.roles_seeded) hospital.roles = roles;
   return hospital;
 }
@@ -208,15 +252,16 @@ export async function saveHospitals(hospitals) {
     await client.query(`delete from hospitals where not (id = any ($1::uuid[]))`, [hospitals.map((hospital) => hospital.id)]);
     for (const [index, hospital] of hospitals.entries()) {
       await client.query(
-        `insert into hospitals (id, ordinal, name, code, location, status, logo_data_url, logo_path, repository, details, roles_seeded, created_at, updated_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13)
+        `insert into hospitals (id, ordinal, name, code, location, status, logo_data_url, logo_path, repository, details, roles_seeded, registration_status, accreditation, created_at, updated_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13::jsonb, $14, $15)
          on conflict (id) do update set ordinal = excluded.ordinal, name = excluded.name, code = excluded.code, location = excluded.location,
            status = excluded.status, logo_data_url = excluded.logo_data_url, logo_path = excluded.logo_path, repository = excluded.repository,
-           details = excluded.details, roles_seeded = excluded.roles_seeded, updated_at = excluded.updated_at`,
+           details = excluded.details, roles_seeded = excluded.roles_seeded, registration_status = excluded.registration_status,
+           accreditation = excluded.accreditation, updated_at = excluded.updated_at`,
         [
           hospital.id, index, hospital.name, hospital.code, hospital.location || "", hospital.status || "active",
           hospital.logoDataUrl || "", hospital.logoPath || "", JSON.stringify(hospital.repository || {}), JSON.stringify(hospital.details || {}),
-          Array.isArray(hospital.roles), isoDate(hospital.createdAt), isoDate(hospital.updatedAt)
+          Array.isArray(hospital.roles), hospital.registrationStatus || "", JSON.stringify(hospital.accreditation || {}), isoDate(hospital.createdAt), isoDate(hospital.updatedAt)
         ]
       );
 
@@ -296,6 +341,88 @@ export async function saveDocumentAudit(entries) {
     await client.query("begin");
     await client.query(`delete from document_audit`);
     for (const entry of [...entries].reverse()) await client.query(`insert into document_audit (entry) values ($1::jsonb)`, [JSON.stringify(entry)]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function readDocumentStatus() {
+  const client = await connect();
+  const { rows } = await client.query(`select hospital_id, document_id, status, updated_at, updated_by, note from document_status`);
+  const byHospital = {};
+  for (const row of rows) {
+    (byHospital[row.hospital_id] ||= {})[row.document_id] = { status: row.status, updatedAt: isoDate(row.updated_at), updatedBy: row.updated_by, note: row.note };
+  }
+  return byHospital;
+}
+
+export async function saveDocumentStatus(statusByHospital) {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    await client.query(`delete from document_status`);
+    for (const [hospitalId, documents] of Object.entries(statusByHospital)) {
+      for (const [documentId, entry] of Object.entries(documents)) {
+        await client.query(
+          `insert into document_status (hospital_id, document_id, status, updated_at, updated_by, note) values ($1, $2, $3, $4, $5, $6)`,
+          [hospitalId, documentId, entry.status, isoDate(entry.updatedAt), entry.updatedBy || "system", entry.note || ""]
+        );
+      }
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function readDocumentDrafts() {
+  const client = await connect();
+  const { rows } = await client.query(`select hospital_id, document_id, draft from document_drafts`);
+  const byHospital = {};
+  for (const row of rows) (byHospital[row.hospital_id] ||= {})[row.document_id] = row.draft;
+  return byHospital;
+}
+
+export async function saveDocumentDrafts(draftsByHospital) {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    await client.query(`delete from document_drafts`);
+    for (const [hospitalId, documents] of Object.entries(draftsByHospital)) {
+      for (const [documentId, draft] of Object.entries(documents)) {
+        await client.query(`insert into document_drafts (hospital_id, document_id, draft) values ($1, $2, $3::jsonb)`, [hospitalId, documentId, JSON.stringify(draft)]);
+      }
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function readBookings() {
+  const client = await connect();
+  const { rows } = await client.query(`select booking from service_bookings order by ordinal, (booking->>'createdAt')`);
+  return rows.map((row) => row.booking);
+}
+
+export async function saveBookings(bookings) {
+  const client = await (await connect()).connect();
+  try {
+    await client.query("begin");
+    await client.query(`delete from service_bookings`);
+    for (const [index, booking] of bookings.entries()) {
+      await client.query(`insert into service_bookings (id, hospital_id, ordinal, booking) values ($1, $2, $3, $4::jsonb)`, [booking.id, booking.hospitalId, index, JSON.stringify(booking)]);
+    }
     await client.query("commit");
   } catch (error) {
     await client.query("rollback");

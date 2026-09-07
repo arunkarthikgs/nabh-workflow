@@ -3,11 +3,38 @@ import { Building2, FileSearch, FolderOpen, Search, ArrowUp, ArrowDown, Pencil, 
 import hospitalLogo from "./assets/logo.png";
 import AdminWorkspace from "./AdminWorkspace.jsx";
 import LoginGate from "./LoginGate.jsx";
+import RegisterHospital from "./RegisterHospital.jsx";
+import SetPassword from "./SetPassword.jsx";
+import PlatformWorkspace from "./PlatformWorkspace.jsx";
 import SuperAdminWorkspace from "./SuperAdminWorkspace.jsx";
 import TemplateLibrary from "./TemplateLibrary.jsx";
 import RoleManagement from "./RoleManagement.jsx";
 
 const CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 };
+
+// Must match NABH_WORKSPACE_CATEGORIES in services/shared/documentCategoryService.js.
+const NABH_WORKSPACE_CATEGORIES = [
+  "Manuals",
+  "Policies",
+  "Standard Operating Procedures",
+  "Forms and Formats",
+  "Registers",
+  "Department Manuals",
+  "Checklists",
+  "Training Requirements",
+  "Records and Evidence"
+];
+
+const READINESS_STATUSES = ["not_started", "information_required", "draft_generated", "under_review", "approved", "implemented", "evidence_available"];
+const READINESS_LABELS = {
+  not_started: "Not Started",
+  information_required: "Information Required",
+  draft_generated: "Draft Generated",
+  under_review: "Under Review",
+  approved: "Approved",
+  implemented: "Implemented",
+  evidence_available: "Evidence Available"
+};
 
 function confidenceClass(confidence) {
   return `badge badge-${confidence}`;
@@ -38,8 +65,7 @@ function isApprovedDocument(doc) {
 function readUrlState() {
   const params = new URLSearchParams(window.location.search);
   return {
-    department: params.get("dept") || null,
-    departmentFilter: params.get("deptq") || "",
+    category: params.get("cat") || null,
     documentSearch: params.get("q") || "",
     confidenceFilter: params.get("conf") || "all",
     onlyInactive: params.get("onlyInactive") === "1",
@@ -108,12 +134,12 @@ function OnlyOfficeEditor({ document, department, onClose }) {
   return <div className="preview-backdrop" role="presentation" onClick={onClose}><section className="document-editor-dialog onlyoffice-dialog" role="dialog" aria-modal="true" aria-label={`Edit ${document.documentName}`} onClick={(event) => event.stopPropagation()}><div className="preview-header"><div><p className="eyebrow">Controlled document editor</p><h2>{document.documentName}</h2><p className="editor-file-name">{document.relativeFilePath || document.matchedFilePath}</p></div><button className="icon-button" title="Close editor" onClick={onClose}><Close size={18} /></button></div>{!config ? <div className="onlyoffice-setup"><p>Open this controlled file in OnlyOffice. Saving in the editor creates the next immutable version and audit event.</p><label>Edited by<input value={editorName} onChange={(event) => setEditorName(event.target.value)} placeholder="Name or initials" /></label><label>Check-in note<input value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Describe this revision" /></label>{error && <p className="status error">{error}</p>}<button className="primary-button" onClick={openEditor}><FilePenLine size={16} /> Open in OnlyOffice</button></div> : <><div id={editorId} className="onlyoffice-frame" />{error && <p className="status error">{error}</p>}<div className="checkin-panel"><span>Save your changes in OnlyOffice, then check in the controlled version.</span><button className="primary-button" onClick={() => { setSaving(true); window[editorId]?.requestSave?.(); }}><Save size={16} /> {saving ? "Saving..." : "Save and check in"}</button></div></>}</section></div>;
 }
 
-function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permissions, onCheckIn }) {
+function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permissions, onCheckIn, onGoToAccreditation }) {
   const initialUrlState = useMemo(readUrlState, []);
   const [departments, setDepartments] = useState(null);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState(initialUrlState.departmentFilter);
+  const [accreditationRequired, setAccreditationRequired] = useState(null);
   const [documentSearch, setDocumentSearch] = useState(initialUrlState.documentSearch);
   const [confidenceFilter, setConfidenceFilter] = useState(initialUrlState.confidenceFilter);
   const [onlyInactive, setOnlyInactive] = useState(initialUrlState.onlyInactive);
@@ -159,7 +185,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
             .then((data) => {
               if (data?.departments) {
                 setDepartments(data.departments);
-                if (!selected) setSelected(Object.keys(data.departments)[0] || null);
+            if (!selected) setSelected(NABH_WORKSPACE_CATEGORIES[0]);
               }
             });
         } else if (status.job?.status === "failed") {
@@ -174,13 +200,23 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
   };
 
   useEffect(() => {
-    fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`)
+    fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`)
+      .then((response) => response.json())
+      .then((accreditation) => {
+        if (!accreditation?.selection?.programme) {
+          setAccreditationRequired("Select and accept an NABH accreditation programme before the document workspace is available.");
+          return null;
+        }
+        return fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`);
+      })
       .then(async (response) => {
+        if (!response) return null;
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to check the hospital document repository.");
         return result;
       })
       .then((data) => {
+        if (!data) return null;
         setRepositoryStatus(data);
         if (data.job?.status === "running") {
           pollSyncStatus("Template synchronization is currently in progress...");
@@ -190,8 +226,12 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
         if (!data.repository.exists) return null;
         return fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`).then(async (response) => {
           const result = await response.json();
+          if (response.status === 400 && result.reason === "accreditation_required") {
+            setAccreditationRequired(result.error);
+            return null;
+          }
           if (response.status === 404) {
-            setRepositoryStatus({ repository: { mode: result.repository?.mode || "r2", exists: false, status: "missing", ...result.repository }, job: null });
+            setRepositoryStatus({ repository: { mode: result.repository?.mode || "r2", exists: false, status: "missing", ...result.repository }, job: result.job || null });
             return null;
           }
           if (!response.ok) throw new Error(result.error || "Unable to load the hospital document repository.");
@@ -201,38 +241,44 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       .then((data) => {
         if (!data) return;
         setDepartments(data.departments);
-        const wanted = initialUrlState.department;
-        setSelected(wanted && data.departments[wanted] ? wanted : Object.keys(data.departments)[0] || null);
+        const wanted = initialUrlState.category;
+        setSelected(wanted && NABH_WORKSPACE_CATEGORIES.includes(wanted) ? wanted : NABH_WORKSPACE_CATEGORIES[0]);
       })
       .catch((err) => setError(err.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hospitalId, initialUrlState.department]);
+  }, [hospitalId, initialUrlState.category]);
 
   // Keep the URL query string in sync so a view can be bookmarked/shared and survives a refresh.
   useEffect(() => {
     if (!departments) return;
     const params = new URLSearchParams();
-    if (selected) params.set("dept", selected);
-    if (departmentFilter) params.set("deptq", departmentFilter);
+    if (selected) params.set("cat", selected);
     if (documentSearch) params.set("q", documentSearch);
     if (confidenceFilter !== "all") params.set("conf", confidenceFilter);
     if (onlyInactive) params.set("onlyInactive", "1");
     if (sortColumn) { params.set("sort", sortColumn); params.set("dir", sortDirection); }
     const query = params.toString();
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  }, [departments, selected, departmentFilter, documentSearch, confidenceFilter, onlyInactive, sortColumn, sortDirection]);
+  }, [departments, selected, documentSearch, confidenceFilter, onlyInactive, sortColumn, sortDirection]);
 
   useEffect(() => {
     setSelectedKeys(new Set());
   }, [selected]);
 
-  const documents = useMemo(() => (selected && departments ? departments[selected] : []), [selected, departments]);
+  const categories = useMemo(() => {
+    const map = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
+    if (departments) {
+      for (const [department, docs] of Object.entries(departments)) {
+        for (const doc of docs) {
+          const category = NABH_WORKSPACE_CATEGORIES.includes(doc.category) ? doc.category : "Department Manuals";
+          map[category].push({ ...doc, department });
+        }
+      }
+    }
+    return map;
+  }, [departments]);
 
-  const filteredDepartments = useMemo(() => {
-    if (!departments) return [];
-    const query = departmentFilter.trim().toLowerCase();
-    return Object.entries(departments).filter(([department]) => department.toLowerCase().includes(query));
-  }, [departments, departmentFilter]);
+  const documents = useMemo(() => (selected ? categories[selected] || [] : []), [selected, categories]);
 
   const confidenceCounts = useMemo(() => {
     const counts = { all: documents.length, high: 0, medium: 0, low: 0 };
@@ -250,6 +296,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
         (doc) =>
           doc.documentName.toLowerCase().includes(query) ||
           doc.documentId.toLowerCase().includes(query) ||
+          (doc.department || "").toLowerCase().includes(query) ||
           (doc.matchedFilePath || "").toLowerCase().includes(query)
       );
     }
@@ -276,24 +323,77 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
     return counts;
   }, [departments]);
 
-  const departmentTotals = useMemo(() => {
+  const readinessCounts = useMemo(() => {
+    const counts = Object.fromEntries(READINESS_STATUSES.map((status) => [status, 0]));
+    if (!departments) return counts;
+    for (const docs of Object.values(departments)) for (const doc of docs) counts[doc.readinessStatus || "not_started"]++;
+    return counts;
+  }, [departments]);
+
+  const categoryTotals = useMemo(() => {
     const active = documents.filter((doc) => doc.active).length;
     return { active, inactive: documents.length - active };
   }, [documents]);
 
   function persistActive(doc, nextActive) {
-    fetch(`/api/document-matches/${encodeURIComponent(selected)}/active`, {
+    fetch(`/api/document-matches/${encodeURIComponent(doc.department)}/active`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: doc.id, active: nextActive })
     }).catch((err) => setError(err.message));
   }
 
+  function setReadinessStatus(doc, nextStatus) {
+    setDepartments((current) => ({
+      ...current,
+      [doc.department]: current[doc.department].map((d) => (d.id === doc.id ? { ...d, readinessStatus: nextStatus } : d))
+    }));
+    fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: doc.id, status: nextStatus, updatedBy: hospitalName || "Hospital" })
+    }).catch((err) => setError(err.message));
+  }
+
+  async function generateDraftFor(doc) {
+    const q1 = window.prompt(`Which departments does "${doc.documentName}" apply to at your hospital?`);
+    if (q1 === null) return;
+    const q2 = window.prompt("Any hospital-specific practices or exceptions to include?") || "";
+    try {
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: doc.id, documentName: doc.documentName, answers: { "Applicable departments": q1, "Hospital-specific practices": q2 } })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to generate draft.");
+      setDepartments((current) => ({ ...current, [doc.department]: current[doc.department].map((d) => (d.id === doc.id ? { ...d, readinessStatus: "draft_generated" } : d)) }));
+      window.alert(`Draft generated:\n\n${data.draft.content}`);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function runDocumentAction(doc, action) {
+    try {
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: doc.id, action, updatedBy: hospitalName || "Hospital" })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to update document status.");
+      setDepartments((current) => ({ ...current, [doc.department]: current[doc.department].map((d) => (d.id === doc.id ? { ...d, readinessStatus: data.entry.status } : d)) }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   function toggleActive(doc) {
     const nextActive = !doc.active;
     setDepartments((current) => ({
       ...current,
-      [selected]: current[selected].map((d) => (d === doc ? { ...d, active: nextActive } : d))
+      [doc.department]: current[doc.department].map((d) => (d.id === doc.id ? { ...d, active: nextActive } : d))
     }));
     persistActive(doc, nextActive);
   }
@@ -323,10 +423,11 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
 
   function bulkSetActive(nextActive) {
     const targets = documents.filter((doc) => selectedKeys.has(docKey(doc)));
-    setDepartments((current) => ({
-      ...current,
-      [selected]: current[selected].map((d) => (selectedKeys.has(docKey(d)) ? { ...d, active: nextActive } : d))
-    }));
+    setDepartments((current) => {
+      const next = { ...current };
+      for (const doc of targets) next[doc.department] = next[doc.department].map((d) => (d.id === doc.id ? { ...d, active: nextActive } : d));
+      return next;
+    });
     for (const doc of targets) persistActive(doc, nextActive);
     setSelectedKeys(new Set());
   }
@@ -366,7 +467,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
     const editor = window.prompt("Your name or initials, to record who made this change:");
     if (!editor || !editor.trim()) return;
 
-    fetch(`/api/document-matches/${encodeURIComponent(selected)}/edit`, {
+    fetch(`/api/document-matches/${encodeURIComponent(doc.department)}/edit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: doc.id, editor: editor.trim(), fields: editDraft })
@@ -378,7 +479,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       .then((result) => {
         setDepartments((current) => ({
           ...current,
-          [selected]: current[selected].map((d) => (d.id === doc.id ? result.document : d))
+          [doc.department]: current[doc.department].map((d) => (d.id === doc.id ? result.document : d))
         }));
         setEditingId(null);
         setEditDraft(null);
@@ -403,7 +504,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
     const nextVersion = currentlyApproved ? (openDocument.version || 1) + 1 : 1;
     const timestamp = new Date().toISOString();
     const fields = { content: documentContent };
-    fetch(`/api/document-matches/${encodeURIComponent(selected)}/edit`, {
+    fetch(`/api/document-matches/${encodeURIComponent(openDocument.department)}/edit`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: openDocument.id, editor: checkInEditor.trim(), fields })
@@ -414,8 +515,8 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       })
       .then((result) => {
         const document = result.document ? { ...result.document, approved: true } : { ...openDocument, content: documentContent, version: nextVersion, approved: true, history: [...(openDocument.history || []).filter((h) => h.action !== "matched"), { version: nextVersion, timestamp, editor: checkInEditor.trim(), action: "document check-in", changes: { content: { from: currentlyApproved ? "Previous version" : "Draft", to: checkInNote.trim() || "Content updated" } } }] };
-        setDepartments((current) => ({ ...current, [selected]: current[selected].map((item) => item.id === document.id ? document : item) }));
-        onCheckIn({ id: `${document.id}-${nextVersion}`, documentName: document.documentName, documentId: document.documentId, department: selected, version: document.version || nextVersion, editor: checkInEditor.trim(), note: checkInNote.trim() || "Content updated", timestamp });
+        setDepartments((current) => ({ ...current, [openDocument.department]: current[openDocument.department].map((item) => item.id === document.id ? document : item) }));
+        onCheckIn({ id: `${document.id}-${nextVersion}`, documentName: document.documentName, documentId: document.documentId, department: openDocument.department, version: document.version || nextVersion, editor: checkInEditor.trim(), note: checkInNote.trim() || "Content updated", timestamp });
         setOpenDocument(null);
       })
       .catch((err) => setError(err.message));
@@ -432,7 +533,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
           "Content-Type": "application/octet-stream",
           "X-Document-Id": approvalDocument.documentId,
           "X-Document-Name": approvalDocument.documentName,
-          "X-Department": selected,
+          "X-Department": approvalDocument.department,
           "X-Document-Path": approvalDocument.relativeFilePath,
           "X-File-Name": approvalFile.name,
           "X-Approved-By": hospitalName || "Hospital Administrator",
@@ -443,12 +544,34 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to approve document version.");
       const nextVer = result.document?.currentVersion || (isApprovedDocument(approvalDocument) ? (approvalDocument.version || 1) + 1 : 1);
-      setDepartments((current) => ({ ...current, [selected]: current[selected].map((document) => document.id === approvalDocument.id ? { ...document, version: nextVer, approved: true, history: result.document?.history || document.history } : document) }));
+      setDepartments((current) => ({ ...current, [approvalDocument.department]: current[approvalDocument.department].map((document) => document.id === approvalDocument.id ? { ...document, version: nextVer, approved: true, history: result.document?.history || document.history } : document) }));
       setApprovalDocument(null);
       setApprovalFile(null);
       setApprovalNote("");
     } catch (uploadError) { setApprovalError(uploadError.message); }
     finally { setApproving(false); }
+  }
+
+  if (accreditationRequired) {
+    return (
+      <main>
+        <header>
+          <div className="brand">
+            <img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} />
+            <div>
+              <p className="eyebrow">NABH document workspace</p>
+              <h1>{hospitalName} documents</h1>
+            </div>
+          </div>
+        </header>
+        <section className="document-panel repository-empty">
+          <ClipboardList size={28} />
+          <h2>Accreditation programme required</h2>
+          <p>{accreditationRequired} Each programme has its own document templates, so the workspace can only be prepared once you know which one applies.</p>
+          {onGoToAccreditation && <button className="primary-button" type="button" onClick={onGoToAccreditation}>Go to Accreditation</button>}
+        </section>
+      </main>
+    );
   }
 
   if (repositoryStatus && !repositoryStatus.repository.exists) {
@@ -508,6 +631,13 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
             {totals.departments} departments &middot; {totals.documents} documents &middot; {totals.high} high-confidence &middot; {totals.medium} medium &middot; {totals.low} flagged &middot; <span className="active-count">{totals.active} active</span> &middot; <span className="inactive-count">{totals.inactive} inactive</span>
           </p>
         )}
+        {totals && (
+          <p className="intro readiness-summary">
+            {READINESS_STATUSES.map((status) => (
+              <span key={status} className={`readiness-chip readiness-${status}`}>{READINESS_LABELS[status]}: {readinessCounts[status]}</span>
+            ))}
+          </p>
+        )}
       </header>
 
       {error && <p className="status error">{error}</p>}
@@ -543,31 +673,22 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
       {departments && (
         <div className="layout">
           <nav className="department-list">
-            <label className="filter-box">
-              <Search size={14} />
-              <input
-                type="text"
-                placeholder="Filter departments"
-                value={departmentFilter}
-                onChange={(event) => setDepartmentFilter(event.target.value)}
-              />
-            </label>
-            {filteredDepartments.map(([department, docs]) => {
+            {NABH_WORKSPACE_CATEGORIES.map((category) => {
+              const docs = categories[category] || [];
               const activeCount = docs.filter((doc) => doc.active).length;
               return (
                 <button
-                  key={department}
-                  className={department === selected ? "active" : ""}
-                  onClick={() => setSelected(department)}
+                  key={category}
+                  className={category === selected ? "active" : ""}
+                  onClick={() => setSelected(category)}
                 >
                   <FolderOpen size={16} />
-                  <span>{department}</span>
+                  <span>{category}</span>
                   <span className="count-pill count-pill-active">{activeCount}</span>
                   <span className="count-pill count-pill-inactive">{docs.length - activeCount}</span>
                 </button>
               );
             })}
-            {filteredDepartments.length === 0 && <p className="empty">No departments match.</p>}
           </nav>
 
           <section className="document-panel">
@@ -575,14 +696,14 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
               <FileSearch size={18} />
               <h2>{selected}</h2>
               <span className="count">{filteredDocuments.length} of {documents.length} document(s)</span>
-              <span className="active-count">{departmentTotals.active} active</span>
-              <span className="inactive-count">{departmentTotals.inactive} inactive</span>
+              <span className="active-count">{categoryTotals.active} active</span>
+              <span className="inactive-count">{categoryTotals.inactive} inactive</span>
             </div>
             <label className="filter-box document-search">
               <Search size={14} />
               <input
                 type="text"
-                placeholder="Search by document name, ID, or matched file"
+                placeholder="Search by document name, ID, department, or matched file"
                 value={documentSearch}
                 onChange={(event) => setDocumentSearch(event.target.value)}
               />
@@ -627,8 +748,10 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                   <th>Active</th>
                   <th className="sortable" onClick={() => setSort("documentId")}>Document ID {sortIndicator("documentId")}</th>
                   <th>Document Name</th>
+                  <th>Department</th>
                   <th>Matched File</th>
                   <th className="sortable" onClick={() => setSort("confidence")}>Confidence {sortIndicator("confidence")}</th>
+                  <th>Readiness</th>
                   <th>Version</th>
                 </tr>
               </thead>
@@ -677,6 +800,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                           doc.documentName
                         )}
                       </td>
+                      <td className="dept-badge-cell"><span className="dept-badge">{doc.department}</span></td>
                       <td className="file-cell" title={doc.matchedFilePath || ""}>
                         {isEditing ? (
                           <input
@@ -714,6 +838,28 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                       <td>
                         <span className={confidenceClass(doc.confidence)}>{doc.confidence}</span>
                       </td>
+                      <td>
+                        <select
+                          className={`readiness-select readiness-${doc.readinessStatus || "not_started"}`}
+                          value={doc.readinessStatus || "not_started"}
+                          disabled={!canEdit}
+                          onChange={(event) => setReadinessStatus(doc, event.target.value)}
+                        >
+                          {READINESS_STATUSES.map((status) => (
+                            <option key={status} value={status}>{READINESS_LABELS[status]}</option>
+                          ))}
+                        </select>
+                        {canEdit && (
+                          <span className="policy-actions">
+                            <button className="icon-button" title="Generate AI draft from Q&amp;A" onClick={() => generateDraftFor(doc)}><FilePenLine size={14} /></button>
+                            {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                            {doc.readinessStatus === "under_review" && <button className="icon-button check" title="Approve" onClick={() => runDocumentAction(doc, "approve")}><Check size={14} /></button>}
+                            {doc.readinessStatus === "under_review" && <button className="icon-button cancel" title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
+                            {doc.readinessStatus === "approved" && <button className="icon-button" title="Mark implemented" onClick={() => runDocumentAction(doc, "mark-implemented")}>Implemented</button>}
+                            {doc.readinessStatus === "implemented" && <button className="icon-button" title="Mark evidence available" onClick={() => runDocumentAction(doc, "mark-evidence-available")}>Evidence</button>}
+                          </span>
+                        )}
+                      </td>
                       <td className="version-cell">
                         {isEditing ? (
                           <span className="edit-actions">
@@ -736,7 +882,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
                     </tr>
                     {expandedHistoryId === doc.id && isApprovedDocument(doc) && (
                       <tr className="history-row">
-                        <td colSpan={7}>
+                        <td colSpan={9}>
                           <table className="history-table">
                             <thead>
                               <tr><th>Version</th><th>When</th><th>By</th><th>Action</th><th>Changes</th><th>File</th></tr>
@@ -837,7 +983,7 @@ function MasterListWorkspace({ hospitalId, hospitalName, hospitalLogoPath, permi
             <div className="checkin-panel"><label>Edited by<input value={checkInEditor} onChange={(event) => setCheckInEditor(event.target.value)} placeholder="Name or initials" /></label><label>Check-in note<input value={checkInNote} onChange={(event) => setCheckInNote(event.target.value)} placeholder="Describe this revision" /></label><button className="primary-button" onClick={checkInDocument}><Save size={16} /> Check in v{isApprovedDocument(openDocument) ? (openDocument.version || 1) + 1 : 1}</button></div>
           </section>
         </div>
-      ) : <OnlyOfficeEditor document={openDocument} department={selected} onClose={() => setOpenDocument(null)} />)}
+      ) : <OnlyOfficeEditor document={openDocument} department={openDocument.department} onClose={() => setOpenDocument(null)} />)}
       {approvalDocument && <div className="preview-backdrop" role="presentation" onClick={() => !approving && setApprovalDocument(null)}><section className="document-editor-dialog approval-dialog" role="dialog" aria-modal="true" aria-label={`Approve new version of ${approvalDocument.documentName}`} onClick={(event) => event.stopPropagation()}><div className="preview-header"><div><p className="eyebrow">Controlled document approval</p><h2>{approvalDocument.documentName}</h2><p className="editor-file-name">{isApprovedDocument(approvalDocument) ? `Current version v${approvalDocument.version || 1}` : "Not yet approved"}</p></div><button className="icon-button" title="Close" disabled={approving} onClick={() => setApprovalDocument(null)}><Close size={18} /></button></div><div className="onlyoffice-setup"><label>Updated file<input type="file" accept=".docx,.xlsx,.pptx" onChange={(event) => setApprovalFile(event.target.files[0] || null)} /></label>{approvalFile && <p className="editor-file-name">{approvalFile.name}</p>}<label>Approval note<input value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>{approvalError && <p className="status error">{approvalError}</p>}<button className="primary-button" disabled={approving} onClick={approveUpload}><Check size={16} /> {approving ? "Approving..." : `Approve version v${isApprovedDocument(approvalDocument) ? (approvalDocument.version || 1) + 1 : 1}`}</button></div></section></div>}
     </main>
   );
@@ -1128,10 +1274,18 @@ function App() {
   const [view, setView] = useState("admin");
   const [session, setSession] = useState(null);
   const [auditEntries, setAuditEntries] = useState([]);
-  if (!session) return <LoginGate onLogin={setSession} />;
+  const [showRegister, setShowRegister] = useState(false);
+  const setupToken = new URLSearchParams(window.location.search).get("setPasswordToken");
+  if (!session) {
+    if (setupToken) {
+      return <SetPassword token={setupToken} onComplete={(newSession) => { window.history.replaceState(null, "", window.location.pathname); setView("platform"); setSession(newSession); }} />;
+    }
+    if (showRegister) return <RegisterHospital onBackToLogin={() => setShowRegister(false)} />;
+    return <LoginGate onLogin={setSession} onShowRegister={() => setShowRegister(true)} />;
+  }
   const isSuperAdmin = session.role === "Super Admin";
   const canViewDocuments = session.permissions?.includes("view");
-  return <><div className="workspace-switcher">{session.hospitalLogoPath && <img className="navigation-logo" src={session.hospitalLogoPath} alt={session.hospitalName} />}<span>{session.hospitalName || session.role}</span>{isSuperAdmin ? <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> Hospitals</button><button className={view === "templates" ? "active" : ""} onClick={() => setView("templates")}><FolderOpen size={16} /> Template library</button></> : <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> User management</button><button className={view === "roles" ? "active" : ""} onClick={() => setView("roles")}><Users size={16} /> Roles</button>{canViewDocuments && <button className={view === "master-list" ? "active" : ""} onClick={() => setView("master-list")}><FileSearch size={16} /> Documents</button>}<button className={view === "audit" ? "active" : ""} onClick={() => setView("audit")}><ClipboardList size={16} /> Audit log</button></>}<button onClick={() => setSession(null)}>Sign out</button></div>{isSuperAdmin ? view === "templates" ? <TemplateLibrary /> : <SuperAdminWorkspace /> : view === "admin" ? <AdminWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} /> : view === "roles" ? <RoleManagement hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : view === "audit" ? <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : canViewDocuments ? <MasterListWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} permissions={session.permissions || []} onCheckIn={(entry) => setAuditEntries((current) => [entry, ...current])} /> : <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} />}</>;
+  return <><div className="workspace-switcher">{session.hospitalLogoPath && <img className="navigation-logo" src={session.hospitalLogoPath} alt={session.hospitalName} />}<span>{session.hospitalName || session.role}</span>{isSuperAdmin ? <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> Hospitals</button><button className={view === "templates" ? "active" : ""} onClick={() => setView("templates")}><FolderOpen size={16} /> Template library</button></> : <><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Building2 size={16} /> User management</button><button className={view === "roles" ? "active" : ""} onClick={() => setView("roles")}><Users size={16} /> Roles</button><button className={view === "platform" ? "active" : ""} onClick={() => setView("platform")}><ClipboardList size={16} /> Readiness Platform</button>{canViewDocuments && <button className={view === "master-list" ? "active" : ""} onClick={() => setView("master-list")}><FileSearch size={16} /> Documents</button>}<button className={view === "audit" ? "active" : ""} onClick={() => setView("audit")}><ClipboardList size={16} /> Audit log</button></>}<button onClick={() => setSession(null)}>Sign out</button></div>{isSuperAdmin ? view === "templates" ? <TemplateLibrary /> : <SuperAdminWorkspace /> : view === "admin" ? <AdminWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} /> : view === "roles" ? <RoleManagement hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : view === "audit" ? <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} /> : view === "platform" ? <PlatformWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} /> : canViewDocuments ? <MasterListWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} permissions={session.permissions || []} onCheckIn={(entry) => setAuditEntries((current) => [entry, ...current])} onGoToAccreditation={() => setView("platform")} /> : <AuditLog entries={auditEntries} hospitalId={session.hospitalId} hospitalName={session.hospitalName} hospitalLogoPath={session.hospitalLogoPath} />}</>;
 }
 
 export default App;

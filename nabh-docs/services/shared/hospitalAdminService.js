@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
 import { readDocumentMatches, readHospitals, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
@@ -226,4 +227,99 @@ export async function deleteHospitalRole(hospitalId, roleId) {
   const remaining = roles.filter((role) => role.id !== roleId);
   if (remaining.length === roles.length) return false;
   hospital.roles = remaining; await saveHospitals(hospitals); return true;
+}
+
+const requiredProfileFields = ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"];
+
+export function isProfileComplete(hospital) {
+  const details = hospital?.details || {};
+  return requiredProfileFields.every((field) => text(details[field]));
+}
+
+export function missingProfileFields(hospital) {
+  const details = hospital?.details || {};
+  return requiredProfileFields.filter((field) => !text(details[field]));
+}
+
+// Public self-service signup: same institutional profile fields as the Super Admin "Create Hospital"
+// screen, plus an administrator account. No admin approval step in this demo.
+export async function registerHospital(input) {
+  const name = text(input.name);
+  const adminName = text(input.adminName);
+  const adminEmail = text(input.adminEmail).toLowerCase();
+  if (!name || !adminName || !adminEmail) throw new Error("Hospital name, administrator name, and administrator email are required.");
+  const hospitals = await readHospitals();
+  const requestedCode = text(input.code).toUpperCase();
+  if (requestedCode && hospitals.some((hospital) => hospital.code === requestedCode)) throw new Error("Client code already exists.");
+  const base = requestedCode || (name.replace(/[^A-Za-z]/g, "").slice(0, 3) || "HOS").toUpperCase();
+  let code = base, suffix = 0;
+  while (hospitals.some((hospital) => hospital.code === code)) { suffix += 1; code = `${base}${suffix}`; }
+  const now = new Date().toISOString();
+  const setupToken = generateSetupToken();
+  const hospital = {
+    id: randomUUID(), name, code, location: text(input.location), status: "active", registrationStatus: "self_registered",
+    logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: "", branch: "main" }, details: input.details && typeof input.details === "object" ? input.details : {},
+    users: [{
+      id: randomUUID(), name: adminName, email: adminEmail, role: "Hospital Administrator", active: true, createdAt: now,
+      passwordSet: false, passwordSetupToken: setupToken, passwordSetupExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    }],
+    createdAt: now, updatedAt: now
+  };
+  hospitals.push(hospital);
+  await saveHospitals(hospitals);
+  return hospital;
+}
+
+// Locates the hospital + user owning a still-valid password setup token, without exposing tokens elsewhere.
+export async function findUserBySetupToken(token) {
+  if (!text(token)) return null;
+  const hospitals = await readHospitals();
+  for (const hospital of hospitals) {
+    const user = hospital.users?.find((item) => item.passwordSetupToken === token);
+    if (user) return { hospital, user };
+  }
+  return null;
+}
+
+// First-time password activation: verifies the token, hashes the password, and clears the token.
+export async function completePasswordSetup(token, password) {
+  const found = await findUserBySetupToken(token);
+  if (!found) throw new Error("Invalid or expired setup link.");
+  if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) throw new Error("This setup link has expired.");
+  if (typeof password !== "string" || password.length < 8) throw new Error("Password must be at least 8 characters.");
+  const { salt, hash } = hashPassword(password);
+  const hospitals = await readHospitals();
+  const hospital = hospitals.find((item) => item.id === found.hospital.id);
+  const user = hospital.users.find((item) => item.id === found.user.id);
+  user.passwordSalt = salt;
+  user.passwordHash = hash;
+  user.passwordSet = true;
+  delete user.passwordSetupToken;
+  delete user.passwordSetupExpiresAt;
+  hospital.updatedAt = new Date().toISOString();
+  await saveHospitals(hospitals);
+  return { hospital, user };
+}
+
+// Verifies a hospital administrator's password: real hash if set, otherwise the legacy demo password.
+export async function verifyHospitalAdminPassword(code, password) {
+  const hospitals = await readHospitals();
+  const hospital = hospitals.find((item) => item.code.toLowerCase() === code.toLowerCase());
+  if (!hospital) return null;
+  const user = hospital.users.find((item) => item.role === "Hospital Administrator");
+  if (!user) return null;
+  const ok = user.passwordHash ? verifyPassword(password, user.passwordSalt, user.passwordHash) : password === "Hospital@123";
+  return ok ? hospital : null;
+}
+
+
+// Self-service institutional profile capture (hospital name, ownership, beds, specialties, etc.).
+export async function submitHospitalProfile(hospitalId, details) {
+  const hospitals = await readHospitals();
+  const hospital = hospitals.find((item) => item.id === hospitalId);
+  if (!hospital) return null;
+  hospital.details = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
+  hospital.updatedAt = new Date().toISOString();
+  await saveHospitals(hospitals);
+  return hospital;
 }
