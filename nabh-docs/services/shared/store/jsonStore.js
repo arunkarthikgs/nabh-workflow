@@ -80,6 +80,10 @@ export async function readDocumentAudit() {
   return readJson(documentAuditPath, []);
 }
 
+export async function readDocumentAuditByHospital(hospitalId) {
+  return (await readDocumentAudit()).filter((entry) => entry.hospitalId === hospitalId);
+}
+
 export async function saveDocumentAudit(entries) {
   await writeJson(documentAuditPath, entries);
 }

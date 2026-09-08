@@ -581,6 +581,12 @@ export async function readDocumentAudit() {
   return rows.map((row) => row.entry);
 }
 
+export async function readDocumentAuditByHospital(hospitalId) {
+  const client = await connect();
+  const { rows } = await client.query(`select entry from document_audit where entry->>'hospitalId' = $1 order by seq desc`, [hospitalId]);
+  return rows.map((row) => row.entry);
+}
+
 export async function saveDocumentAudit(entries) {
   const client = await (await connect()).connect();
   try {

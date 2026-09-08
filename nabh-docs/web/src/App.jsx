@@ -1563,7 +1563,7 @@ function MasterListWorkspace({
       )}
       {questionnaire && (
         <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaire(null)}>
-          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label="Generate personalized draft" onClick={(event) => event.stopPropagation()}>
+          <section className="questionnaire-dialog" role="dialog" aria-modal="true" aria-label="Generate personalized draft" onClick={(event) => event.stopPropagation()}>
             <div className="preview-header">
               <div>
                 <p className="eyebrow">Hospital-specific document generation</p>

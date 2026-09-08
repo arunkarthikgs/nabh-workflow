@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -157,8 +157,16 @@ app.get("/api/health", async (_request, response) => {
 
 app.get("/api/admin/hospitals", async (request, response, next) => {
   try {
-    if (request.query.view === "summary") return response.json(await readHospitalSummaries());
-    if (request.query.view === "registry") return response.json({ hospitals: await readHospitalRegistry() });
+    if (request.query.view === "summary") {
+      if (request.appSession.role === "Super Admin") return response.json(await readHospitalSummaries());
+      const own = await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId);
+      return response.json({ total: own ? 1 : 0, pending: own?.status === "pending" ? 1 : 0, active: own?.status === "active" ? 1 : 0, users: own?.users?.length || 0 });
+    }
+    if (request.query.view === "registry") {
+      if (request.appSession.role === "Super Admin") return response.json({ hospitals: await readHospitalRegistry() });
+      const own = await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId);
+      return response.json({ hospitals: own ? [own] : [] });
+    }
     const hospitals = await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation));
     const visible = request.appSession.role === "Super Admin" ? hospitals : hospitals.filter((hospital) => hospital.id === request.appSession.hospital_id || hospital.id === request.appSession.hospitalId);
     response.json({ hospitals: visible });
@@ -204,12 +212,13 @@ app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (requ
 });
 
 app.patch("/api/admin/hospitals/:hospitalId", async (request, response, next) => {
-  try { const hospital = await updateHospital(request.params.hospitalId, request.body || {}); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); response.json({ hospital: await persistHospitalLogo(hospital) }); }
+  try { if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." }); const hospital = await updateHospital(request.params.hospitalId, request.body || {}); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); response.json({ hospital: await persistHospitalLogo(hospital) }); }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/approve-onboarding", async (request, response, next) => {
   try {
+    if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const hospital = await approveHospitalOnboarding(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     response.json({ hospital });
@@ -217,7 +226,7 @@ app.post("/api/admin/hospitals/:hospitalId/approve-onboarding", async (request, 
 });
 
 app.delete("/api/admin/hospitals/:hospitalId", async (request, response, next) => {
-  try { if (!await deleteHospital(request.params.hospitalId)) return response.status(404).json({ error: "Hospital not found." }); response.status(204).end(); } catch (error) { next(error); }
+  try { if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." }); if (!await deleteHospital(request.params.hospitalId)) return response.status(404).json({ error: "Hospital not found." }); response.status(204).end(); } catch (error) { next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/users", async (request, response, next) => {
@@ -226,7 +235,7 @@ app.post("/api/admin/hospitals/:hospitalId/users", async (request, response, nex
 });
 
 app.patch("/api/admin/hospitals/:hospitalId/users/:userId", async (request, response, next) => {
-  try { const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); requireActiveHospital(hospital); const user = await updateHospitalUser(request.params.hospitalId, request.params.userId, request.body || {}); if (!user) return response.status(404).json({ error: "User not found." }); response.json({ user }); }
+  try { if (request.body?.role === "Super Admin" && request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Only a Super Admin can assign privileged roles." }); const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); requireActiveHospital(hospital); const user = await updateHospitalUser(request.params.hospitalId, request.params.userId, request.body || {}); if (!user) return response.status(404).json({ error: "User not found." }); response.json({ user }); }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -510,6 +519,8 @@ async function recordDocumentStatusAudit(hospital, documentId, previousStatus, e
   const departments = await loadHospitalDepartments(hospital);
   const document = Object.entries(departments).flatMap(([department, documents]) => documents.map((item) => ({ ...item, department }))).find((item) => item.id === documentId);
   const auditEntry = {
+    hospitalId: hospital.id,
+    hospitalCode: hospital.code,
     documentId,
     documentName: document?.documentName || documentId,
     department: document?.department || "",
@@ -971,7 +982,7 @@ async function resolveMasterTemplateBuffer(relativePath, programme) {
 
 async function resolveDocumentBuffer(hospital, relativePath) {
   const norm = String(relativePath || "").replace(/\\/g, "/").trim();
-  if (!norm) return null;
+  if (!norm || norm.startsWith("/") || norm.split("/").includes("..")) return null;
 
   const candidates = [];
   candidates.push(norm);
@@ -1017,7 +1028,9 @@ async function resolveDocumentBuffer(hospital, relativePath) {
     } catch {}
   } else {
     for (const cand of candidates) {
-      const localPath = path.resolve(templateRoot, cand);
+      const localRoot = path.resolve(templateRoot);
+      const localPath = path.resolve(localRoot, cand);
+      if (!localPath.startsWith(`${localRoot}${path.sep}`)) continue;
       try {
         await access(localPath);
         const buffer = await readFile(localPath);
@@ -1143,7 +1156,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/preview", async (request, re
 app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, response, next) => {
   try {
     const hospital = await findHospital(request);
-    const entries = r2TemplateStorageEnabled() && !usesPostgresDataStore() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await readDocumentAudit();
+    const entries = r2TemplateStorageEnabled() && !usesPostgresDataStore() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await readDocumentAuditByHospital(hospital.id);
     response.json({ entries });
   } catch (error) { next(error); }
 });
@@ -1212,8 +1225,10 @@ app.get("/api/admin/template-library/preview", async (request, response, next) =
   }
 });
 
-app.get("/api/document-audit", async (_request, response, next) => {
+app.use("/api/document-audit", requireApplicationSession);
+app.get("/api/document-audit", async (request, response, next) => {
   try {
+    if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     if (!r2TemplateStorageEnabled() || usesPostgresDataStore()) return response.json({ entries: await readDocumentAudit() });
     const hospitals = await listHospitals();
     const clientEntries = await Promise.all(hospitals.filter((hospital) => hospital.accreditation?.programme).map(async (hospital) => (await listR2ClientAuditEvents(hospital.code, hospital.accreditation.programme)).map((entry) => ({ ...entry, hospitalCode: hospital.code, hospitalName: hospital.name }))));
@@ -1223,6 +1238,8 @@ app.get("/api/document-audit", async (_request, response, next) => {
 
 app.post("/api/documents/:department/:id/onlyoffice", async (request, response, next) => {
   try {
+    if (!request.appSession) return response.status(401).json({ error: "Authentication required." });
+    if (request.appSession.role !== "Super Admin") return response.status(403).json({ error: "OnlyOffice editing is currently available to Super Admins." });
     const config = await onlyOffice.editorConfig({
       department: request.params.department,
       id: request.params.id,
@@ -1237,6 +1254,8 @@ app.post("/api/documents/:department/:id/onlyoffice", async (request, response, 
 
 app.get("/api/documents/:department/:id/content", async (request, response, next) => {
   try {
+    if (!request.appSession) return response.status(401).json({ error: "Authentication required." });
+    if (request.appSession.role !== "Super Admin") return response.status(403).json({ error: "Document content access requires Super Admin authorization." });
     const document = await onlyOffice.streamDocument(request.params.department, request.params.id);
     if (!document) return response.status(404).json({ error: "Document not found." });
     response.download(document.filePath, document.fileName);
@@ -1268,6 +1287,7 @@ app.get("/api/documents/aac-policy/download", async (_request, response, next) =
 
 app.patch("/api/document-matches/:department/active", async (request, response, next) => {
   try {
+    if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const { department } = request.params;
     const { id, active } = request.body;
 
@@ -1295,6 +1315,7 @@ const EDITABLE_FIELDS = ["documentName", "documentId", "matchedFilePath"];
 
 app.patch("/api/document-matches/:department/edit", async (request, response, next) => {
   try {
+    if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const { department } = request.params;
     const { id, editor, fields } = request.body;
 
