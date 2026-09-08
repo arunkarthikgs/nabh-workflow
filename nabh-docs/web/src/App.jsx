@@ -1464,7 +1464,6 @@ function MasterListWorkspace({
                   <th>Active</th>
                   <th>Document Name</th>
                   <th>Readiness</th>
-                  <th>Version</th>
                   <th className="hospital-actions-column">Actions</th>
                 </tr>
               </thead>
@@ -1543,47 +1542,11 @@ function MasterListWorkspace({
                           )}
                           {statusErrors[doc.id] && <p className="document-status-error">{statusErrors[doc.id]}</p>}
                         </td>
-                        <td className="version-cell">
-                          {isEditing ? (
-                            <span className="edit-actions">
-                              <button
-                                className="icon-button check"
-                                title="Check in"
-                                onClick={() => checkInEdit(doc)}
-                              >
-                                <Check size={14} />
-                              </button>
-                              <button
-                                className="icon-button cancel"
-                                title="Cancel"
-                                onClick={cancelEdit}
-                              >
-                                <X size={14} />
-                              </button>
-                            </span>
-                          ) : (
-                            <span className="version-actions">
-                              {doc.relativeFilePath || doc.matchedFilePath ? (
-                                <button
-                                  className="version-badge"
-                                  title="View history"
-                                  onClick={() => toggleHistory(doc)}
-                                >
-                                  <History size={12} /> {doc.version ? `v${doc.version}` : "History"}
-                                </button>
-                              ) : (
-                                <span
-                                  className="unapproved-tag"
-                                  title="Not yet approved"
-                                >
-                                  Not approved
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </td>
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
+                            {isEditing && <span className="edit-actions"><button className="icon-button check" title="Check in" onClick={() => checkInEdit(doc)}><Check size={14} /></button><button className="icon-button cancel" title="Cancel" onClick={cancelEdit}><X size={14} /></button></span>}
+                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} /> {doc.version ? `v${doc.version}` : "History"}</button>}
+                            {!isEditing && !(doc.relativeFilePath || doc.matchedFilePath) && <span className="unapproved-tag" title="Not yet approved">Not approved</span>}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
@@ -1670,7 +1633,7 @@ function MasterListWorkspace({
                 })}
                 {filteredDocuments.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="empty">
+                    <td colSpan={5} className="empty">
                       No documents match your filters.
                     </td>
                   </tr>
@@ -1693,7 +1656,7 @@ function MasterListWorkspace({
             </div>
             {!generatedDraft ? (
               <div className="profile-form">
-                {questionnaire.questions.length === 0 ? <p className="access-message">No questions are configured for this document. You can generate the draft without responses.</p> : questionnaire.questions.map((question) => (
+                {questionnaire.questions.length === 0 ? <div className="questionnaire-empty-state"><ClipboardList size={22} /><h3>No questionnaire configured</h3><p>This document does not require hospital-specific responses. You can generate the draft now.</p></div> : questionnaire.questions.map((question) => (
                   <label key={question.id}>
                     {question.label}{question.required !== false && " *"}
                     {question.type === "multiselect" ? (

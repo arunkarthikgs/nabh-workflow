@@ -40,7 +40,7 @@ export async function getDocumentQuestions(hospital, documentId, documentName, t
 }
 
 export function validateDocumentAnswers(questionnaire, answers) {
-  if (!questionnaire.questions?.length) throw new Error("No questions are available to answer for this document.");
+  if (!questionnaire.questions?.length) return {};
   const submitted = answers && typeof answers === "object" && !Array.isArray(answers) ? answers : {};
   const errors = {};
   for (const question of questionnaire.questions || []) {
