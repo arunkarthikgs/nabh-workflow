@@ -82,7 +82,7 @@ export default function SuperAdminUserManagement() {
               <p>Choose a hospital from the list to open its scoped user-management workspace.</p>
             </section>
           ) : (
-            <AdminWorkspace scopedHospitalId={selectedHospitalId} hospitalName={hospitals.find((item) => item.id === selectedHospitalId)?.name} />
+            <AdminWorkspace hospitalId={selectedHospitalId} hospitalName={hospitals.find((item) => item.id === selectedHospitalId)?.name} />
           )}
         </section>
       </section>

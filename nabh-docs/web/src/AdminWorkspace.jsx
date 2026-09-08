@@ -114,7 +114,15 @@ export default function AdminWorkspace({
   }
   useEffect(() => {
     load().catch((error) => setMessage(error.message));
-  }, []);
+  }, [scopedHospitalId]);
+
+  useEffect(() => {
+    setUser(blankUser);
+    setEditingId("");
+    setQuery("");
+    setTab("assigned");
+    setMessage("");
+  }, [scopedHospitalId]);
   const users = (hospital?.users || []).filter((current) =>
     `${current.name} ${current.employeeId} ${current.department} ${current.role} ${current.email} ${current.mobileNumber}`
       .toLowerCase()
