@@ -212,9 +212,11 @@ export default function TemplateLibrary() {
                 <tbody>
                   {templates.map((template) => {
                     const Icon = typeIcons[template.fileType] || FileText;
+                    const templateFolders = (template.templatePath || "").split("/").slice(0, -1).filter(Boolean);
+                    const templateContext = templateFolders.slice(-2).join(" / ");
                     return (
                       <tr key={`${selectedDepartment}-${template.documentId}`}>
-                        <td><strong>{template.documentName}</strong></td>
+                        <td><strong>{template.documentName}</strong>{templateContext && <small className="template-context">{templateContext}</small>}</td>
                         <td>{template.fileType && <span className="template-type"><Icon size={15} /> {template.fileType}</span>}</td>
                         <td className="actions-column">{template.templatePath && (
                           <span className="template-actions">
