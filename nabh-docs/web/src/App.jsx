@@ -727,6 +727,8 @@ function MasterListWorkspace({
             documentId: doc.id,
             status: nextStatus,
             updatedBy: hospitalName || "Hospital",
+            documentName: doc.documentName,
+            department: doc.department,
           }),
         },
       );
@@ -759,6 +761,9 @@ function MasterListWorkspace({
             documentId: doc.id,
             action,
             updatedBy: hospitalName || "Hospital",
+            documentName: doc.documentName,
+            department: doc.department,
+            note,
           }),
         },
       );

@@ -537,15 +537,18 @@ async function loadHospitalDepartments(hospital) {
   return departments;
 }
 
-async function recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action) {
-  const departments = await loadHospitalDepartments(hospital);
-  const document = Object.entries(departments).flatMap(([department, documents]) => documents.map((item) => ({ ...item, department }))).find((item) => item.id === documentId);
+async function recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action, documentContext = {}) {
+  let document = documentContext;
+  if (!document.documentName) {
+    const departments = await loadHospitalDepartments(hospital);
+    document = Object.entries(departments).flatMap(([department, documents]) => documents.map((item) => ({ ...item, department }))).find((item) => item.id === documentId) || {};
+  }
   const auditEntry = {
     hospitalId: hospital.id,
     hospitalCode: hospital.code,
     documentId,
-    documentName: document?.documentName || documentId,
-    department: document?.department || "",
+    documentName: document.documentName || documentId,
+    department: document.department || "",
     action: action || "readiness status changed",
     approvedBy: entry.updatedBy,
     note: `${previousStatus.replace(/_/g, " ")} -> ${entry.status.replace(/_/g, " ")}${entry.note ? `: ${entry.note}` : ""}`,
@@ -654,10 +657,10 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
     requireCompleteHospitalProfile(hospital);
-    const { documentId, status, updatedBy, note } = request.body || {};
+    const { documentId, status, updatedBy, note, documentName, department } = request.body || {};
     const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
     const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note, previousStatus);
-    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry);
+    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, undefined, { documentName, department });
     response.json({ documentId, entry });
   } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -824,10 +827,9 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     requireActiveHospital(hospital);
     const persistentStatus = await getPersistentDocumentStatus(hospital);
     const previousStatus = persistentStatus[documentId]?.status || "not_started";
-    if (persistentStatus[documentId]) await setHospitalDocumentStatus(hospital.id, documentId, persistentStatus[documentId].status, persistentStatus[documentId].updatedBy, persistentStatus[documentId].note);
     const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note, previousStatus);
     if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [documentId]: entry });
-    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
+    await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "), { documentName: request.body?.documentName, department: request.body?.department });
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
