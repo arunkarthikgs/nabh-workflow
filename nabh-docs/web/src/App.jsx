@@ -303,6 +303,7 @@ function MasterListWorkspace({
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
   const [statusErrors, setStatusErrors] = useState({});
+  const [processingStatusIds, setProcessingStatusIds] = useState(() => new Set());
   const [accreditationRequired, setAccreditationRequired] = useState(null);
   const [profileIncomplete, setProfileIncomplete] = useState([]);
   const [documentSearch, setDocumentSearch] = useState(
@@ -752,6 +753,7 @@ function MasterListWorkspace({
     if (nextStatus === "implemented") return openAuditedAction(doc, "mark-implemented");
     if (nextStatus === "evidence_available") return openEvidence(doc);
     try {
+      setProcessingStatusIds((current) => new Set([...current, doc.id]));
       const response = await fetch(
         `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-status`,
         {
@@ -777,6 +779,12 @@ function MasterListWorkspace({
       setStatusErrors((current) => ({ ...current, [doc.id]: "" }));
     } catch (err) {
       setStatusErrors((current) => ({ ...current, [doc.id]: err.message }));
+    } finally {
+      setProcessingStatusIds((current) => {
+        const next = new Set(current);
+        next.delete(doc.id);
+        return next;
+      });
     }
   }
 
@@ -787,6 +795,7 @@ function MasterListWorkspace({
 
   async function runDocumentAction(doc, action, note = "", updatedBy = hospitalName || "Hospital") {
     try {
+      setProcessingStatusIds((current) => new Set([...current, doc.id]));
       const response = await fetch(
         `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/action`,
         {
@@ -816,6 +825,12 @@ function MasterListWorkspace({
     } catch (err) {
       setStatusErrors((current) => ({ ...current, [doc.id]: err.message }));
       return false;
+    } finally {
+      setProcessingStatusIds((current) => {
+        const next = new Set(current);
+        next.delete(doc.id);
+        return next;
+      });
     }
   }
 
@@ -1449,6 +1464,7 @@ function MasterListWorkspace({
               <tbody>
                 {filteredDocuments.map((doc) => {
                   const isEditing = editingId === doc.id;
+                  const isStatusProcessing = processingStatusIds.has(doc.id);
                   return (
                     <Fragment key={docKey(doc)}>
                       <tr
@@ -1499,7 +1515,7 @@ function MasterListWorkspace({
                           <select
                             className={`readiness-select readiness-${doc.readinessStatus || "not_started"}`}
                             value={doc.readinessStatus || "not_started"}
-                            disabled={!canEdit}
+                            disabled={!canEdit || isStatusProcessing}
                             onChange={(event) =>
                               setReadinessStatus(doc, event.target.value)
                             }
@@ -1510,6 +1526,7 @@ function MasterListWorkspace({
                               </option>
                             ))}
                           </select>
+                          {isStatusProcessing && <span className="readiness-processing"><RefreshCw size={12} className="spin-icon" /> Processing...</span>}
                           {doc.readinessStatus === "approved" && <span className="document-lock-message">Approved and locked</span>}
                           {statusErrors[doc.id] && <p className="document-status-error">{statusErrors[doc.id]}</p>}
                         </td>
@@ -1556,11 +1573,11 @@ function MasterListWorkspace({
                           <span className="hospital-document-actions">
                             {canEdit && (
                               <span className="policy-actions">
-                                {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
-                                {doc.readinessStatus === "under_review" && <button className="icon-button check" title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
-                                {doc.readinessStatus === "under_review" && <button className="icon-button cancel" title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
-                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
-                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
+                                {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                                {doc.readinessStatus === "under_review" && <button className="icon-button check" disabled={isStatusProcessing} title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
+                                {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
+                                {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
+                                {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
                                 {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
                               </span>
                             )}
