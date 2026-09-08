@@ -2232,6 +2232,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
     });
     return Array.from(map.values()).sort((left, right) => left.label.localeCompare(right.label));
   }, [auditEntriesForTab]);
+  const selectedHospitalLabel = !hospitalId && selectedHospital !== "all" ? hospitals.find((item) => item.key === selectedHospital)?.label : "";
 
   const actions = useMemo(() => {
     const set = new Set();
@@ -2427,11 +2428,12 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
         ) : visibleEntries.length === 0 ? (
           <p className="empty">No matching audit log entries found.</p>
         ) : (
+          <>
+          {selectedHospitalLabel && <div className="audit-scope-banner"><span>Hospital</span><strong>{selectedHospitalLabel}</strong></div>}
           <table className={`audit-table ${hospitalId ? "hospital-audit-table" : ""}`}>
             <thead>
               <tr>
                 <th>When</th>
-                {!hospitalId && <th>Scope</th>}
                 <th>Document</th>
                 <th>Department</th>
                 <th>Version</th>
@@ -2452,13 +2454,6 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                     }
                   >
                     <td className="audit-time">{new Date(entry.timestamp).toLocaleString()}</td>
-                    {!hospitalId && (
-                      <td>
-                        {entry.scope === "template"
-                          ? "Master template"
-                          : entry.hospitalCode || "System"}
-                      </td>
-                    )}
                     <td>
                       <strong>{entry.documentName || "Document"}</strong>
                       <br />
@@ -2476,6 +2471,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
               })}
             </tbody>
           </table>
+          </>
         )}
         {hospitalId && auditHasMore && !loadingAudit && <button className="secondary-button audit-load-more" type="button" disabled={loadingMoreAudit} onClick={loadMoreAuditEntries}>{loadingMoreAudit ? "Loading more..." : "Load more audit entries"}</button>}
       </section>
