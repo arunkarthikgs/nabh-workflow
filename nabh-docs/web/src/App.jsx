@@ -348,7 +348,7 @@ function MasterListWorkspace({
   const [generatedDraft, setGeneratedDraft] = useState(null);
   const [evidenceDocument, setEvidenceDocument] = useState(null);
   const [evidenceEntries, setEvidenceEntries] = useState([]);
-  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [evidenceType, setEvidenceType] = useState("implementation evidence");
   const [evidenceDescription, setEvidenceDescription] = useState("");
   const [evidenceUploadedBy, setEvidenceUploadedBy] = useState("");
@@ -400,7 +400,7 @@ function MasterListWorkspace({
 
   async function openEvidence(doc) {
     setEvidenceDocument(doc);
-    setEvidenceFile(null);
+    setEvidenceFiles([]);
     setEvidenceType("implementation evidence");
     setEvidenceDescription("");
     setEvidenceUploadedBy("");
@@ -413,22 +413,22 @@ function MasterListWorkspace({
 
   async function uploadEvidence(event) {
     event.preventDefault();
-    if (!evidenceDocument || !evidenceFile) return setEvidenceError("Choose an evidence file before uploading.");
+    if (!evidenceDocument || !evidenceFiles.length) return setEvidenceError("Choose at least one evidence file before uploading.");
     if (!evidenceUploadedBy.trim()) return setEvidenceError("Enter the user name before uploading evidence.");
     if (!evidenceDescription.trim()) return setEvidenceError("Enter notes describing the evidence before uploading.");
     setUploadingEvidence(true);
     setEvidenceError("");
     try {
-      const dataUrl = await new Promise((resolve, reject) => {
+      const files = await Promise.all(evidenceFiles.map((file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("The evidence file could not be read."));
-        reader.readAsDataURL(evidenceFile);
-      });
+        reader.onload = () => resolve({ fileName: file.name, mimeType: file.type, data: reader.result });
+        reader.onerror = () => reject(new Error(`The evidence file "${file.name}" could not be read.`));
+        reader.readAsDataURL(file);
+      })));
       const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(evidenceDocument.id)}/evidence`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: evidenceFile.name, mimeType: evidenceFile.type, data: dataUrl, evidenceType, description: evidenceDescription, notes: evidenceDescription, uploadedBy: evidenceUploadedBy.trim(), documentName: evidenceDocument.documentName, department: evidenceDocument.department })
+        body: JSON.stringify({ files, evidenceType, description: evidenceDescription, notes: evidenceDescription, uploadedBy: evidenceUploadedBy.trim(), documentName: evidenceDocument.documentName, department: evidenceDocument.department })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to upload evidence.");
@@ -436,8 +436,8 @@ function MasterListWorkspace({
         ...current,
         [evidenceDocument.department]: current[evidenceDocument.department].map((document) => document.id === evidenceDocument.id ? { ...document, readinessStatus: data.entry.status } : document)
       }));
-      setEvidenceEntries((current) => [data.evidence, ...current]);
-      setEvidenceFile(null);
+      setEvidenceEntries((current) => [...(data.evidenceRecords || [data.evidence]).filter(Boolean), ...current]);
+      setEvidenceFiles([]);
       setEvidenceDescription("");
       setEvidenceUploadedBy("");
       setSyncMessage("Evidence uploaded successfully. The document is now marked Evidence Available.");
@@ -1744,8 +1744,9 @@ function MasterListWorkspace({
             <form className="profile-form" onSubmit={uploadEvidence}>
               <label>
                 Evidence file
-                <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.docx,.xlsx" onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)} />
+                <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.docx,.xlsx" onChange={(event) => setEvidenceFiles(Array.from(event.target.files || []))} />
               </label>
+              {evidenceFiles.length > 0 && <p className="editor-file-name">{evidenceFiles.length} attachment{evidenceFiles.length === 1 ? "" : "s"} selected: {evidenceFiles.map((file) => file.name).join(", ")}</p>}
               <label>
                 Evidence type
                 <select value={evidenceType} onChange={(event) => setEvidenceType(event.target.value)}>

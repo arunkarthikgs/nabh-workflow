@@ -19,6 +19,11 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]);
 
+function evidenceFiles(payload) {
+  const files = Array.isArray(payload?.files) && payload.files.length ? payload.files : [{ data: payload?.data, mimeType: payload?.mimeType, fileName: payload?.fileName }];
+  return files.filter((file) => file?.data || file?.fileName);
+}
+
 function safeFileName(fileName) {
   const value = path.basename(String(fileName || "evidence")).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return value || "evidence";
@@ -73,44 +78,54 @@ export async function createEvidence(hospital, documentId, payload, uploadedBy, 
   }
   if (!String(uploadedBy || "").trim()) throw new Error("Enter the user name before uploading evidence.");
   if (!String(payload?.description || payload?.notes || "").trim()) throw new Error("Enter notes describing the evidence before uploading.");
-  const { buffer, contentType } = decodeEvidenceData(payload?.data, payload?.mimeType);
-  const evidenceId = randomUUID();
-  const fileName = safeFileName(payload?.fileName);
-  const storageKey = `evidence/${hospital.id}/${evidenceId}-${fileName}`;
-  const evidence = {
-    id: evidenceId,
-    hospitalId: hospital.id,
-    documentId,
-    storageType: r2TemplateStorageEnabled() ? "r2" : "local",
-    storageKey,
-    fileName,
-    mimeType: contentType,
-    sizeBytes: buffer.length,
-    evidenceType: String(payload?.evidenceType || "implementation evidence").trim().slice(0, 120),
-    description: String(payload?.description || payload?.notes || "").trim().slice(0, 2000),
-    uploadedBy: String(uploadedBy || "system").trim().slice(0, 160) || "system",
-    uploadedAt: new Date().toISOString(),
-    reviewStatus: "submitted",
-    reviewedBy: null,
-    reviewedAt: null,
-    metadata: { originalFileName: String(payload?.fileName || fileName).slice(0, 255) }
-  };
+  const files = evidenceFiles(payload);
+  if (!files.length) throw new Error("Choose at least one evidence file before uploading.");
+  const evidenceRecords = [];
+  const storedEvidence = [];
 
   try {
-    if (evidence.storageType === "r2") {
-      await saveR2EvidenceFile(hospital.code, hospital.accreditation?.programme, storageKey, buffer, contentType);
-    } else {
-      const filePath = localFilePath(storageKey);
-      await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, buffer);
+    for (const file of files) {
+      const { buffer, contentType } = decodeEvidenceData(file.data, file.mimeType);
+      const evidenceId = randomUUID();
+      const fileName = safeFileName(file.fileName);
+      const storageKey = `evidence/${hospital.id}/${evidenceId}-${fileName}`;
+      const evidence = {
+        id: evidenceId,
+        hospitalId: hospital.id,
+        documentId,
+        storageType: r2TemplateStorageEnabled() ? "r2" : "local",
+        storageKey,
+        fileName,
+        mimeType: contentType,
+        sizeBytes: buffer.length,
+        evidenceType: String(payload?.evidenceType || "implementation evidence").trim().slice(0, 120),
+        description: String(payload?.description || payload?.notes || "").trim().slice(0, 2000),
+        uploadedBy: String(uploadedBy || "system").trim().slice(0, 160) || "system",
+        uploadedAt: new Date().toISOString(),
+        reviewStatus: "submitted",
+        reviewedBy: null,
+        reviewedAt: null,
+        metadata: { originalFileName: String(file.fileName || fileName).slice(0, 255) }
+      };
+      if (evidence.storageType === "r2") {
+        await saveR2EvidenceFile(hospital.code, hospital.accreditation?.programme, storageKey, buffer, contentType);
+      } else {
+        const filePath = localFilePath(storageKey);
+        await mkdir(path.dirname(filePath), { recursive: true });
+        await writeFile(filePath, buffer);
+      }
+      storedEvidence.push(evidence);
+      await addEvidence(evidence);
+      evidenceRecords.push(evidence);
     }
-    await addEvidence(evidence);
-    const entryNote = evidence.description ? `Evidence uploaded: ${fileName}. ${evidence.description}` : `Evidence uploaded: ${fileName}`;
+    const fileNames = evidenceRecords.map((evidence) => evidence.fileName).join(", ");
+    const description = evidenceRecords[0]?.description || "";
+    const entryNote = description ? `Evidence uploaded: ${fileNames}. ${description}` : `Evidence uploaded: ${fileNames}`;
     const entry = await setHospitalDocumentStatus(hospital.id, documentId, "evidence_available", uploadedBy, entryNote, currentStatus);
-    return { evidence, entry, previousStatus: currentStatus };
+    return { evidence: evidenceRecords[0], evidenceRecords, entry, previousStatus: currentStatus };
   } catch (error) {
-    await deleteEvidence(hospital.id, evidence.id).catch(() => {});
-    await removeStoredEvidence(hospital, evidence).catch(() => {});
+    await Promise.all(evidenceRecords.map((evidence) => deleteEvidence(hospital.id, evidence.id).catch(() => {})));
+    await Promise.all(storedEvidence.map((evidence) => removeStoredEvidence(hospital, evidence).catch(() => {})));
     throw error;
   }
 }

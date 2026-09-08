@@ -123,7 +123,7 @@ const onlyOffice = createOnlyOfficeService({
 app.use(express.static(webBuildDir, { etag: false, lastModified: false, setHeaders: (response) => response.set("Cache-Control", "no-store") }));
 app.use("/prototype", express.static(prototypeDir));
 app.use("/logos", express.static(logosDir));
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 function requestCookies(request) {
   return Object.fromEntries(String(request.headers.cookie || "").split(";").map((part) => part.trim().split("=")).filter(([key, value]) => key && value).map(([key, ...value]) => [key, decodeURIComponent(value.join("="))]));
