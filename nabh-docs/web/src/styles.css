@@ -441,6 +441,21 @@ h2 { font-size: 19px; }
 .filter-label { color: #6c6fb0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .audit-filter-select, .audit-date-input { background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 8px; color: #3a3f6b; font: 400 13px "Poppins", sans-serif; padding: 7px 10px; outline: none; }
 .audit-filter-select:focus, .audit-date-input:focus { border-color: #3547d1; background: #ffffff; }
+.audit-table { min-width: 980px; table-layout: fixed; }
+.audit-table th:nth-child(1) { width: 118px; }
+.audit-table th:nth-child(2) { width: 28%; }
+.audit-table th:nth-child(3) { width: 150px; }
+.audit-table th:nth-child(4) { width: 76px; }
+.audit-table th:nth-child(5) { width: 140px; }
+.audit-table th:nth-child(6) { width: 150px; }
+.audit-table th:nth-child(7) { width: 24%; }
+.audit-table td { vertical-align: top; }
+.audit-time { color: #5f5e5b; font: 600 11px/1.4 "Manrope", sans-serif; white-space: normal; }
+.audit-table td strong { color: #37352f; display: block; font-size: 12px; line-height: 1.35; }
+.audit-document-path { color: #787774; display: block; font: 500 10px/1.35 "DM Mono", monospace; margin-top: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audit-version, .audit-user { color: #5f5e5b; font-size: 11px; }
+.audit-action-pill { background: #f1f1ef; border-radius: 4px; color: #5f5e5b; display: inline-block; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 4px 7px; text-transform: capitalize; }
+.audit-note { color: #5f5e5b; font-size: 11px; line-height: 1.45; }
 .reset-filters-button { align-items: center; background: #eef0ff; border: 1px solid #c7cdf7; border-radius: 8px; color: #3547d1; cursor: pointer; display: inline-flex; font: 600 12px "Poppins", sans-serif; gap: 6px; padding: 8px 12px; transition: all 0.15s ease; height: 36px; margin-top: auto; }
 .reset-filters-button:hover { background: #3547d1; color: #ffffff; border-color: #3547d1; }
 .dept-badge { background: #eef0ff; border: 1px solid #dce0fc; border-radius: 6px; color: #3547d1; font-weight: 600; font-size: 11px; padding: 2px 8px; display: inline-block; }

@@ -2382,7 +2382,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
         ) : visibleEntries.length === 0 ? (
           <p className="empty">No matching audit log entries found.</p>
         ) : (
-          <table>
+          <table className="audit-table">
             <thead>
               <tr>
                 <th>When</th>
@@ -2406,7 +2406,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                       `${entry.documentId}-${entry.version}-${entry.timestamp}`
                     }
                   >
-                    <td>{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td className="audit-time">{new Date(entry.timestamp).toLocaleString()}</td>
                     {!hospitalId && (
                       <td>
                         {entry.scope === "template"
@@ -2415,17 +2415,17 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                       </td>
                     )}
                     <td>
-                      <strong>{entry.documentName}</strong>
+                      <strong>{entry.documentName || "Document"}</strong>
                       <br />
-                      <span className="mono">{entry.documentId}</span>
+                      <span className="audit-document-path">{entry.documentId || entry.templatePath || entry.objectKey || "-"}</span>
                     </td>
                     <td>
                       <span className="dept-badge">{dept}</span>
                     </td>
-                    <td>v{entry.version}</td>
-                    <td>{entry.approvedBy || entry.editor || "System"}</td>
-                    <td>{entry.action || "approved upload"}</td>
-                    <td>{entry.note || "-"}</td>
+                    <td className="audit-version">{entry.version ? `v${entry.version}` : "-"}</td>
+                    <td className="audit-user">{entry.approvedBy || entry.editor || "System"}</td>
+                    <td><span className="audit-action-pill">{entry.action || "approved upload"}</span></td>
+                    <td className="audit-note">{entry.note || "-"}</td>
                   </tr>
                 );
               })}
