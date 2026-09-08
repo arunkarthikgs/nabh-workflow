@@ -130,7 +130,7 @@ export default function TemplateLibrary() {
   }
 
   function updateQuestionOptions(index, value) {
-    updateQuestion(index, { options: value.split(/\r?\n/).map((option) => option.trim()).filter(Boolean) });
+    updateQuestion(index, { optionsText: value, options: value.split(/\r?\n/).map((option) => option.trim()).filter(Boolean) });
   }
 
   if (error) return <main className="admin-main"><p className="status error">{error}</p></main>;
@@ -273,10 +273,10 @@ export default function TemplateLibrary() {
                     <div className="question-config-heading"><legend>Question {index + 1}</legend><button type="button" className="text-button danger-button" onClick={() => setQuestionnaireQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index))}>Remove</button></div>
                     <div className="question-config-grid">
                       <label>Question ID<input value={question.id || ""} onChange={(event) => updateQuestion(index, { id: event.target.value })} /></label>
-                      <label>Response type<select value={question.type || "textarea"} onChange={(event) => updateQuestion(index, { type: event.target.value, options: event.target.value === "multiselect" ? question.options || [] : [] })}><option value="text">Short answer</option><option value="textarea">Long answer</option><option value="multiselect">Multiple selection</option></select></label>
+                      <label>Response type<select value={question.type || "textarea"} onChange={(event) => updateQuestion(index, { type: event.target.value, options: event.target.value === "multiselect" ? question.options || [] : [], optionsText: event.target.value === "multiselect" ? question.optionsText ?? (question.options || []).join("\n") : "" })}><option value="text">Short answer</option><option value="textarea">Long answer</option><option value="multiselect">Multiple selection</option></select></label>
                     </div>
                     <label>Question text<textarea rows={2} value={question.label || ""} onChange={(event) => updateQuestion(index, { label: event.target.value })} placeholder="Ask for the hospital-specific information needed for this document" /></label>
-                    {question.type === "multiselect" && <label>Selection options<textarea rows={4} value={(question.options || []).join("\n")} onChange={(event) => updateQuestionOptions(index, event.target.value)} placeholder="Enter one option per line" /></label>}
+                    {question.type === "multiselect" && <label>Selection options<textarea rows={4} value={question.optionsText ?? (question.options || []).join("\n")} onChange={(event) => updateQuestionOptions(index, event.target.value)} placeholder="Enter one option per line" /></label>}
                     <label className="question-required"><input type="checkbox" checked={question.required !== false} onChange={(event) => updateQuestion(index, { required: event.target.checked })} /> Required answer</label>
                   </fieldset>
                 ))}
