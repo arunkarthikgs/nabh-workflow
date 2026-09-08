@@ -63,6 +63,7 @@ async function backfillHospitalLogos(hospitals) {
 
 async function hydrateHospitalAccreditation(hospital) {
   if (!hospital || !r2TemplateStorageEnabled() || usesPostgresDataStore()) return hospital;
+  if (hospital.accreditation?.programme) return hospital;
   const accreditation = await getR2HospitalAccreditation(hospital.code);
   return accreditation?.programme ? { ...hospital, accreditation } : hospital;
 }
