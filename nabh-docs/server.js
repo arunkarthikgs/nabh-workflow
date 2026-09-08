@@ -562,6 +562,24 @@ async function getPersistentDocumentStatus(hospital) {
   return r2TemplateStorageEnabled() && !usesPostgresDataStore() ? getR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme) : getHospitalDocumentStatus(hospital.id);
 }
 
+async function requireDocumentUnlockedForMutation(hospital, documentId) {
+  const statuses = await getPersistentDocumentStatus(hospital);
+  let statusKey = documentId;
+  if (!statuses[statusKey]) {
+    const departments = await loadHospitalDepartments(hospital);
+    const document = Object.values(departments).flat().find((item) => item.id === documentId || item.documentId === documentId);
+    statusKey = document?.id || documentId;
+  }
+  const currentStatus = statuses[statusKey]?.status || "not_started";
+  if (["approved", "implemented", "evidence_available"].includes(currentStatus)) {
+    const error = new Error(`This document is ${currentStatus.replace(/_/g, " ")} and locked. Reopen it for revision before making another change.`);
+    error.status = 409;
+    error.reason = "document_locked";
+    throw error;
+  }
+  return { statusKey, currentStatus };
+}
+
 async function persistDocumentStatus(hospital, documentId, status, updatedBy, note, currentStatus) {
   const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note, currentStatus);
   if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...await getPersistentDocumentStatus(hospital), [documentId]: entry });
@@ -690,7 +708,7 @@ app.post("/api/admin/hospitals/:hospitalId/accreditation", async (request, respo
     // left over from a previously selected programme, instead of skipping existing ones.
     const job = r2TemplateStorageEnabled() ? startRepositoryProvisioning({ ...hospital, accreditation: selection }, { syncNewTemplates: true }) : null;
     response.json({ selection, job });
-  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+  } catch (error) { if (error?.reason === "accreditation_locked") response.status(error.status).json({ error: error.message, reason: error.reason }); else if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, next) => {
@@ -807,7 +825,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     const persistentStatus = await getPersistentDocumentStatus(hospital);
     const previousStatus = persistentStatus[documentId]?.status || "not_started";
     if (persistentStatus[documentId]) await setHospitalDocumentStatus(hospital.id, documentId, persistentStatus[documentId].status, persistentStatus[documentId].updatedBy, persistentStatus[documentId].note);
-    const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note);
+    const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note, previousStatus);
     if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [documentId]: entry });
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, action.replace(/-/g, " "));
     response.json({ documentId, entry });
@@ -845,11 +863,12 @@ app.post("/api/admin/hospitals/:hospitalId/document-draft", async (request, resp
     requireActiveHospital(hospital);
     requireCompleteHospitalProfile(hospital);
     const { documentId, documentName, answers } = request.body || {};
+    await requireDocumentUnlockedForMutation(hospital, documentId);
     const prepared = await prepareDocumentDraft(hospital, documentId, documentName, answers, request.body?.templatePath);
     await saveDocumentAnswers(hospital.id, documentId, prepared.answers, prepared.questionnaire);
     const draft = await generateDocumentDraft(hospital, documentId, documentName, prepared.answers);
     response.status(201).json({ draft, questionnaire: prepared.questionnaire });
-  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete" || error?.reason === "document_locked") response.status(error.status).json({ error: error.message, reason: error.reason }); else if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 async function hospitalQuestionnaireReport(hospital) {
@@ -952,6 +971,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    await requireDocumentUnlockedForMutation(hospital, request.get("X-Document-Id"));
     const manifest = await approveR2ClientDocumentVersion({
       hospital,
       documentId: request.get("X-Document-Id"),
@@ -964,7 +984,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
       note: request.get("X-Approval-Note")
     });
     response.status(201).json({ document: manifest });
-  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+  } catch (error) { if (error?.reason === "document_locked") response.status(error.status).json({ error: error.message, reason: error.reason }); else if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.get("/api/admin/template-library/versions", async (request, response, next) => {

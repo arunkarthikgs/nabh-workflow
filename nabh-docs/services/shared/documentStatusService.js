@@ -58,10 +58,11 @@ export async function getHospitalDocumentStatus(hospitalId) {
   return all[hospitalId] || {};
 }
 
-export async function setHospitalDocumentStatus(hospitalId, documentId, status, updatedBy, note, currentStatus) {
+export async function setHospitalDocumentStatus(hospitalId, documentId, status, updatedBy, note, currentStatus, allowControlledReopen = false) {
   if (!documentId || typeof documentId !== "string") throw new Error("documentId is required.");
   if (!isValidDocumentStatus(status)) throw new Error(`Choose a valid document status. Available statuses: ${DOCUMENT_STATUSES.map(getDocumentStatusLabel).join(", ")}.`);
-  if (currentStatus !== undefined && !canTransitionDocumentStatus(currentStatus, status)) {
+  const isControlledReopen = allowControlledReopen && currentStatus === "approved" && status === "under_review";
+  if (currentStatus !== undefined && !isControlledReopen && !canTransitionDocumentStatus(currentStatus, status)) {
     const nextStatuses = DOCUMENT_STATUS_TRANSITIONS[currentStatus] || [];
     const nextStepMessage = nextStatuses.length
       ? `The next available step${nextStatuses.length === 1 ? " is" : "s are"} ${nextStatuses.map(getDocumentStatusLabel).join(" or ")}.`

@@ -5,16 +5,21 @@ import { getHospitalDocumentStatus, isValidDocumentStatus, setHospitalDocumentSt
 import { getDocumentQuestions, validateDocumentAnswers } from "./documentQuestionnaireService.js";
 
 // Which readiness statuses a guided action may move a document from -> to.
-const ACTION_TRANSITIONS = {
+export const ACTION_TRANSITIONS = {
   "submit-for-review": { from: ["draft_generated", "information_required"], to: "under_review" },
   "approve": { from: ["under_review"], to: "approved" },
   "request-changes": { from: ["under_review"], to: "draft_generated" },
+  "reopen-for-revision": { from: ["approved"], to: "under_review" },
   "mark-implemented": { from: ["approved"], to: "implemented" },
   "mark-evidence-available": { from: ["implemented"], to: "evidence_available" }
 };
 
 export async function generateDocumentDraft(hospital, documentId, documentName, answers) {
   if (!documentId) throw new Error("documentId is required.");
+  const currentStatus = (await getHospitalDocumentStatus(hospital.id))[documentId]?.status || "not_started";
+  if (["approved", "implemented", "evidence_available"].includes(currentStatus)) {
+    throw new Error(`This document is ${currentStatus.replace(/_/g, " ")} and locked. Reopen it for revision before generating another draft.`);
+  }
   const details = hospital.details || {};
   const address = [details.addressLine1, details.city, details.state, details.pinCode].filter(Boolean).join(", ");
   const lines = [
@@ -46,12 +51,13 @@ export async function getDocumentDraft(hospitalId, documentId) {
   return all[hospitalId]?.[documentId] || null;
 }
 
-export async function performDocumentAction(hospitalId, documentId, action, updatedBy, note) {
+export async function performDocumentAction(hospitalId, documentId, action, updatedBy, note, currentStatusOverride) {
   const transition = ACTION_TRANSITIONS[action];
   if (!transition) throw new Error(`Unknown action: ${action}`);
-  const hospitalStatus = await getHospitalDocumentStatus(hospitalId);
-  const current = hospitalStatus[documentId]?.status || "not_started";
+  const hospitalStatus = currentStatusOverride ? null : await getHospitalDocumentStatus(hospitalId);
+  const current = currentStatusOverride || hospitalStatus[documentId]?.status || "not_started";
   if (!transition.from.includes(current)) throw new Error(`Cannot ${action.replace(/-/g, " ")} from status "${current}".`);
+  if (action === "reopen-for-revision" && !String(note || "").trim()) throw new Error("Enter a reason before reopening an approved document for revision.");
   if (!isValidDocumentStatus(transition.to)) throw new Error("Invalid target status.");
-  return setHospitalDocumentStatus(hospitalId, documentId, transition.to, updatedBy, note);
+  return setHospitalDocumentStatus(hospitalId, documentId, transition.to, updatedBy, note, current, action === "reopen-for-revision");
 }

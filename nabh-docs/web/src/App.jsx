@@ -350,6 +350,9 @@ function MasterListWorkspace({
   const [evidenceDescription, setEvidenceDescription] = useState("");
   const [evidenceError, setEvidenceError] = useState("");
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [reopenDocument, setReopenDocument] = useState(null);
+  const [reopenNote, setReopenNote] = useState("");
+  const [reopenError, setReopenError] = useState("");
   const canEdit = permissions.includes("edit");
 
   async function openQuestionnaire(doc) {
@@ -745,7 +748,7 @@ function MasterListWorkspace({
     return [currentStatus, ...(READINESS_TRANSITIONS[currentStatus] || [])];
   }
 
-  async function runDocumentAction(doc, action) {
+  async function runDocumentAction(doc, action, note = "") {
     try {
       const response = await fetch(
         `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/action`,
@@ -768,8 +771,23 @@ function MasterListWorkspace({
           d.id === doc.id ? { ...d, readinessStatus: data.entry.status } : d,
         ),
       }));
+      return true;
     } catch (err) {
       setError(err.message);
+      return false;
+    }
+  }
+
+  async function reopenForRevision() {
+    if (!reopenDocument || !reopenNote.trim()) {
+      setReopenError("Enter a reason before reopening this approved document.");
+      return;
+    }
+    setReopenError("");
+    const reopened = await runDocumentAction(reopenDocument, "reopen-for-revision", reopenNote.trim());
+    if (reopened) {
+      setReopenDocument(null);
+      setReopenNote("");
     }
   }
 
@@ -1442,6 +1460,7 @@ function MasterListWorkspace({
                               </option>
                             ))}
                           </select>
+                          {doc.readinessStatus === "approved" && <span className="document-lock-message">Approved and locked</span>}
                           {canEdit && (
                             <span className="policy-actions">
                               {(doc.readinessStatus === "draft_generated" ||
@@ -1488,6 +1507,15 @@ function MasterListWorkspace({
                                   }
                                 >
                                   Implemented
+                                </button>
+                              )}
+                              {doc.readinessStatus === "approved" && (
+                                <button
+                                  className="icon-button"
+                                  title="Reopen approved document for revision"
+                                  onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}
+                                >
+                                  Reopen
                                 </button>
                               )}
                               {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && (
@@ -1544,8 +1572,8 @@ function MasterListWorkspace({
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
-                            {canEdit && !isEditing && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
-                            {canEdit && doc.relativeFilePath && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
+                            {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
+                            {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                           </span>
                         </td>
                       </tr>
@@ -1718,6 +1746,29 @@ function MasterListWorkspace({
                 )) : <p className="access-message">No evidence has been uploaded for this document yet.</p>}
               </div>
             </form>
+          </section>
+        </div>
+      )}
+      {reopenDocument && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setReopenDocument(null)}>
+          <section className="preview-dialog accreditation-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="reopen-document-title" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Controlled document change</p>
+                <h2 id="reopen-document-title">Reopen for revision</h2>
+                <p className="editor-file-name">{reopenDocument.documentName}</p>
+              </div>
+              <button className="icon-button" type="button" title="Close reopen dialog" onClick={() => setReopenDocument(null)}><Close size={18} /></button>
+            </div>
+            <div className="accreditation-confirm-body">
+              <p>This document is approved and locked. Reopening it will move it back to Under Review and preserve the approved version in history.</p>
+              <label>Reason for reopening<textarea rows={4} value={reopenNote} onChange={(event) => setReopenNote(event.target.value)} placeholder="Explain the correction or review required." autoFocus /></label>
+              {reopenError && <p className="status error">{reopenError}</p>}
+            </div>
+            <div className="accreditation-confirm-actions">
+              <button className="secondary-button" type="button" onClick={() => setReopenDocument(null)}>Cancel</button>
+              <button className="primary-button" type="button" onClick={reopenForRevision}>Reopen for revision</button>
+            </div>
           </section>
         </div>
       )}

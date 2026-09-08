@@ -110,6 +110,13 @@ export async function selectAccreditationProgramme(hospitalId, programme, decide
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return null;
+  if (hospital.accreditation?.programme && hospital.accreditation.programme !== programme) {
+    const error = new Error(`The accreditation programme is already locked as "${hospital.accreditation.programme}". It cannot be changed after confirmation.`);
+    error.status = 409;
+    error.reason = "accreditation_locked";
+    throw error;
+  }
+  if (hospital.accreditation?.programme === programme) return hospital.accreditation;
   hospital.accreditation = { programme, decidedBy: typeof decidedBy === "string" && decidedBy.trim() ? decidedBy.trim() : "Hospital", notes: typeof notes === "string" ? notes.trim() : "", decidedAt: new Date().toISOString() };
   hospital.updatedAt = hospital.accreditation.decidedAt;
   await saveHospital(hospital);
