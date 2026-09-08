@@ -118,8 +118,8 @@ tr.doc-inactive td.mono { color: #c5c7e0; }
 .badge-medium { background: #fff4dd; color: #b0791e; }
 .badge-low { background: #ffe9ec; color: #c23a56; }
 
-.readiness-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.readiness-chip { background: #f1f1ef; border: 1px solid transparent; border-radius: 999px; color: #5f5e5b; cursor: pointer; font: 600 11px "Manrope", sans-serif; padding: 3px 10px; }
+.readiness-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.readiness-chip { background: #f1f1ef; border: 1px solid transparent; border-radius: 999px; color: #5f5e5b; cursor: pointer; font: 700 13px "Manrope", sans-serif; min-height: 32px; padding: 7px 14px; }
 .readiness-chip:hover, .readiness-chip.active { background: #e7f3f8; border-color: #2383e2; color: #0b6e99; }
 .readiness-not_started { background: #efeff4; color: #6b6f80; }
 .readiness-information_required { background: #ffe9ec; color: #c23a56; }
