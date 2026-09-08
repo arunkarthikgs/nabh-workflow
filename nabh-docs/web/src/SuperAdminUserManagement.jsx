@@ -5,6 +5,7 @@ import AdminWorkspace from "./AdminWorkspace.jsx";
 export default function SuperAdminUserManagement() {
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState("");
+  const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -17,6 +18,12 @@ export default function SuperAdminUserManagement() {
       .then((result) => setHospitals((result.hospitals || []).sort((left, right) => left.name.localeCompare(right.name))))
       .catch((error) => setMessage(error.message));
   }, []);
+
+  const filteredHospitals = hospitals.filter((hospital) =>
+    `${hospital.name} ${hospital.code} ${hospital.details?.city || ""} ${hospital.details?.state || ""}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
 
   return (
     <main className="admin-main">
@@ -32,27 +39,46 @@ export default function SuperAdminUserManagement() {
           Select a hospital to manage its users, roles, and password access.
         </p>
       </header>
-      <section className="document-panel super-admin-hospital-picker">
-        <div className="panel-heading">
-          <Users size={18} />
-          <h2>Choose hospital</h2>
-        </div>
-        <label className="filter-box super-admin-hospital-select">
-          <Search size={14} />
-          <select value={selectedHospitalId} onChange={(event) => setSelectedHospitalId(event.target.value)}>
-            <option value="">Select a hospital</option>
-            {hospitals.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.code})</option>)}
-          </select>
-        </label>
-        {hospitals.length === 0 && !message && <p className="empty">Loading hospitals...</p>}
-        {message && <p className="status error">{message}</p>}
-        {!selectedHospitalId && hospitals.length > 0 && <p className="access-message">Choose a hospital to open its scoped user-management workspace.</p>}
-      </section>
-      {selectedHospitalId && (
+      <section className="admin-layout super-admin-user-layout">
+        <aside className="hospital-list">
+          <div className="panel-heading">
+            <Building2 size={18} />
+            <h2>Hospitals</h2>
+            <span className="count">{hospitals.length}</span>
+          </div>
+          <label className="filter-box">
+            <Search size={14} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search hospital, code, city" />
+          </label>
+          {hospitals.length === 0 && !message && <p className="empty">Loading hospitals...</p>}
+          {filteredHospitals.map((item) => (
+            <button
+              className={`hospital-row ${item.id === selectedHospitalId ? "selected" : ""} ${item.status === "pending" ? "hospital-row-pending" : ""}`}
+              key={item.id}
+              onClick={() => setSelectedHospitalId(item.id)}
+            >
+              {item.logoPath && <img className="hospital-mini-logo" src={item.logoPath} alt="" />}
+              <span>
+                <strong>{item.name}</strong>
+                <small>{item.code}</small>
+                <small className={`hospital-status hospital-status-${item.status || "active"}`}>{item.status || "active"}</small>
+              </span>
+            </button>
+          ))}
+        </aside>
         <section className="super-admin-scoped-users">
-          <AdminWorkspace scopedHospitalId={selectedHospitalId} hospitalName={hospitals.find((item) => item.id === selectedHospitalId)?.name} />
+          {message && <p className="status error">{message}</p>}
+          {!selectedHospitalId ? (
+            <section className="document-panel repository-empty">
+              <Users size={28} />
+              <h2>Select a hospital</h2>
+              <p>Choose a hospital from the list to open its scoped user-management workspace.</p>
+            </section>
+          ) : (
+            <AdminWorkspace scopedHospitalId={selectedHospitalId} hospitalName={hospitals.find((item) => item.id === selectedHospitalId)?.name} />
+          )}
         </section>
-      )}
+      </section>
     </main>
   );
 }
