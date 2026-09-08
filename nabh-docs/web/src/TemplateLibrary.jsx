@@ -284,7 +284,7 @@ export default function TemplateLibrary() {
               <button type="button" className="secondary-button add-question-button" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true, options: [] }])}><ClipboardList size={15} /> Add question</button>
               {questionnaireMessage && <p className="access-message">{questionnaireMessage}</p>}
             </div>
-            <div className="questionnaire-footer"><button className="secondary-button" type="button" onClick={() => setQuestionnaireTemplate(null)}>Cancel</button><button className="primary-button" type="submit">Save questionnaire</button></div>
+            <div className="questionnaire-footer"><button className="secondary-button" type="button" onClick={() => setQuestionnaireTemplate(null)}>Close</button><button className="primary-button" type="submit">Save questionnaire</button></div>
           </form>
         </div>
       )}

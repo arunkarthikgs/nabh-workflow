@@ -1717,13 +1717,13 @@ function MasterListWorkspace({
                   </label>
                 ))}
                 {questionError && <p className="status error">{questionError}</p>}
-                <button className="primary-button" disabled={generatingDraft} onClick={generatePersonalizedDraft}>{generatingDraft ? "Generating..." : questionnaire.questions.length ? "Submit answers and generate draft" : "Generate draft"}</button>
+                <div className="questionnaire-footer-actions"><button className="secondary-button" type="button" onClick={() => setQuestionnaire(null)}>Close</button><button className="primary-button" disabled={generatingDraft} onClick={generatePersonalizedDraft}>{generatingDraft ? "Generating..." : questionnaire.questions.length ? "Submit answers and generate draft" : "Generate draft"}</button></div>
               </div>
             ) : (
               <div className="profile-form">
                 <p className="access-message">Draft generated successfully. Review it before submitting the document for approval.</p>
                 <textarea rows={18} value={generatedDraft.content || ""} readOnly />
-                <button className="primary-button" onClick={() => setQuestionnaire(null)}>Done</button>
+                <button className="primary-button" onClick={() => setQuestionnaire(null)}>Close</button>
               </div>
             )}
           </section>
