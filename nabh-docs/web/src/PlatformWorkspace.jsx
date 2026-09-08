@@ -287,7 +287,7 @@ function ServicesTab({ hospitalId, disabled }) {
             <option value="onsite">Onsite</option>
           </select>
         </label>
-        <label>Preferred date<input type="date" disabled={disabled} value={form.preferredDate} onChange={(event) => setForm((current) => ({ ...current, preferredDate: event.target.value }))} /></label>
+        <label>Preferred date<input type="date" lang="en-GB" disabled={disabled} value={form.preferredDate} onChange={(event) => setForm((current) => ({ ...current, preferredDate: event.target.value }))} /></label>
       </div>
       <label>Notes<textarea rows={2} disabled={disabled} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
       <div className="toolbar">

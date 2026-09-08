@@ -2324,13 +2324,13 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
       if (entry.timestamp) {
         const entryDate = new Date(entry.timestamp);
         if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
+          const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+          const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
           if (entryDate < start) return false;
         }
         if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
+          const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
+          const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
           if (entryDate > end) return false;
         }
       }
@@ -2442,6 +2442,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
               <label className="filter-label">From Date</label>
               <input
                 type="date"
+                lang="en-GB"
                 className="audit-date-input"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -2452,6 +2453,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
               <label className="filter-label">To Date</label>
               <input
                 type="date"
+                lang="en-GB"
                 className="audit-date-input"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}

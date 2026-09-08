@@ -446,8 +446,8 @@ h2 { font-size: 19px; }
 .filter-label { color: #6c6fb0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .audit-filter-select, .audit-date-input { background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 8px; color: #3a3f6b; font: 400 13px "Poppins", sans-serif; padding: 7px 10px; outline: none; }
 .audit-filter-select:focus, .audit-date-input:focus { border-color: #3547d1; background: #ffffff; }
-.audit-table { min-width: 1320px; table-layout: fixed; }
-.audit-table th:nth-child(1), .audit-table td:nth-child(1) { width: 148px; }
+.audit-table { min-width: 1380px; table-layout: fixed; }
+.audit-table th:nth-child(1), .audit-table td:nth-child(1) { width: 195px; }
 .audit-table th:nth-child(2), .audit-table td:nth-child(2) { width: 330px; }
 .audit-table th:nth-child(3), .audit-table td:nth-child(3) { width: 170px; }
 .audit-table th:nth-child(4), .audit-table td:nth-child(4) { width: 72px; }

@@ -337,6 +337,7 @@ export default function AdminWorkspace({
                 <input
                   name="dateOfBirth"
                   type="date"
+                  lang="en-GB"
                   value={user.dateOfBirth}
                   onChange={change}
                 />
@@ -408,6 +409,7 @@ export default function AdminWorkspace({
                 <input
                   name="dateOfJoining"
                   type="date"
+                  lang="en-GB"
                   value={user.dateOfJoining}
                   onChange={change}
                 />
