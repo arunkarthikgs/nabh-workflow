@@ -1496,11 +1496,6 @@ function MasterListWorkspace({
                               <span className="toggle-thumb" />
                             </button>
                           )}
-                          <span
-                            className={`toggle-label ${doc.active ? "status-active" : "status-inactive"}`}
-                          >
-                            {doc.active ? "Active" : "Inactive"}
-                          </span>
                         </td>
                         <td className="hospital-document-name-cell">
                           {isEditing ? (
@@ -1535,6 +1530,17 @@ function MasterListWorkspace({
                           </select>
                           {isStatusProcessing && <span className="readiness-processing"><RefreshCw size={12} className="spin-icon" /> Processing...</span>}
                           {doc.readinessStatus === "approved" && <span className="document-lock-message">Approved and locked</span>}
+                          {canEdit && (
+                            <span className="policy-actions readiness-actions">
+                              {doc.readinessStatus === "draft_generated" && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                              {doc.readinessStatus === "information_required" && <button className="icon-button" disabled={isStatusProcessing} title="Answer questions and generate draft" onClick={() => openQuestionnaire(doc)}>Generate draft</button>}
+                              {doc.readinessStatus === "under_review" && <button className="icon-button check" disabled={isStatusProcessing} title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
+                              {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
+                              {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
+                              {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
+                              {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
+                            </span>
+                          )}
                           {statusErrors[doc.id] && <p className="document-status-error">{statusErrors[doc.id]}</p>}
                         </td>
                         <td className="version-cell">
@@ -1578,17 +1584,6 @@ function MasterListWorkspace({
                         </td>
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
-                            {canEdit && (
-                              <span className="policy-actions">
-                                {doc.readinessStatus === "draft_generated" && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
-                                {doc.readinessStatus === "information_required" && <button className="icon-button" disabled={isStatusProcessing} title="Answer questions and generate draft" onClick={() => openQuestionnaire(doc)}>Generate draft</button>}
-                                {doc.readinessStatus === "under_review" && <button className="icon-button check" disabled={isStatusProcessing} title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
-                                {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
-                                {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
-                                {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
-                                {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
-                              </span>
-                            )}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}

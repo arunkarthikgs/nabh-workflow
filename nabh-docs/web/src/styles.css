@@ -464,9 +464,9 @@ h2 { font-size: 19px; }
 .document-panel > table th:nth-child(1) { width: 48px; }
 .document-panel > table th:nth-child(2) { width: 92px; }
 .document-panel > table th:nth-child(3) { width: 28%; }
-.document-panel > table th:nth-child(4) { width: 160px; }
+.document-panel > table th:nth-child(4) { width: 260px; }
 .document-panel > table th:nth-child(5) { width: 110px; }
-.document-panel > table th:nth-child(6) { width: 270px; }
+.document-panel > table th:nth-child(6) { width: 190px; }
 .panel-heading { border-bottom: 1px solid #e9e9e7; color: #5f5e5b; gap: 9px; margin-bottom: 12px; padding-bottom: 13px; }
 .panel-heading .count { margin-left: auto; }
 
@@ -478,6 +478,8 @@ td.file-cell { color: #5f5e5b; }
 td.file-cell a { color: #2383e2; }
 tr.doc-inactive td, tr.doc-inactive td.mono { color: #b7b6b3; }
 .policy-actions { gap: 2px; }
+.readiness-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0 0; }
+.readiness-actions .icon-button { min-height: 28px; padding: 5px 7px; }
 .document-edit-button { margin-left: 5px; vertical-align: middle; }
 
 .toggle-switch { background: #d3d2cf; height: 18px; width: 32px; }
@@ -537,7 +539,7 @@ tr.history-row td { background: #f7f7f5; }
 .hospital-document-file-cell { color: #7b8195; font-size: 11px; max-width: 260px; }
 .hospital-document-actions { align-items: center; background: #f7f8fb; border: 1px solid #e0e4ee; border-radius: 7px; display: inline-flex; gap: 5px; margin-left: 8px; padding: 3px; }
 .hospital-document-actions .icon-button { padding: 6px; }
-.hospital-actions-column { min-width: 270px; white-space: nowrap; }
+.hospital-actions-column { min-width: 190px; white-space: nowrap; }
 .hospital-actions-column .hospital-document-actions { gap: 7px; margin-left: 0; padding: 5px; }
 .hospital-actions-column .icon-button { min-height: 34px; min-width: 34px; padding: 8px; }
 .hospital-actions-column .icon-button svg { height: 18px; width: 18px; }
