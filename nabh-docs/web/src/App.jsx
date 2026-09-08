@@ -755,6 +755,18 @@ function MasterListWorkspace({
     }
   }
 
+  function auditActionTitle(action) {
+    if (action === "approve") return "Approve document";
+    if (action === "request-changes") return "Request changes";
+    return "Mark document implemented";
+  }
+
+  function auditActionDescription(action) {
+    if (action === "approve") return "Record who reviewed and approved this document.";
+    if (action === "request-changes") return "Record who is sending this draft back and what needs to change.";
+    return "Record who confirmed implementation of this document.";
+  }
+
   async function setReadinessStatus(doc, nextStatus) {
     if (nextStatus === "approved") return openAuditedAction(doc, "approve");
     if (nextStatus === "implemented") return openAuditedAction(doc, "mark-implemented");
@@ -1534,7 +1546,7 @@ function MasterListWorkspace({
                               {doc.readinessStatus === "draft_generated" && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
                               {doc.readinessStatus === "information_required" && <button className="icon-button" disabled={isStatusProcessing} title="Answer questions and generate draft" onClick={() => openQuestionnaire(doc)}>Generate draft</button>}
                               {doc.readinessStatus === "under_review" && <button className="icon-button check" disabled={isStatusProcessing} title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
-                              {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
+                              {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => openAuditedAction(doc, "request-changes")}><X size={14} /></button>}
                               {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
                               {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
                               {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
@@ -1745,20 +1757,20 @@ function MasterListWorkspace({
             <div className="preview-header">
               <div>
                 <p className="eyebrow">Audit confirmation</p>
-                <h2 id="audit-action-title">{auditAction.action === "approve" ? "Approve document" : "Mark document implemented"}</h2>
+                <h2 id="audit-action-title">{auditActionTitle(auditAction.action)}</h2>
                 <p className="editor-file-name">{auditAction.doc.documentName}</p>
               </div>
               <button className="icon-button" type="button" title="Close audit confirmation" onClick={() => setAuditAction(null)}><Close size={18} /></button>
             </div>
             <div className="accreditation-confirm-body">
-              <p>{auditAction.action === "approve" ? "Record who reviewed and approved this document." : "Record who confirmed implementation of this document."}</p>
+              <p>{auditActionDescription(auditAction.action)}</p>
               <label>User name<input value={auditUserName} onChange={(event) => setAuditUserName(event.target.value)} placeholder="Enter your full name" autoFocus /></label>
-              <label>Notes<textarea rows={4} value={auditNote} onChange={(event) => setAuditNote(event.target.value)} placeholder="Add approval or implementation notes for the audit log." /></label>
+              <label>{auditAction.action === "request-changes" ? "Revision comments" : "Notes"}<textarea rows={4} value={auditNote} onChange={(event) => setAuditNote(event.target.value)} placeholder={auditAction.action === "request-changes" ? "Explain what needs to be corrected before approval." : "Add approval or implementation notes for the audit log."} /></label>
               {auditError && <p className="status error">{auditError}</p>}
             </div>
             <div className="accreditation-confirm-actions">
               <button className="secondary-button" type="button" onClick={() => setAuditAction(null)}>Cancel</button>
-              <button className="primary-button" type="button" onClick={submitAuditedAction}>{auditAction.action === "approve" ? "Approve document" : "Mark implemented"}</button>
+              <button className="primary-button" type="button" onClick={submitAuditedAction}>{auditAction.action === "approve" ? "Approve document" : auditAction.action === "request-changes" ? "Send back for revision" : "Mark implemented"}</button>
             </div>
           </section>
         </div>

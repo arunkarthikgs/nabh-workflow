@@ -57,8 +57,8 @@ export async function performDocumentAction(hospitalId, documentId, action, upda
   const hospitalStatus = currentStatusOverride ? null : await getHospitalDocumentStatus(hospitalId);
   const current = currentStatusOverride || hospitalStatus[documentId]?.status || "not_started";
   if (!transition.from.includes(current)) throw new Error(`Cannot ${action.replace(/-/g, " ")} from status "${current}".`);
-  if (["approve", "mark-implemented"].includes(action) && !String(updatedBy || "").trim()) throw new Error("Enter the user name before approving or implementing this document.");
-  if (["approve", "mark-implemented"].includes(action) && !String(note || "").trim()) throw new Error("Enter notes for the audit log before approving or implementing this document.");
+  if (["approve", "mark-implemented", "request-changes"].includes(action) && !String(updatedBy || "").trim()) throw new Error("Enter the user name before approving, implementing, or requesting changes for this document.");
+  if (["approve", "mark-implemented", "request-changes"].includes(action) && !String(note || "").trim()) throw new Error("Enter notes for the audit log before approving, implementing, or requesting changes for this document.");
   if (action === "reopen-for-revision" && !String(note || "").trim()) throw new Error("Enter a reason before reopening an approved document for revision.");
   if (!isValidDocumentStatus(transition.to)) throw new Error("Invalid target status.");
   return setHospitalDocumentStatus(hospitalId, documentId, transition.to, updatedBy, note, current, action === "reopen-for-revision");
