@@ -487,6 +487,7 @@ async function loadHospitalDepartments(hospital) {
     const [folder] = templatePath.split("/");
     const department = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
     const documentName = path.basename(templatePath).replace(/_TEMPLATE\.[^.]+$/i, "").replace(/\.[^.]+$/, "");
+    const docKey = getDocumentKey("", documentName, templatePath);
     departments[department].push({
       documentName,
       documentId: "",
