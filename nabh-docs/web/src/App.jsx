@@ -1589,11 +1589,11 @@ function MasterListWorkspace({
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
                             {isEditing && <span className="edit-actions"><button className="icon-button check" title="Check in" onClick={() => checkInEdit(doc)}><Check size={14} /></button><button className="icon-button cancel" title="Cancel" onClick={cancelEdit}><X size={14} /></button></span>}
-                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} />{doc.version ? `v${doc.version}` : ""}</button>}
                             {!isEditing && !(doc.relativeFilePath || doc.matchedFilePath) && <span className="unapproved-tag" title="Not yet approved">Not approved</span>}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
+                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} />{doc.version ? `v${doc.version}` : ""}</button>}
                           </span>
                         </td>
                       </tr>
