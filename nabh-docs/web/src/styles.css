@@ -402,7 +402,7 @@ h2 { font-size: 19px; }
 .workspace-switcher > span { color: #37352f; font-family: "Libre Baskerville", Georgia, serif; font-size: 15px; line-height: 1.35; margin: 4px 8px 18px; }
 .workspace-switcher > span::after { background: #dededb; content: ""; display: block; height: 1px; margin-top: 16px; width: 100%; }
 
-.layout { gap: var(--workspace-gutter); grid-template-columns: 190px minmax(0, 1fr); min-width: 0; }
+.layout { gap: var(--workspace-gutter); grid-template-columns: 230px minmax(0, 1fr); min-width: 0; }
 .department-list, .document-panel, .hospital-list, .admin-form, .users-panel {
   background: transparent;
   border-radius: 0;
@@ -410,6 +410,7 @@ h2 { font-size: 19px; }
 }
 .department-list { border-right: 1px solid #e9e9e7; max-height: calc(100vh - 150px); padding: 0 6px 0 0; }
 .department-list button { border-radius: 4px; color: #5f5e5b; font: 500 13px "Manrope", sans-serif; gap: 8px; padding: 8px 9px; }
+.department-list button span:nth-child(2) { flex: 1; line-height: 1.25; min-width: 0; overflow-wrap: normal; }
 .department-list button:hover { background: #f1f1ef; }
 .department-list button.active { background: #e9e9e7; color: #37352f; }
 .department-list button.active .count-pill-active { background: #cfe6d1; color: #2f6b47; }
