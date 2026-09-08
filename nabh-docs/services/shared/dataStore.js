@@ -62,7 +62,7 @@ export async function readDocumentAudit() {
   return (await store()).readDocumentAudit();
 }
 
-export async function readDocumentAuditByHospital(hospitalId) { return (await store()).readDocumentAuditByHospital(hospitalId); }
+export async function readDocumentAuditByHospital(hospitalId, limit, offset) { return (await store()).readDocumentAuditByHospital(hospitalId, limit, offset); }
 
 export async function saveDocumentAudit(entries) {
   return (await store()).saveDocumentAudit(entries);

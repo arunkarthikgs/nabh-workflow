@@ -146,7 +146,7 @@ export default function TemplateLibrary() {
             <h1>Template library</h1>
           </div>
         </div>
-        <div className="template-library-header-actions"><button className="secondary-button" type="button" onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Back to library" : "Audit log"}</button><button className="secondary-button" type="button" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
+        <div className="template-library-header-actions"><button className="secondary-button" type="button" title={auditOpen ? "Back to template library" : "Open audit log"} onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Back to library" : "Audit log"}</button><button className="secondary-button" type="button" title="Open questionnaire report" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
         </div>
         <p className="intro template-library-description">Browse programme-specific master templates and configure the questions hospitals must answer for each document.</p>
         <div className="template-library-selector">
@@ -178,7 +178,7 @@ export default function TemplateLibrary() {
               <input value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} placeholder="Filter departments" />
             </label>
             {filteredDepartments.map(([department, documents]) => (
-              <button className={department === selectedDepartment ? "active" : ""} key={department} onClick={() => setSelectedDepartment(department)}>
+              <button className={department === selectedDepartment ? "active" : ""} key={department} title={`Show ${department}`} onClick={() => setSelectedDepartment(department)}>
                 <FolderOpen size={16} />
                 <span>{department}</span>
                 <span className="count-pill count-pill-active">{documents.filter((template) => template.templatePath).length}</span>
@@ -227,7 +227,7 @@ export default function TemplateLibrary() {
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
                             <button className="icon-button" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
-                            <button className="version-badge" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={13} /> History</button>
+                            <button className="version-badge" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={13} /></button>
                             <button className="questionnaire-action" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /><span>{template.questionCount || 0}</span></button>
                           </span>
                         )}</td>
@@ -249,14 +249,14 @@ export default function TemplateLibrary() {
             <label>Approved replacement file<input type="file" accept={`.${approval.fileType?.toLowerCase() || "docx"}`} onChange={(event) => setApprovalFile(event.target.files?.[0] || null)} required /></label>
             <label>Approval note<textarea value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>
             {approvalMessage && <p className="access-message">{approvalMessage}</p>}
-            <button className="primary-button" type="submit"><CheckCircle2 size={16} /> Approve new version</button>
+            <button className="primary-button" type="submit" title="Approve new template version"><CheckCircle2 size={16} /> Approve new version</button>
           </form>
         </div>
       )}
       {questionnaireReport && (
         <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaireReport(null)}>
           <section className="preview-dialog questionnaire-report-dialog" role="dialog" aria-modal="true" aria-label="Questionnaire report" onClick={(event) => event.stopPropagation()}>
-            <div className="preview-header"><div><p className="eyebrow">Template library report</p><h2>Configured document questionnaires</h2><p className="editor-file-name">{questionnaireReport.length} document(s) have configured questions.</p></div><div className="preview-actions"><a className="download-button" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={15} /> Export PDF</a><button className="icon-button" title="Close report" onClick={() => setQuestionnaireReport(null)}><X size={18} /></button></div></div>
+            <div className="preview-header"><div><p className="eyebrow">Template library report</p><h2>Configured document questionnaires</h2><p className="editor-file-name">{questionnaireReport.length} document(s) have configured questions.</p></div><div className="preview-actions"><a className="download-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={15} /> Export PDF</a><button className="icon-button" title="Close report" onClick={() => setQuestionnaireReport(null)}><X size={18} /></button></div></div>
             <div className="questionnaire-report-body">{questionnaireReport.length === 0 ? <p className="empty">No document questionnaires have been configured yet.</p> : <table><thead><tr><th>Programme</th><th>Department</th><th>Document</th><th>Questions</th><th>Configured questions</th></tr></thead><tbody>{questionnaireReport.map((document) => <tr key={`${document.programme}-${document.templatePath}`}><td>{document.programme}</td><td>{document.department}</td><td><strong>{document.documentName}</strong><br /><span className="mono">{document.templatePath}</span></td><td><span className="question-count has-questions">{document.questionCount}</span></td><td><ul className="question-report-list">{document.questions.map((question) => <li key={question.id}>{question.label}{question.required !== false && <span>Required</span>}</li>)}</ul></td></tr>)}</tbody></table>}</div>
           </section>
         </div>
@@ -281,7 +281,7 @@ export default function TemplateLibrary() {
                   </fieldset>
                 ))}
               </div>
-              <button type="button" className="secondary-button add-question-button" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true, options: [] }])}><ClipboardList size={15} /> Add question</button>
+              <button type="button" className="secondary-button add-question-button" title="Add questionnaire question" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true, options: [] }])}><ClipboardList size={15} /> Add question</button>
               {questionnaireMessage && <p className="access-message">{questionnaireMessage}</p>}
             </div>
             <div className="questionnaire-footer"><button className="secondary-button" type="button" onClick={() => setQuestionnaireTemplate(null)}>Close</button><button className="primary-button" type="submit">Save questionnaire</button></div>
@@ -306,7 +306,7 @@ export default function TemplateLibrary() {
                 <p className="editor-file-name">{preview.fileName}</p>
               </div>
               <div className="preview-actions">
-                <a className="download-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(preview.templatePath)}`}><Download size={16} /> Download template</a>
+                <a className="download-button" title="Download template" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(preview.templatePath)}`}><Download size={16} /> Download template</a>
                 <button className="icon-button" title="Close preview" onClick={() => setPreview(null)}><X size={18} /></button>
               </div>
             </div>

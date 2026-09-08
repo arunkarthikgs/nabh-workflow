@@ -260,7 +260,7 @@ function OnlyOfficeEditor({ document, department, onClose }) {
               />
             </label>
             {error && <p className="status error">{error}</p>}
-            <button className="primary-button" onClick={openEditor}>
+            <button className="primary-button" title="Open document in OnlyOffice" onClick={openEditor}>
               <FilePenLine size={16} /> Open in OnlyOffice
             </button>
           </div>
@@ -275,6 +275,7 @@ function OnlyOfficeEditor({ document, department, onClose }) {
               </span>
               <button
                 className="primary-button"
+                title="Save and check in document"
                 onClick={() => {
                   setSaving(true);
                   window[editorId]?.requestSave?.();
@@ -304,6 +305,7 @@ function MasterListWorkspace({
   const [error, setError] = useState("");
   const [statusErrors, setStatusErrors] = useState({});
   const [processingStatusIds, setProcessingStatusIds] = useState(() => new Set());
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
   const [accreditationRequired, setAccreditationRequired] = useState(null);
   const [profileIncomplete, setProfileIncomplete] = useState([]);
   const [documentSearch, setDocumentSearch] = useState(
@@ -492,6 +494,10 @@ function MasterListWorkspace({
   };
 
   useEffect(() => {
+    setLoadingDocuments(true);
+    setError("");
+    setAccreditationRequired(null);
+    setProfileIncomplete([]);
     fetch(
       `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`,
     )
@@ -581,7 +587,8 @@ function MasterListWorkspace({
             : NABH_WORKSPACE_CATEGORIES[0],
         );
       })
-      .catch((err) => setError(err.message));
+        .catch((err) => setError(err.message))
+        .finally(() => setLoadingDocuments(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hospitalId, initialUrlState.category]);
 
@@ -1157,6 +1164,27 @@ function MasterListWorkspace({
     }
   }
 
+  if (loadingDocuments && !departments && !accreditationRequired && !repositoryStatus?.job) {
+    return (
+      <main>
+        <header>
+          <div className="brand">
+            <img className={hospitalLogoPath ? "hospital-brand-logo" : ""} src={hospitalLogoPath || hospitalLogo} alt={hospitalName || "NABH Docs"} />
+            <div>
+              <p className="eyebrow">NABH document workspace</p>
+              <h1>{hospitalName ? `${hospitalName} documents` : "Master List of Documents"}</h1>
+            </div>
+          </div>
+        </header>
+        <section className="document-panel repository-empty">
+          <RefreshCw size={28} className="spin-icon" />
+          <h2>Loading documents</h2>
+          <p>Preparing the document workspace, readiness status, and repository details.</p>
+        </section>
+      </main>
+    );
+  }
+
   if (accreditationRequired) {
     return (
       <main>
@@ -1250,6 +1278,7 @@ function MasterListWorkspace({
           <button
             className="primary-button"
             type="button"
+            title={isRunning ? "Template synchronization is running" : "Sync templates"}
             disabled={isRunning}
             onClick={syncNewTemplates}
           >
@@ -1342,6 +1371,7 @@ function MasterListWorkspace({
           <button
             className="primary-button compact"
             type="button"
+            title="Retry template synchronization"
             disabled={syncingTemplates}
             onClick={syncNewTemplates}
           >
@@ -1369,6 +1399,7 @@ function MasterListWorkspace({
                 <button
                   key={category}
                   className={category === selected ? "active" : ""}
+                  title={`Show ${category}`}
                   onClick={() => setSelected(category)}
                 >
                   <FolderOpen size={16} />
@@ -1434,6 +1465,7 @@ function MasterListWorkspace({
               <button
                 className="primary-button"
                 type="button"
+                title="Sync new templates"
                 disabled={syncingTemplates}
                 onClick={syncNewTemplates}
               >
@@ -1442,7 +1474,7 @@ function MasterListWorkspace({
                   ? "Syncing templates..."
                   : "Sync new templates"}
               </button>
-              <a className="secondary-button" href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/questionnaire-report.pdf`}><Download size={15} /> Export questionnaire report</a>
+              <a className="secondary-button" title="Export questionnaire report" href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/questionnaire-report.pdf`}><Download size={15} /> Export questionnaire report</a>
             </div>
 
             {syncMessage && <p className="access-message">{syncMessage}</p>}
@@ -1557,7 +1589,7 @@ function MasterListWorkspace({
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
                             {isEditing && <span className="edit-actions"><button className="icon-button check" title="Check in" onClick={() => checkInEdit(doc)}><Check size={14} /></button><button className="icon-button cancel" title="Cancel" onClick={cancelEdit}><X size={14} /></button></span>}
-                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} /> {doc.version ? `v${doc.version}` : "History"}</button>}
+                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} />{doc.version ? `v${doc.version}` : ""}</button>}
                             {!isEditing && !(doc.relativeFilePath || doc.matchedFilePath) && <span className="unapproved-tag" title="Not yet approved">Not approved</span>}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
@@ -1876,6 +1908,7 @@ function MasterListWorkspace({
                 <a
                   className="download-button"
                   href="/api/documents/aac-policy/download"
+                  title="Download matching Word document"
                 >
                   <Download size={16} /> Download matching Word document
                 </a>
@@ -1958,7 +1991,7 @@ function MasterListWorkspace({
                     placeholder="Describe this revision"
                   />
                 </label>
-                <button className="primary-button" onClick={checkInDocument}>
+                <button className="primary-button" title="Check in document version" onClick={checkInDocument}>
                   <Save size={16} /> Check in v
                   {isApprovedDocument(openDocument)
                     ? (openDocument.version || 1) + 1
@@ -2039,6 +2072,7 @@ function MasterListWorkspace({
               {approvalError && <p className="status error">{approvalError}</p>}
               <button
                 className="primary-button"
+                title="Approve document version"
                 disabled={approving}
                 onClick={approveUpload}
               >
@@ -2090,24 +2124,39 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
   const [auditTab, setAuditTab] = useState("statuses");
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedHospital, setSelectedHospital] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedAction, setSelectedAction] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [serverEntries, setServerEntries] = useState([]);
+  const [auditHasMore, setAuditHasMore] = useState(false);
+  const [loadingMoreAudit, setLoadingMoreAudit] = useState(false);
+
+  async function loadAuditPage(offset = 0) {
+    const response = await fetch(hospitalId ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit?limit=250&offset=${offset}` : "/api/document-audit");
+    if (!response.ok) return { entries: [], hasMore: false };
+    return response.json();
+  }
 
   useEffect(() => {
     setLoadingAudit(true);
-    fetch(
-      hospitalId
-        ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit`
-        : "/api/document-audit",
-    )
-      .then((response) => (response.ok ? response.json() : { entries: [] }))
-      .then((result) => setServerEntries(result.entries || []))
-        .catch(() => setServerEntries([]))
-        .finally(() => setLoadingAudit(false));
+    loadAuditPage(0)
+      .then((result) => { setServerEntries(result.entries || []); setAuditHasMore(Boolean(result.hasMore)); })
+      .catch(() => { setServerEntries([]); setAuditHasMore(false); })
+      .finally(() => setLoadingAudit(false));
   }, [hospitalId]);
+
+  async function loadMoreAuditEntries() {
+    setLoadingMoreAudit(true);
+    try {
+      const result = await loadAuditPage(serverEntries.length);
+      setServerEntries((current) => [...current, ...(result.entries || [])]);
+      setAuditHasMore(Boolean(result.hasMore));
+    } finally {
+      setLoadingMoreAudit(false);
+    }
+  }
 
   const auditEntries = serverEntries.length ? serverEntries : entries;
 
@@ -2173,6 +2222,17 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
     return Array.from(map.values()).sort();
   }, [auditEntriesForTab]);
 
+  const hospitals = useMemo(() => {
+    const map = new Map();
+    auditEntriesForTab.forEach((entry) => {
+      const key = entry.hospitalId || entry.hospitalCode || entry.hospitalName;
+      if (!key) return;
+      const label = entry.hospitalName && entry.hospitalCode ? `${entry.hospitalName} (${entry.hospitalCode})` : entry.hospitalName || entry.hospitalCode || key;
+      if (!map.has(key)) map.set(key, { key, label });
+    });
+    return Array.from(map.values()).sort((left, right) => left.label.localeCompare(right.label));
+  }, [auditEntriesForTab]);
+
   const actions = useMemo(() => {
     const set = new Set();
     auditEntriesForTab.forEach((entry) => {
@@ -2188,11 +2248,16 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
       const entryUser = entry.approvedBy || entry.editor || "System";
       const entryNote = entry.note || "";
       const entryHash = entry.fileHash || entry.nextHash || "";
+      const entryHospital = entry.hospitalId || entry.hospitalCode || entry.hospitalName || "";
 
       if (query.trim()) {
         const text =
-          `${entry.documentName || ""} ${entry.documentId || ""} ${entryDept} ${entryUser} ${entryAction} ${entryNote} ${entryHash}`.toLowerCase();
+          `${entry.documentName || ""} ${entry.documentId || ""} ${entry.hospitalName || ""} ${entry.hospitalCode || ""} ${entryDept} ${entryUser} ${entryAction} ${entryNote} ${entryHash}`.toLowerCase();
         if (!text.includes(query.toLowerCase().trim())) return false;
+      }
+
+      if (!hospitalId && selectedHospital !== "all" && entryHospital !== selectedHospital) {
+        return false;
       }
 
       if (
@@ -2228,6 +2293,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
   }, [
     auditEntriesForTab,
     query,
+    selectedHospital,
     selectedDepartment,
     selectedAction,
     startDate,
@@ -2236,6 +2302,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 
   const hasActiveFilters =
     query ||
+    selectedHospital !== "all" ||
     selectedDepartment !== "all" ||
     selectedAction !== "all" ||
     startDate ||
@@ -2243,6 +2310,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 
   const handleResetFilters = () => {
     setQuery("");
+    setSelectedHospital("all");
     setSelectedDepartment("all");
     setSelectedAction("all");
     setStartDate("");
@@ -2273,7 +2341,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
           <h2>Approval activity</h2>
           <span className="count">{visibleEntries.length} entries</span>
         </div>
-        {hospitalId && <div className="user-tabs audit-tabs"><button className={auditTab === "statuses" ? "active" : ""} type="button" onClick={() => setAuditTab("statuses")}><ClipboardList size={16} /> Document status audit</button><button className={auditTab === "uploads" ? "active" : ""} type="button" onClick={() => setAuditTab("uploads")}><Upload size={16} /> Document uploads audit</button></div>}
+        {hospitalId && <div className="user-tabs audit-tabs"><button className={auditTab === "statuses" ? "active" : ""} type="button" title="Show document status audit" onClick={() => setAuditTab("statuses")}><ClipboardList size={16} /> Document status audit</button><button className={auditTab === "uploads" ? "active" : ""} type="button" title="Show document uploads audit" onClick={() => setAuditTab("uploads")}><Upload size={16} /> Document uploads audit</button></div>}
         <div className="audit-filters-bar">
           <label className="filter-box document-search audit-search-box">
             <Search size={14} />
@@ -2284,6 +2352,13 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
             />
           </label>
           <div className="audit-filter-controls">
+            {!hospitalId && <div className="audit-filter-item">
+              <label className="filter-label">Hospital</label>
+              <select className="audit-filter-select" value={selectedHospital} onChange={(e) => setSelectedHospital(e.target.value)}>
+                <option value="all">All hospitals</option>
+                {hospitals.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+              </select>
+            </div>}
             <div className="audit-filter-item">
               <label className="filter-label">Department</label>
               <select
@@ -2402,6 +2477,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
             </tbody>
           </table>
         )}
+        {hospitalId && auditHasMore && !loadingAudit && <button className="secondary-button audit-load-more" type="button" disabled={loadingMoreAudit} onClick={loadMoreAuditEntries}>{loadingMoreAudit ? "Loading more..." : "Load more audit entries"}</button>}
       </section>
     </main>
   );
@@ -2458,9 +2534,10 @@ function App() {
         <span>{session.hospitalName || session.role}</span>
         {isSuperAdmin ? (
           <>
-            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
+            <button className={view === "home" ? "active" : ""} title="Open Super Admin home" onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
+              title="Open hospital registry"
               onClick={() => {
                 setHospitalStatusFilter("all");
                 setView("admin");
@@ -2470,34 +2547,46 @@ function App() {
             </button>
             <button
               className={view === "templates" ? "active" : ""}
+              title="Open template library"
               onClick={() => setView("templates")}
             >
               <FolderOpen size={16} /> Template library
             </button>
             <button
               className={view === "users" ? "active" : ""}
+              title="Open user management"
               onClick={() => setView("users")}
             >
               <Users size={16} /> User management
             </button>
+            <button
+              className={view === "audit" ? "active" : ""}
+              title="Open audit log"
+              onClick={() => setView("audit")}
+            >
+              <ClipboardList size={16} /> Audit log
+            </button>
           </>
         ) : (
           <>
-            <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><House size={16} /> Home</button>
+            <button className={view === "home" ? "active" : ""} title="Open home" onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
               className={view === "admin" ? "active" : ""}
+              title="Open user management"
               onClick={() => setView("admin")}
             >
               <Building2 size={16} /> User management
             </button>
             <button
               className={view === "roles" ? "active" : ""}
+              title="Open roles"
               onClick={() => setView("roles")}
             >
               <Users size={16} /> Roles
             </button>
             <button
               className={view === "platform" ? "active" : ""}
+              title="Open readiness platform"
               onClick={() => setView("platform")}
             >
               <ClipboardList size={16} /> Readiness Platform
@@ -2505,6 +2594,7 @@ function App() {
             {canViewDocuments && (
               <button
                 className={view === "master-list" ? "active" : ""}
+                title="Open documents"
                 onClick={() => setView("master-list")}
               >
                 <FileSearch size={16} /> Documents
@@ -2512,13 +2602,14 @@ function App() {
             )}
             <button
               className={view === "audit" ? "active" : ""}
+              title="Open audit log"
               onClick={() => setView("audit")}
             >
               <ClipboardList size={16} /> Audit log
             </button>
           </>
         )}
-        <button onClick={async () => { await fetch("/api/logout", { method: "POST" }); setSession(null); }}>Sign out</button>
+        <button title="Sign out" onClick={async () => { await fetch("/api/logout", { method: "POST" }); setSession(null); }}>Sign out</button>
       </div>
       {isSuperAdmin ? (
         view === "home" ? (
@@ -2530,6 +2621,8 @@ function App() {
           <TemplateLibrary />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
+        ) : view === "audit" ? (
+          <AuditLog entries={auditEntries} />
         ) : (
           <SuperAdminWorkspace initialStatusFilter={hospitalStatusFilter} />
         )

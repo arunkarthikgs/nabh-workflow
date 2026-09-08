@@ -153,6 +153,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             {pendingCount > 0 && <span className="pending-hospital-count">{pendingCount} pending</span>}
             <button
               className="icon-button"
+              title="Add hospital"
               onClick={() => {
                 setId("");
                 setForm(empty());
@@ -197,7 +198,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             <Building2 size={18} />
             <h2>{selected ? "Edit hospital" : "New hospital"}</h2>
             {selected && (
-              <button className="danger-button" type="button" onClick={remove}>
+              <button className="danger-button" type="button" title="Remove hospital" onClick={remove}>
                 <Trash2 size={15} /> Remove
               </button>
             )}
@@ -290,10 +291,10 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             </section>
           ))}
           <div className="hospital-form-actions">
-            <button className="primary-button">
+            <button className="primary-button" title="Save hospital">
               <Save size={16} /> Save hospital
             </button>
-            {selected?.status === "pending" && <><button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button><button className="resend-registration-button" type="button" onClick={resendRegistration}><KeyRound size={16} /> Resend setup link</button></>}
+            {selected?.status === "pending" && <><button className="approve-onboarding-button" type="button" title="Approve hospital onboarding" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button><button className="resend-registration-button" type="button" title="Resend password setup link" onClick={resendRegistration}><KeyRound size={16} /> Resend setup link</button></>}
           </div>
           {message && <p className="admin-message">{message}</p>}
         </form>

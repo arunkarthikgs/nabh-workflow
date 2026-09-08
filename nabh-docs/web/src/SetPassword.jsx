@@ -99,7 +99,7 @@ export default function SetPassword({ token, onComplete }) {
           </div>
         </section>
         {error && <p className="status error">{error}</p>}
-        <button className="primary-button" disabled={submitting}>{submitting ? "Completing registration..." : "Complete registration"} <ArrowRight size={16} /></button>
+        <button className="primary-button" title="Complete registration" disabled={submitting}>{submitting ? "Completing registration..." : "Complete registration"} <ArrowRight size={16} /></button>
       </form>
     </main>
   );

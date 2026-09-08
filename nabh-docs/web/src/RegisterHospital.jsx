@@ -56,7 +56,7 @@ export default function RegisterHospital({ onBackToLogin }) {
           {result.repository?.provisioning && <p className="access-message">Your document workspace is being prepared in the background and will be ready shortly after you sign in.</p>}
           {result.email?.transport === "dev-outbox" && <p className="access-message">Local dev mode: no SMTP is configured, so the email was written to <code>output/outbox/{result.email.file}</code> instead of being delivered. Open that file to find the setup link.</p>}
           {result.email?.previewUrl && <p className="access-message">Test SMTP mode: no real inbox receives this email. <a href={result.email.previewUrl} target="_blank" rel="noopener noreferrer">View the sent email</a>.</p>}
-          <button className="login-submit" onClick={onBackToLogin}>Back to sign in <ArrowRight size={16} /></button>
+          <button className="login-submit" title="Back to sign in" onClick={onBackToLogin}>Back to sign in <ArrowRight size={16} /></button>
         </form>
       </main>
     );
@@ -89,7 +89,7 @@ export default function RegisterHospital({ onBackToLogin }) {
         <label className="terms-checkbox"><input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required /> I accept the <a href="https://nabhpulse.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="https://nabhpulse.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label>
         {error && <p className="status error">{error}</p>}
         <div className="toolbar">
-          <button className="primary-button" disabled={submitting}><ArrowRight size={16} /> {submitting ? "Registering..." : "Create account"}</button>
+          <button className="primary-button" title="Create account" disabled={submitting}><ArrowRight size={16} /> {submitting ? "Registering..." : "Create account"}</button>
           <button type="button" className="primary-button" onClick={onBackToLogin}>Back to sign in</button>
         </div>
       </form>

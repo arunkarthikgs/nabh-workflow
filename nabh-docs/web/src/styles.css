@@ -467,6 +467,7 @@ h2 { font-size: 19px; }
 .audit-version, .audit-user { color: #5f5e5b; font-size: 11px; }
 .audit-action-pill { background: #f1f1ef; border-radius: 4px; color: #5f5e5b; display: inline-block; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 4px 7px; text-transform: capitalize; }
 .audit-note { color: #5f5e5b; font-size: 11px; line-height: 1.45; }
+.audit-load-more { margin: 16px 0 0; }
 .reset-filters-button { align-items: center; background: #eef0ff; border: 1px solid #c7cdf7; border-radius: 8px; color: #3547d1; cursor: pointer; display: inline-flex; font: 600 12px "Poppins", sans-serif; gap: 6px; padding: 8px 12px; transition: all 0.15s ease; height: 36px; margin-top: auto; }
 .reset-filters-button:hover { background: #3547d1; color: #ffffff; border-color: #3547d1; }
 .dept-badge { background: #eef0ff; border: 1px solid #dce0fc; border-radius: 6px; color: #3547d1; font-weight: 600; font-size: 11px; padding: 2px 8px; display: inline-block; }

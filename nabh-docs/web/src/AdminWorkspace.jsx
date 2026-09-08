@@ -226,11 +226,12 @@ export default function AdminWorkspace({
         <div className="user-tabs">
           <button
             className={tab === "assigned" ? "active" : ""}
+            title="Show assigned users"
             onClick={() => setTab("assigned")}
           >
             <Users size={16} /> Assigned users
           </button>
-          <button className={tab === "form" ? "active" : ""} disabled={isReadOnly} onClick={startAdd}>
+          <button className={tab === "form" ? "active" : ""} title="Add user" disabled={isReadOnly} onClick={startAdd}>
             <Plus size={16} /> Add user
           </button>
         </div>
@@ -433,7 +434,7 @@ export default function AdminWorkspace({
                 Active access
               </label>
             </div>
-            <button className="primary-button" disabled={isReadOnly}>
+            <button className="primary-button" title={editingId ? "Save user" : "Add user"} disabled={isReadOnly}>
               <UserPlus size={16} /> {editingId ? "Save user" : "Add user"}
             </button>
             <button

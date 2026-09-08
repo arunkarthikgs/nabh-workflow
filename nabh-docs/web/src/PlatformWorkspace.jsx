@@ -268,7 +268,7 @@ function ServicesTab({ hospitalId, disabled }) {
       <label>Notes<textarea rows={2} disabled={disabled} value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} /></label>
       <div className="toolbar">
         <button className="primary-button" disabled={disabled} onClick={submitBooking}>Request booking</button>
-        {form.category === "training" && form.serviceId && <button className="primary-button" disabled={disabled} type="button" onClick={() => generatePack(form.serviceId)}><GraduationCap size={16} /> Generate training material</button>}
+        {form.category === "training" && form.serviceId && <button className="primary-button" disabled={disabled} type="button" title="Generate training material" onClick={() => generatePack(form.serviceId)}><GraduationCap size={16} /> Generate training material</button>}
       </div>
       {message && <p className="access-message">{message}</p>}
 
@@ -335,9 +335,9 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
         </div>
       </header>
       {!homeOnly && <div className="access-tabs">
-        <button className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}><Building2 size={14} /> Institutional profile</button>
-        <button className={tab === "accreditation" ? "active" : ""} onClick={() => setTab("accreditation")}><ClipboardCheck size={14} /> Accreditation</button>
-        <button className={tab === "services" ? "active" : ""} onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
+        <button className={tab === "profile" ? "active" : ""} title="Open institutional profile" onClick={() => setTab("profile")}><Building2 size={14} /> Institutional profile</button>
+        <button className={tab === "accreditation" ? "active" : ""} title="Open accreditation" onClick={() => setTab("accreditation")}><ClipboardCheck size={14} /> Accreditation</button>
+        <button className={tab === "services" ? "active" : ""} title="Open training and consulting" onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
       </div>}
       {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
       {hospital?.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}

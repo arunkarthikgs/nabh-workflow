@@ -81,8 +81,10 @@ export async function readDocumentAudit() {
   return readJson(documentAuditPath, []);
 }
 
-export async function readDocumentAuditByHospital(hospitalId) {
-  return (await readDocumentAudit()).filter((entry) => entry.hospitalId === hospitalId);
+export async function readDocumentAuditByHospital(hospitalId, limit, offset = 0) {
+  const entries = (await readDocumentAudit()).filter((entry) => entry.hospitalId === hospitalId);
+  const start = Math.max(Number(offset) || 0, 0);
+  return Number(limit) > 0 ? entries.slice(start, start + Number(limit)) : entries.slice(start);
 }
 
 export async function saveDocumentAudit(entries) {

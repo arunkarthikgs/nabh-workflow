@@ -1251,8 +1251,14 @@ app.get("/api/admin/hospitals/:hospitalId/documents/preview", async (request, re
 app.get("/api/admin/hospitals/:hospitalId/document-audit", async (request, response, next) => {
   try {
     const hospital = await findHospital(request);
-    const entries = r2TemplateStorageEnabled() && !usesPostgresDataStore() ? await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme) : await readDocumentAuditByHospital(hospital.id);
-    response.json({ entries });
+    const limit = Number(request.query.limit || 500);
+    const cappedLimit = Math.min(Number(limit) > 0 ? Number(limit) : 500, 1000);
+    const offset = Math.max(Number(request.query.offset || 0) || 0, 0);
+    const requested = cappedLimit + 1;
+    const entries = r2TemplateStorageEnabled() && !usesPostgresDataStore()
+      ? (await listR2ClientAuditEvents(hospital.code, hospital.accreditation?.programme)).slice(offset, offset + requested)
+      : await readDocumentAuditByHospital(hospital.id, requested, offset);
+    response.json({ entries: entries.slice(0, cappedLimit), limit: cappedLimit, offset, hasMore: entries.length > cappedLimit });
   } catch (error) { next(error); }
 });
 

@@ -234,6 +234,7 @@ const schemaStatements = [
     `create index if not exists evidence_document_idx on evidence (hospital_id, document_id, uploaded_at desc)`,
     `create index if not exists template_questions_questionnaire_idx on template_questions (questionnaire_id, ordinal)`,
     `create index if not exists hospital_document_answers_document_idx on hospital_document_answers (hospital_id, document_id)`,
+    `create index if not exists document_audit_hospital_seq_idx on document_audit ((entry->>'hospitalId'), seq desc)`,
     `create index if not exists document_audit_timestamp_idx on document_audit ((entry->>'timestamp'))`,
   // ADD COLUMN IF NOT EXISTS handles upgrading a database created before these columns existed;
   // "create table if not exists" above alone would skip them on an already-existing table.
@@ -600,9 +601,11 @@ export async function readDocumentAudit() {
   return rows.map((row) => row.entry);
 }
 
-export async function readDocumentAuditByHospital(hospitalId) {
+export async function readDocumentAuditByHospital(hospitalId, limit, offset = 0) {
   const client = await connect();
-  const { rows } = await client.query(`select entry from document_audit where entry->>'hospitalId' = $1 order by seq desc`, [hospitalId]);
+  const cappedLimit = Number(limit) > 0 ? Math.min(Number(limit), 1000) : 500;
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+  const { rows } = await client.query(`select entry from document_audit where entry->>'hospitalId' = $1 order by seq desc limit $2 offset $3`, [hospitalId, cappedLimit, safeOffset]);
   return rows.map((row) => row.entry);
 }
 
