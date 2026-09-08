@@ -6,6 +6,7 @@ export default function SuperAdminUserManagement() {
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState("");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -15,7 +16,11 @@ export default function SuperAdminUserManagement() {
         if (!response.ok) throw new Error(result.error || "Unable to load hospitals.");
         return result;
       })
-      .then((result) => setHospitals((result.hospitals || []).sort((left, right) => left.name.localeCompare(right.name))))
+      .then((result) => {
+        const records = result.hospitals || [];
+        setHospitals(records);
+        setSelectedHospitalId((current) => records.some((item) => item.id === current) ? current : records[0]?.id || "");
+      })
       .catch((error) => setMessage(error.message));
   }, []);
 
@@ -23,7 +28,8 @@ export default function SuperAdminUserManagement() {
     `${hospital.name} ${hospital.code} ${hospital.details?.city || ""} ${hospital.details?.state || ""}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
-  );
+  ).filter((hospital) => statusFilter === "all" || hospital.status === statusFilter);
+  const pendingCount = hospitals.filter((hospital) => hospital.status === "pending").length;
 
   return (
     <main className="admin-main">
@@ -44,12 +50,13 @@ export default function SuperAdminUserManagement() {
           <div className="panel-heading">
             <Building2 size={18} />
             <h2>Hospitals</h2>
-            <span className="count">{hospitals.length}</span>
+            {pendingCount > 0 && <span className="pending-hospital-count">{pendingCount} pending</span>}
           </div>
           <label className="filter-box">
             <Search size={14} />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search hospital, code, city" />
           </label>
+          <label className="hospital-status-filter">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
           {hospitals.length === 0 && !message && <p className="empty">Loading hospitals...</p>}
           {filteredHospitals.map((item) => (
             <button
