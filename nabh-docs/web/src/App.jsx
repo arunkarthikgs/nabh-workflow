@@ -541,14 +541,14 @@ function MasterListWorkspace({
       })
       .then((data) => {
         if (!data) return;
-        setRepositoryStatus(data.repository);
-        if (data.repository?.job?.status === "running") {
+        setRepositoryStatus(data);
+        if (data.job?.status === "running") {
           pollSyncStatus(
             "Template synchronization is currently in progress...",
           );
-        } else if (data.repository?.job?.status === "failed") {
+        } else if (data.job?.status === "failed") {
           setSyncMessage(
-            data.repository.job.error ||
+            data.job.error ||
               "Previous template synchronization failed or was incomplete.",
           );
         }

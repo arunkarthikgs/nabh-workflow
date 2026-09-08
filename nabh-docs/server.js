@@ -609,7 +609,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
       getPersistentDocumentStatus(hospital),
       loadHospitalDepartments(hospital)
     ]);
-    response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository });
+    response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository, job: repositorySyncJobs.get(hospital.id) || null });
   } catch (error) { next(error); }
 });
 
