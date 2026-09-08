@@ -1,82 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { Building2, KeyRound, Search, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Building2, Search, Users } from "lucide-react";
+import AdminWorkspace from "./AdminWorkspace.jsx";
 
 export default function SuperAdminUserManagement() {
-  const [users, setUsers] = useState([]);
-  const [query, setQuery] = useState("");
-  const [hospital, setHospital] = useState("all");
-  const [role, setRole] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [hospitals, setHospitals] = useState([]);
+  const [selectedHospitalId, setSelectedHospitalId] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/users")
-      .then((response) => response.json())
-      .then((result) => setUsers(result.users || []))
-      .catch(() => setMessage("Unable to load application users."));
+    fetch("/api/admin/hospitals?view=registry")
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Unable to load hospitals.");
+        return result;
+      })
+      .then((result) => setHospitals((result.hospitals || []).sort((left, right) => left.name.localeCompare(right.name))))
+      .catch((error) => setMessage(error.message));
   }, []);
-
-  const hospitals = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          users.map((user) => [
-            user.hospitalId,
-            {
-              id: user.hospitalId,
-              name: user.hospitalName,
-              code: user.hospitalCode,
-            },
-          ]),
-        ).values(),
-      ).sort((left, right) => left.name.localeCompare(right.name)),
-    [users],
-  );
-  const roles = useMemo(
-    () =>
-      Array.from(
-        new Set(users.map((user) => user.role).filter(Boolean)),
-      ).sort(),
-    [users],
-  );
-  const filteredUsers = useMemo(
-    () =>
-      users.filter((user) => {
-        const matchesQuery =
-          `${user.name} ${user.email} ${user.hospitalName} ${user.hospitalCode}`
-            .toLowerCase()
-            .includes(query.trim().toLowerCase());
-        return (
-          matchesQuery &&
-          (hospital === "all" || user.hospitalId === hospital) &&
-          (role === "all" || user.role === role) &&
-          (status === "all" ||
-            (status === "active") === (user.active !== false))
-        );
-      }),
-    [users, query, hospital, role, status],
-  );
-
-  async function resetPassword(user) {
-    if (
-      !window.confirm(
-        `Send a new password setup link to ${user.email}? Any previous setup link will stop working.`,
-      )
-    )
-      return;
-    setMessage(`Sending reset link to ${user.email}...`);
-    const response = await fetch(
-      `/api/admin/users/${encodeURIComponent(user.id)}/reset-password`,
-      { method: "POST" },
-    );
-    const result = await response.json();
-    setMessage(
-      response.ok && result.email?.delivered
-        ? `Password setup link sent to ${user.email}.`
-        : result.error ||
-            `A password setup link was created for ${user.email}, but email delivery needs SMTP configuration.`,
-    );
-  }
 
   return (
     <main className="admin-main">
@@ -89,93 +29,30 @@ export default function SuperAdminUserManagement() {
           </div>
         </div>
         <p className="intro">
-          Search and manage user access across all hospitals.
+          Select a hospital to manage its users, roles, and password access.
         </p>
       </header>
-      <section className="document-panel">
+      <section className="document-panel super-admin-hospital-picker">
         <div className="panel-heading">
           <Users size={18} />
-          <h2>Application users</h2>
-          <span className="count">{filteredUsers.length} users</span>
+          <h2>Choose hospital</h2>
         </div>
-        <div className="audit-filters-bar">
-          <label className="filter-box document-search">
-            <Search size={14} />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search name, email, hospital, or client code"
-            />
-          </label>
-          <div className="audit-filter-controls user-filter-controls">
-            <div className="audit-filter-item">
-              <label className="filter-label" htmlFor="user-hospital-filter">Hospital</label>
-              <select className="audit-filter-select" id="user-hospital-filter" value={hospital} onChange={(event) => setHospital(event.target.value)}>
-                <option value="all">All hospitals</option>
-                {hospitals.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.code})</option>)}
-              </select>
-            </div>
-            <div className="audit-filter-item">
-              <label className="filter-label" htmlFor="user-role-filter">Role</label>
-              <select className="audit-filter-select" id="user-role-filter" value={role} onChange={(event) => setRole(event.target.value)}>
-                <option value="all">All roles</option>
-                {roles.map((item) => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-            <div className="audit-filter-item">
-              <label className="filter-label" htmlFor="user-status-filter">Status</label>
-              <select className="audit-filter-select" id="user-status-filter" value={status} onChange={(event) => setStatus(event.target.value)}>
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        {filteredUsers.length === 0 ? (
-          <p className="empty">No users match these criteria.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Hospital</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    <strong>{user.name}</strong>
-                    <br />
-                    <span className="mono">{user.email}</span>
-                  </td>
-                  <td>
-                    {user.hospitalName}
-                    <br />
-                    <span className="mono">{user.hospitalCode}</span>
-                  </td>
-                  <td>{user.role}</td>
-                  <td>{user.active === false ? "Inactive" : "Active"}</td>
-                  <td>
-                    <button
-                      className="icon-button"
-                      title={`Send password reset link to ${user.email}`}
-                      onClick={() => resetPassword(user)}
-                    >
-                      <KeyRound size={17} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {message && <p className="access-message">{message}</p>}
+        <label className="filter-box super-admin-hospital-select">
+          <Search size={14} />
+          <select value={selectedHospitalId} onChange={(event) => setSelectedHospitalId(event.target.value)}>
+            <option value="">Select a hospital</option>
+            {hospitals.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.code})</option>)}
+          </select>
+        </label>
+        {hospitals.length === 0 && !message && <p className="empty">Loading hospitals...</p>}
+        {message && <p className="status error">{message}</p>}
+        {!selectedHospitalId && hospitals.length > 0 && <p className="access-message">Choose a hospital to open its scoped user-management workspace.</p>}
       </section>
+      {selectedHospitalId && (
+        <section className="super-admin-scoped-users">
+          <AdminWorkspace scopedHospitalId={selectedHospitalId} hospitalName={hospitals.find((item) => item.id === selectedHospitalId)?.name} />
+        </section>
+      )}
     </main>
   );
 }

@@ -76,11 +76,13 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .readiness-table tbody th { color: #37352f; font-family: "Libre Baskerville", Georgia, serif; font-size: 13px; }
 .readiness-cell { border: 0; border-radius: 4px; cursor: pointer; font: 700 13px "Manrope", sans-serif; min-width: 36px; padding: 6px 8px; }
 .readiness-cell:hover { box-shadow: 0 0 0 2px #2383e2; }
-.readiness-cell.readiness-not_started { background: #f1f1ef; color: #5f5e5b; }
-.readiness-cell.readiness-information_required { background: #fdecc8; color: #9a6700; }
-.readiness-cell.readiness-draft_generated { background: #e7f3f8; color: #0b6e99; }
-.readiness-cell.readiness-under_review { background: #eef0ff; color: #3547d1; }
-.readiness-cell.readiness-approved, .readiness-cell.readiness-implemented, .readiness-cell.readiness-evidence_available { background: #dbeddb; color: #2f6b47; }
+.readiness-cell.readiness-not_started { background: #efeff4; color: #6b6f80; }
+.readiness-cell.readiness-information_required { background: #ffe9ec; color: #c23a56; }
+.readiness-cell.readiness-draft_generated { background: #fff4dd; color: #b0791e; }
+.readiness-cell.readiness-under_review { background: #e6ecff; color: #3547d1; }
+.readiness-cell.readiness-approved { background: #e4f7ec; color: #1e9e5c; }
+.readiness-cell.readiness-implemented { background: #dcf5f0; color: #147d68; }
+.readiness-cell.readiness-evidence_available { background: #ede4ff; color: #6a3fc2; }
 .readiness-total { background: #f7f7f5; color: #5f5e5b; font-weight: 700; }
 .readiness-grand-total { background: #e7f3f8; color: #0b6e99; font-weight: 800; }
 .readiness-table tfoot th, .readiness-table tfoot td { border-bottom: 0; border-top: 2px solid #d3d2cf; }

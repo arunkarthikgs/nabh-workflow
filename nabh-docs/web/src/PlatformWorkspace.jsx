@@ -9,6 +9,10 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [saving, setSaving] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState("");
 
+  useEffect(() => {
+    setForm(Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
+  }, [details]);
+
   function uploadLogo(event) {
     const [file] = event.target.files;
     if (!file) return;
