@@ -302,6 +302,7 @@ function MasterListWorkspace({
   const [departments, setDepartments] = useState(null);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
+  const [statusErrors, setStatusErrors] = useState({});
   const [accreditationRequired, setAccreditationRequired] = useState(null);
   const [profileIncomplete, setProfileIncomplete] = useState([]);
   const [documentSearch, setDocumentSearch] = useState(
@@ -740,8 +741,9 @@ function MasterListWorkspace({
           d.id === doc.id ? { ...d, readinessStatus: data.entry.status } : d,
         ),
       }));
+      setStatusErrors((current) => ({ ...current, [doc.id]: "" }));
     } catch (err) {
-      setError(err.message);
+      setStatusErrors((current) => ({ ...current, [doc.id]: err.message }));
     }
   }
 
@@ -776,9 +778,10 @@ function MasterListWorkspace({
           d.id === doc.id ? { ...d, readinessStatus: data.entry.status } : d,
         ),
       }));
+      setStatusErrors((current) => ({ ...current, [doc.id]: "" }));
       return true;
     } catch (err) {
-      setError(err.message);
+      setStatusErrors((current) => ({ ...current, [doc.id]: err.message }));
       return false;
     }
   }
@@ -1466,74 +1469,7 @@ function MasterListWorkspace({
                             ))}
                           </select>
                           {doc.readinessStatus === "approved" && <span className="document-lock-message">Approved and locked</span>}
-                          {canEdit && (
-                            <span className="policy-actions">
-                              {(doc.readinessStatus === "draft_generated" ||
-                                doc.readinessStatus ===
-                                  "information_required") && (
-                                <button
-                                  className="icon-button"
-                                  title="Submit for review"
-                                  onClick={() =>
-                                    runDocumentAction(doc, "submit-for-review")
-                                  }
-                                >
-                                  Submit
-                                </button>
-                              )}
-                              {doc.readinessStatus === "under_review" && (
-                                <button
-                                  className="icon-button check"
-                                  title="Approve"
-                                  onClick={() =>
-                                    runDocumentAction(doc, "approve")
-                                  }
-                                >
-                                  <Check size={14} />
-                                </button>
-                              )}
-                              {doc.readinessStatus === "under_review" && (
-                                <button
-                                  className="icon-button cancel"
-                                  title="Request changes"
-                                  onClick={() =>
-                                    runDocumentAction(doc, "request-changes")
-                                  }
-                                >
-                                  <X size={14} />
-                                </button>
-                              )}
-                              {doc.readinessStatus === "approved" && (
-                                <button
-                                  className="icon-button"
-                                  title="Mark implemented"
-                                  onClick={() =>
-                                    runDocumentAction(doc, "mark-implemented")
-                                  }
-                                >
-                                  Implemented
-                                </button>
-                              )}
-                              {doc.readinessStatus === "approved" && (
-                                <button
-                                  className="icon-button"
-                                  title="Reopen approved document for revision"
-                                  onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}
-                                >
-                                  Reopen
-                                </button>
-                              )}
-                              {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && (
-                                <button
-                                  className="icon-button"
-                                  title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"}
-                                  onClick={() => openEvidence(doc)}
-                                >
-                                  <Upload size={14} /> Evidence
-                                </button>
-                              )}
-                            </span>
-                          )}
+                          {statusErrors[doc.id] && <p className="document-status-error">{statusErrors[doc.id]}</p>}
                         </td>
                         <td className="version-cell">
                           {isEditing ? (
@@ -1576,6 +1512,16 @@ function MasterListWorkspace({
                         </td>
                         <td className="hospital-actions-column">
                           <span className="hospital-document-actions">
+                            {canEdit && (
+                              <span className="policy-actions">
+                                {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                                {doc.readinessStatus === "under_review" && <button className="icon-button check" title="Approve" onClick={() => runDocumentAction(doc, "approve")}><Check size={14} /></button>}
+                                {doc.readinessStatus === "under_review" && <button className="icon-button cancel" title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
+                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Mark implemented" onClick={() => runDocumentAction(doc, "mark-implemented")}>Implemented</button>}
+                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
+                                {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
+                              </span>
+                            )}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
