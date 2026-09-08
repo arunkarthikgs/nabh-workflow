@@ -623,9 +623,10 @@ app.post("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", asyn
     if (!documentExists) return response.status(404).json({ error: "Document not found in this hospital workspace." });
     const persistentStatus = await getPersistentDocumentStatus(hospital);
     const previousStatus = persistentStatus[request.params.documentId]?.status || "not_started";
-    const result = await createEvidence(hospital, request.params.documentId, request.body || {}, request.appSession?.user_id || request.appSession?.userId || "Hospital user", previousStatus);
+    const uploadedBy = String(request.body?.uploadedBy || "").trim();
+    const result = await createEvidence(hospital, request.params.documentId, request.body || {}, uploadedBy, previousStatus);
     if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [request.params.documentId]: result.entry });
-    await recordDocumentStatusAudit(hospital, request.params.documentId, result.previousStatus, result.entry, "evidence uploaded");
+    await recordDocumentStatusAudit(hospital, request.params.documentId, result.previousStatus, result.entry, "evidence uploaded", { documentName: request.body?.documentName, department: request.body?.department });
     response.status(201).json(result);
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -658,6 +659,8 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     requireActiveHospital(hospital);
     requireCompleteHospitalProfile(hospital);
     const { documentId, status, updatedBy, note, documentName, department } = request.body || {};
+    if (["approved", "implemented", "evidence_available"].includes(status) && !String(updatedBy || "").trim()) return response.status(400).json({ error: "Enter the user name before approving, implementing, or marking evidence available." });
+    if (["approved", "implemented", "evidence_available"].includes(status) && !String(note || "").trim()) return response.status(400).json({ error: "Enter notes for the audit log before approving, implementing, or marking evidence available." });
     const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
     const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note, previousStatus);
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry, undefined, { documentName, department });
@@ -973,6 +976,8 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    if (!String(request.get("X-Approved-By") || "").trim()) return response.status(400).json({ error: "Enter the user name before approving this document version." });
+    if (!String(request.get("X-Approval-Note") || "").trim()) return response.status(400).json({ error: "Enter approval notes for the audit log before approving this document version." });
     await requireDocumentUnlockedForMutation(hospital, request.get("X-Document-Id"));
     const manifest = await approveR2ClientDocumentVersion({
       hospital,

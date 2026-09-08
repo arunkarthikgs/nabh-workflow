@@ -71,6 +71,8 @@ export async function createEvidence(hospital, documentId, payload, uploadedBy, 
   if (!["implemented", "evidence_available"].includes(currentStatus)) {
     throw new Error(`Evidence can be uploaded only after the document is Implemented. The document is currently ${currentStatus.replace(/_/g, " ")}.`);
   }
+  if (!String(uploadedBy || "").trim()) throw new Error("Enter the user name before uploading evidence.");
+  if (!String(payload?.description || payload?.notes || "").trim()) throw new Error("Enter notes describing the evidence before uploading.");
   const { buffer, contentType } = decodeEvidenceData(payload?.data, payload?.mimeType);
   const evidenceId = randomUUID();
   const fileName = safeFileName(payload?.fileName);
@@ -85,7 +87,7 @@ export async function createEvidence(hospital, documentId, payload, uploadedBy, 
     mimeType: contentType,
     sizeBytes: buffer.length,
     evidenceType: String(payload?.evidenceType || "implementation evidence").trim().slice(0, 120),
-    description: String(payload?.description || "").trim().slice(0, 2000),
+    description: String(payload?.description || payload?.notes || "").trim().slice(0, 2000),
     uploadedBy: String(uploadedBy || "system").trim().slice(0, 160) || "system",
     uploadedAt: new Date().toISOString(),
     reviewStatus: "submitted",
@@ -103,7 +105,8 @@ export async function createEvidence(hospital, documentId, payload, uploadedBy, 
       await writeFile(filePath, buffer);
     }
     await addEvidence(evidence);
-    const entry = await setHospitalDocumentStatus(hospital.id, documentId, "evidence_available", uploadedBy, `Evidence uploaded: ${fileName}`, currentStatus);
+    const entryNote = evidence.description ? `Evidence uploaded: ${fileName}. ${evidence.description}` : `Evidence uploaded: ${fileName}`;
+    const entry = await setHospitalDocumentStatus(hospital.id, documentId, "evidence_available", uploadedBy, entryNote, currentStatus);
     return { evidence, entry, previousStatus: currentStatus };
   } catch (error) {
     await deleteEvidence(hospital.id, evidence.id).catch(() => {});

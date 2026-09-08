@@ -336,6 +336,7 @@ function MasterListWorkspace({
   const [repositoryStatus, setRepositoryStatus] = useState(null);
   const [approvalDocument, setApprovalDocument] = useState(null);
   const [approvalFile, setApprovalFile] = useState(null);
+  const [approvalBy, setApprovalBy] = useState("");
   const [approvalNote, setApprovalNote] = useState("");
   const [approvalError, setApprovalError] = useState("");
   const [approving, setApproving] = useState(false);
@@ -349,8 +350,13 @@ function MasterListWorkspace({
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [evidenceType, setEvidenceType] = useState("implementation evidence");
   const [evidenceDescription, setEvidenceDescription] = useState("");
+  const [evidenceUploadedBy, setEvidenceUploadedBy] = useState("");
   const [evidenceError, setEvidenceError] = useState("");
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [auditAction, setAuditAction] = useState(null);
+  const [auditUserName, setAuditUserName] = useState("");
+  const [auditNote, setAuditNote] = useState("");
+  const [auditError, setAuditError] = useState("");
   const [reopenDocument, setReopenDocument] = useState(null);
   const [reopenNote, setReopenNote] = useState("");
   const [reopenError, setReopenError] = useState("");
@@ -389,6 +395,7 @@ function MasterListWorkspace({
     setEvidenceFile(null);
     setEvidenceType("implementation evidence");
     setEvidenceDescription("");
+    setEvidenceUploadedBy("");
     setEvidenceError("");
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(doc.id)}/evidence`);
     const data = await response.json();
@@ -399,6 +406,8 @@ function MasterListWorkspace({
   async function uploadEvidence(event) {
     event.preventDefault();
     if (!evidenceDocument || !evidenceFile) return setEvidenceError("Choose an evidence file before uploading.");
+    if (!evidenceUploadedBy.trim()) return setEvidenceError("Enter the user name before uploading evidence.");
+    if (!evidenceDescription.trim()) return setEvidenceError("Enter notes describing the evidence before uploading.");
     setUploadingEvidence(true);
     setEvidenceError("");
     try {
@@ -411,7 +420,7 @@ function MasterListWorkspace({
       const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(evidenceDocument.id)}/evidence`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: evidenceFile.name, mimeType: evidenceFile.type, data: dataUrl, evidenceType, description: evidenceDescription })
+        body: JSON.stringify({ fileName: evidenceFile.name, mimeType: evidenceFile.type, data: dataUrl, evidenceType, description: evidenceDescription, notes: evidenceDescription, uploadedBy: evidenceUploadedBy.trim(), documentName: evidenceDocument.documentName, department: evidenceDocument.department })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to upload evidence.");
@@ -422,6 +431,7 @@ function MasterListWorkspace({
       setEvidenceEntries((current) => [data.evidence, ...current]);
       setEvidenceFile(null);
       setEvidenceDescription("");
+      setEvidenceUploadedBy("");
       setSyncMessage("Evidence uploaded successfully. The document is now marked Evidence Available.");
     } catch (err) {
       setEvidenceError(err.message);
@@ -717,7 +727,30 @@ function MasterListWorkspace({
     ).catch((err) => setError(err.message));
   }
 
+  function openAuditedAction(doc, action) {
+    setAuditAction({ doc, action });
+    setAuditUserName("");
+    setAuditNote("");
+    setAuditError("");
+  }
+
+  async function submitAuditedAction() {
+    if (!auditAction) return;
+    if (!auditUserName.trim()) return setAuditError("Enter the user name before continuing.");
+    if (!auditNote.trim()) return setAuditError("Enter notes for the audit log before continuing.");
+    setAuditError("");
+    const completed = await runDocumentAction(auditAction.doc, auditAction.action, auditNote.trim(), auditUserName.trim());
+    if (completed) {
+      setAuditAction(null);
+      setAuditUserName("");
+      setAuditNote("");
+    }
+  }
+
   async function setReadinessStatus(doc, nextStatus) {
+    if (nextStatus === "approved") return openAuditedAction(doc, "approve");
+    if (nextStatus === "implemented") return openAuditedAction(doc, "mark-implemented");
+    if (nextStatus === "evidence_available") return openEvidence(doc);
     try {
       const response = await fetch(
         `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-status`,
@@ -752,7 +785,7 @@ function MasterListWorkspace({
     return [currentStatus, ...(READINESS_TRANSITIONS[currentStatus] || [])];
   }
 
-  async function runDocumentAction(doc, action, note = "") {
+  async function runDocumentAction(doc, action, note = "", updatedBy = hospitalName || "Hospital") {
     try {
       const response = await fetch(
         `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/action`,
@@ -762,7 +795,7 @@ function MasterListWorkspace({
           body: JSON.stringify({
             documentId: doc.id,
             action,
-            updatedBy: hospitalName || "Hospital",
+            updatedBy,
             documentName: doc.documentName,
             department: doc.department,
             note,
@@ -1029,6 +1062,14 @@ function MasterListWorkspace({
       setApprovalError("Select the updated document file.");
       return;
     }
+    if (!approvalBy.trim()) {
+      setApprovalError("Enter the user name before approving this document version.");
+      return;
+    }
+    if (!approvalNote.trim()) {
+      setApprovalError("Enter approval notes for the audit log before approving this document version.");
+      return;
+    }
     setApproving(true);
     setApprovalError("");
     try {
@@ -1043,7 +1084,7 @@ function MasterListWorkspace({
             "X-Department": approvalDocument.department,
             "X-Document-Path": approvalDocument.relativeFilePath,
             "X-File-Name": approvalFile.name,
-            "X-Approved-By": hospitalName || "Hospital Administrator",
+            "X-Approved-By": approvalBy.trim(),
             "X-Approval-Note": approvalNote.trim(),
           },
           body: await approvalFile.arrayBuffer(),
@@ -1073,6 +1114,7 @@ function MasterListWorkspace({
       }));
       setApprovalDocument(null);
       setApprovalFile(null);
+      setApprovalBy("");
       setApprovalNote("");
     } catch (uploadError) {
       setApprovalError(uploadError.message);
@@ -1515,16 +1557,16 @@ function MasterListWorkspace({
                             {canEdit && (
                               <span className="policy-actions">
                                 {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
-                                {doc.readinessStatus === "under_review" && <button className="icon-button check" title="Approve" onClick={() => runDocumentAction(doc, "approve")}><Check size={14} /></button>}
+                                {doc.readinessStatus === "under_review" && <button className="icon-button check" title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
                                 {doc.readinessStatus === "under_review" && <button className="icon-button cancel" title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
-                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Mark implemented" onClick={() => runDocumentAction(doc, "mark-implemented")}>Implemented</button>}
+                                {doc.readinessStatus === "approved" && <button className="icon-button" title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}
                                 {doc.readinessStatus === "approved" && <button className="icon-button" title="Reopen approved document for revision" onClick={() => { setReopenDocument(doc); setReopenNote(""); setReopenError(""); }}>Reopen</button>}
                                 {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && <button className="icon-button" title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"} onClick={() => openEvidence(doc)}><Upload size={14} /> Evidence</button>}
                               </span>
                             )}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
+                            {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
-                            {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                           </span>
                         </td>
                       </tr>
@@ -1681,7 +1723,11 @@ function MasterListWorkspace({
                 </select>
               </label>
               <label>
-                Description
+                User name
+                <input value={evidenceUploadedBy} onChange={(event) => setEvidenceUploadedBy(event.target.value)} placeholder="Name of the user uploading evidence" />
+              </label>
+              <label>
+                Notes
                 <textarea rows={3} value={evidenceDescription} onChange={(event) => setEvidenceDescription(event.target.value)} placeholder="Describe what this file proves and the period it covers." />
               </label>
               {evidenceError && <p className="status error">{evidenceError}</p>}
@@ -1697,6 +1743,30 @@ function MasterListWorkspace({
                 )) : <p className="access-message">No evidence has been uploaded for this document yet.</p>}
               </div>
             </form>
+          </section>
+        </div>
+      )}
+      {auditAction && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setAuditAction(null)}>
+          <section className="preview-dialog accreditation-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="audit-action-title" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Audit confirmation</p>
+                <h2 id="audit-action-title">{auditAction.action === "approve" ? "Approve document" : "Mark document implemented"}</h2>
+                <p className="editor-file-name">{auditAction.doc.documentName}</p>
+              </div>
+              <button className="icon-button" type="button" title="Close audit confirmation" onClick={() => setAuditAction(null)}><Close size={18} /></button>
+            </div>
+            <div className="accreditation-confirm-body">
+              <p>{auditAction.action === "approve" ? "Record who reviewed and approved this document." : "Record who confirmed implementation of this document."}</p>
+              <label>User name<input value={auditUserName} onChange={(event) => setAuditUserName(event.target.value)} placeholder="Enter your full name" autoFocus /></label>
+              <label>Notes<textarea rows={4} value={auditNote} onChange={(event) => setAuditNote(event.target.value)} placeholder="Add approval or implementation notes for the audit log." /></label>
+              {auditError && <p className="status error">{auditError}</p>}
+            </div>
+            <div className="accreditation-confirm-actions">
+              <button className="secondary-button" type="button" onClick={() => setAuditAction(null)}>Cancel</button>
+              <button className="primary-button" type="button" onClick={submitAuditedAction}>{auditAction.action === "approve" ? "Approve document" : "Mark implemented"}</button>
+            </div>
           </section>
         </div>
       )}
@@ -1946,7 +2016,15 @@ function MasterListWorkspace({
                 <p className="editor-file-name">{approvalFile.name}</p>
               )}
               <label>
-                Approval note
+                User name
+                <input
+                  value={approvalBy}
+                  onChange={(event) => setApprovalBy(event.target.value)}
+                  placeholder="Name of the user approving this version"
+                />
+              </label>
+              <label>
+                Approval notes
                 <input
                   value={approvalNote}
                   onChange={(event) => setApprovalNote(event.target.value)}
