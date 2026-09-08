@@ -1580,7 +1580,8 @@ function MasterListWorkspace({
                           <span className="hospital-document-actions">
                             {canEdit && (
                               <span className="policy-actions">
-                                {(doc.readinessStatus === "draft_generated" || doc.readinessStatus === "information_required") && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                                {doc.readinessStatus === "draft_generated" && <button className="icon-button" disabled={isStatusProcessing} title="Submit for review" onClick={() => runDocumentAction(doc, "submit-for-review")}>Submit</button>}
+                                {doc.readinessStatus === "information_required" && <button className="icon-button" disabled={isStatusProcessing} title="Answer questions and generate draft" onClick={() => openQuestionnaire(doc)}>Generate draft</button>}
                                 {doc.readinessStatus === "under_review" && <button className="icon-button check" disabled={isStatusProcessing} title="Approve" onClick={() => openAuditedAction(doc, "approve")}><Check size={14} /></button>}
                                 {doc.readinessStatus === "under_review" && <button className="icon-button cancel" disabled={isStatusProcessing} title="Request changes" onClick={() => runDocumentAction(doc, "request-changes")}><X size={14} /></button>}
                                 {doc.readinessStatus === "approved" && <button className="icon-button" disabled={isStatusProcessing} title="Mark implemented" onClick={() => openAuditedAction(doc, "mark-implemented")}>Implemented</button>}

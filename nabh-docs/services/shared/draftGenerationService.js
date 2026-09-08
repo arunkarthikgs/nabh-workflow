@@ -6,7 +6,7 @@ import { getDocumentQuestions, validateDocumentAnswers } from "./documentQuestio
 
 // Which readiness statuses a guided action may move a document from -> to.
 export const ACTION_TRANSITIONS = {
-  "submit-for-review": { from: ["draft_generated", "information_required"], to: "under_review" },
+  "submit-for-review": { from: ["draft_generated"], to: "under_review" },
   "approve": { from: ["under_review"], to: "approved" },
   "request-changes": { from: ["under_review"], to: "draft_generated" },
   "reopen-for-revision": { from: ["approved"], to: "under_review" },
