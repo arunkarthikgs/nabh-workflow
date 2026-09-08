@@ -747,6 +747,36 @@ function MasterListWorkspace({
     ).catch((err) => setError(err.message));
   }
 
+  async function checkMandatoryQuestionAnswers(doc) {
+    if (!doc) return { message: "" };
+    const templatePath = doc.relativeFilePath || doc.matchedFilePath || "";
+    const [questionsResponse, draftResponse] = await Promise.all([
+      fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-questions?documentId=${encodeURIComponent(doc.id)}&documentName=${encodeURIComponent(doc.documentName)}&templatePath=${encodeURIComponent(templatePath)}`),
+      fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-draft?documentId=${encodeURIComponent(doc.id)}`),
+    ]);
+
+    const questionsData = await questionsResponse.json().catch(() => ({}));
+    const draftData = await draftResponse.json().catch(() => ({}));
+
+    if (!questionsResponse.ok) {
+      return { message: questionsData.error || "Unable to validate document questions." };
+    }
+    if (!draftResponse.ok) {
+      return { message: draftData.error || "Unable to check saved questionnaire answers." };
+    }
+
+    const requiredQuestions = (questionsData.questions || []).filter((question) => question.required !== false);
+    const savedAnswers = draftData.draft?.answers || {};
+    const missing = requiredQuestions.filter((question) => !String(savedAnswers[question.id] || "").trim());
+
+    if (!missing.length) return { message: "" };
+
+    const labels = missing.map((question) => question.label).join(", ");
+    return {
+      message: `This document cannot be approved until all mandatory questions are answered: ${labels}. Complete the questionnaire and generate the draft before approval.`,
+    };
+  }
+
   function openAuditedAction(doc, action) {
     setAuditAction({ doc, action });
     setAuditUserName("");
@@ -758,6 +788,13 @@ function MasterListWorkspace({
     if (!auditAction) return;
     if (!auditUserName.trim()) return setAuditError("Enter the user name before continuing.");
     if (!auditNote.trim()) return setAuditError("Enter notes for the audit log before continuing.");
+    if (auditAction.action === "approve") {
+      const validation = await checkMandatoryQuestionAnswers(auditAction.doc);
+      if (validation.message) {
+        setAuditError(validation.message);
+        return;
+      }
+    }
     setAuditError("");
     const completed = await runDocumentAction(auditAction.doc, auditAction.action, auditNote.trim(), auditUserName.trim());
     if (completed) {
@@ -838,6 +875,7 @@ function MasterListWorkspace({
             updatedBy,
             documentName: doc.documentName,
             department: doc.department,
+            templatePath: doc.relativeFilePath || doc.matchedFilePath || "",
             note,
           }),
         },
@@ -1114,6 +1152,11 @@ function MasterListWorkspace({
     }
     if (!approvalNote.trim()) {
       setApprovalError("Enter approval notes for the audit log before approving this document version.");
+      return;
+    }
+    const validation = await checkMandatoryQuestionAnswers(approvalDocument);
+    if (validation.message) {
+      setApprovalError(validation.message);
       return;
     }
     setApproving(true);

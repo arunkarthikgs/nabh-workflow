@@ -828,6 +828,19 @@ app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, re
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    if (action === "approve") {
+      const templatePath = String(request.body?.templatePath || "").trim();
+      const questionnaire = await getDocumentQuestions(hospital, documentId, request.body?.documentName, templatePath);
+      const draft = await getDocumentDraft(hospital.id, documentId);
+      const requiredQuestions = (questionnaire.questions || []).filter((question) => question.required !== false);
+      const savedAnswers = draft?.answers || {};
+      const missing = requiredQuestions.filter((question) => !String(savedAnswers[question.id] || "").trim());
+      if (missing.length) {
+        return response.status(422).json({
+          error: `This document cannot be approved until all mandatory questions are answered: ${missing.map((question) => question.label).join(", ")}. Complete the questionnaire and generate the draft before approval.`,
+        });
+      }
+    }
     const persistentStatus = await getPersistentDocumentStatus(hospital);
     const previousStatus = persistentStatus[documentId]?.status || "not_started";
     const entry = await performDocumentAction(request.params.hospitalId, documentId, action, updatedBy, note, previousStatus);
