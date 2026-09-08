@@ -786,7 +786,11 @@ app.get("/api/set-password/:token", async (request, response, next) => {
     const found = await findUserBySetupToken(request.params.token);
     if (!found) return response.status(404).json({ error: "Invalid or expired setup link." });
     if (found.user.passwordSetupExpiresAt && new Date(found.user.passwordSetupExpiresAt).getTime() < Date.now()) return response.status(410).json({ error: "This setup link has expired." });
-    response.json({ hospitalName: found.hospital.name, hospitalCode: found.hospital.code, address: found.hospital.details?.addressLine1 || "", city: found.hospital.details?.city || "", adminName: found.user.name, email: found.user.email, contactPhone: found.user.contactPhone || found.hospital.details?.responsiblePhone || found.hospital.details?.mainPhone || "" });
+    const locationParts = String(found.hospital.location || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const address = found.hospital.details?.addressLine1 || locationParts[0] || "";
+    const city = found.hospital.details?.city || locationParts[0] || "";
+    const contactPhone = found.user.contactPhone || found.hospital.details?.responsiblePhone || found.hospital.details?.mainPhone || "";
+    response.json({ hospitalName: found.hospital.name, hospitalCode: found.hospital.code, address, city, adminName: found.user.name, email: found.user.email, contactPhone });
   } catch (error) { next(error); }
 });
 
@@ -819,7 +823,7 @@ app.post("/api/login", async (request, response, next) => {
     const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
     await issueApplicationSession(response, session);
     response.json({ session });
-  } catch (error) { next(error); }
+  } catch (error) { if (error?.reason === "registration_incomplete") response.status(error.status || 403).json({ error: error.message, reason: error.reason }); else next(error); }
 });
 
 app.post("/api/logout", async (request, response, next) => {

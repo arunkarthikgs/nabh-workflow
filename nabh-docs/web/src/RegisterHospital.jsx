@@ -78,7 +78,7 @@ export default function RegisterHospital({ onBackToLogin }) {
         <section>
           <h3>Hospital registration</h3>
           <div className="admin-fields">
-            <label>Legal hospital name <b>*</b><input name="name" value={form.name} onChange={change} required /></label>
+            <label>Hospital name <b>*</b><input name="name" value={form.name} onChange={change} required /></label>
             <label>Hospital address <b>*</b><input name="addressLine1" value={form.details.addressLine1} onChange={change} required /></label>
             <label>Hospital city <b>*</b><input name="city" value={form.details.city} onChange={change} required /></label>
             <label>Hospital Admin name <b>*</b><input name="adminName" value={form.adminName} onChange={change} required /></label>

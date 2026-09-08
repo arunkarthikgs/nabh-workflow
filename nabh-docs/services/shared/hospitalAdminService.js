@@ -394,6 +394,15 @@ export async function verifyHospitalAdminPassword(identifier, password) {
   const found = hospitals.flatMap((hospital) => (hospital.users || []).map((user) => ({ hospital, user }))).find(({ hospital, user }) => user.userId === text(identifier) || (user.email && user.email.toLowerCase() === normalized) || (user.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
   if (!found || found.user.active === false || found.user.status === "inactive") return null;
   const { hospital, user } = found;
+
+  // Hospital accounts created via self-registration or user reset must complete setup before logging in.
+  if (user.passwordSet === false) {
+    const error = new Error("Account registration is incomplete. Please complete registration via the setup link sent to your email before logging in.");
+    error.status = 403;
+    error.reason = "registration_incomplete";
+    throw error;
+  }
+
   const ok = user.passwordHash ? verifyPassword(password, user.passwordSalt, user.passwordHash) : password === "Hospital@123";
   if (!ok) return null;
   user.lastLoginAt = new Date().toISOString();
