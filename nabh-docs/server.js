@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -847,6 +847,9 @@ app.post("/api/admin/hospitals/:hospitalId/bookings", async (request, response, 
 
 app.patch("/api/admin/bookings/:bookingId", async (request, response, next) => {
   try {
+    const bookingRecord = await readBookingById(request.params.bookingId);
+    if (!bookingRecord) return response.status(404).json({ error: "Booking not found." });
+    if (request.appSession?.role !== "Super Admin" && request.appSession?.hospital_id !== bookingRecord.hospitalId && request.appSession?.hospitalId !== bookingRecord.hospitalId) return response.status(403).json({ error: "You are not authorized to access this booking." });
     const booking = await updateBookingStatus(request.params.bookingId, request.body?.status, request.body?.updatedBy);
     if (!booking) return response.status(404).json({ error: "Booking not found." });
     response.json({ booking });
@@ -855,6 +858,9 @@ app.patch("/api/admin/bookings/:bookingId", async (request, response, next) => {
 
 app.post("/api/admin/bookings/:bookingId/recording", async (request, response, next) => {
   try {
+    const bookingRecord = await readBookingById(request.params.bookingId);
+    if (!bookingRecord) return response.status(404).json({ error: "Booking not found." });
+    if (request.appSession?.role !== "Super Admin" && request.appSession?.hospital_id !== bookingRecord.hospitalId && request.appSession?.hospitalId !== bookingRecord.hospitalId) return response.status(403).json({ error: "You are not authorized to access this booking." });
     const booking = await attachBookingRecording(request.params.bookingId, request.body || {});
     if (!booking) return response.status(404).json({ error: "Booking not found." });
     response.json({ booking });
@@ -901,13 +907,22 @@ app.post("/api/admin/template-library/approve", express.raw({ type: "application
 
 async function findHospital(request) {
   const hospitals = await listHospitals();
-  let hospital = hospitals.find((item) => item.id === request.params.hospitalId || item.code === request.params.hospitalId);
-  if (!hospital && (request.params.hospitalId === "undefined" || !request.params.hospitalId)) {
-    hospital = hospitals[0];
+  const requestedId = request.params.hospitalId;
+  if (!requestedId) {
+    const error = new Error("Hospital ID is required.");
+    error.status = 400;
+    throw error;
   }
+  const hospital = hospitals.find((item) => item.id === requestedId || item.code === requestedId);
   if (!hospital) {
     const error = new Error("Hospital not found.");
     error.status = 404;
+    throw error;
+  }
+  const sessionHospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
+  if (request.appSession?.role !== "Super Admin" && sessionHospitalId !== hospital.id) {
+    const error = new Error("You are not authorized to access this hospital.");
+    error.status = 403;
     throw error;
   }
   return hospital;
