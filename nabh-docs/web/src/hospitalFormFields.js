@@ -10,6 +10,7 @@ export const hospitalRegistrationFields = [
 ];
 
 export const institutionalProfileFields = [
+  ["legalHospitalName", "Legal hospital name"],
   ["hospitalType", "Hospital type"],
   ["ownershipType", "Ownership type", "select", ["Private", "Public", "Trust", "NGO"]],
   ["addressLine1", "Address line 1"],

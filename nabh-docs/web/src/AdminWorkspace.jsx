@@ -4,6 +4,7 @@ import {
   KeyRound,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   UserPlus,
@@ -104,16 +105,19 @@ export default function AdminWorkspace({
     [editingId, setEditingId] = useState(""),
     [query, setQuery] = useState(""),
     [tab, setTab] = useState("assigned"),
+    [loading, setLoading] = useState(false),
     [message, setMessage] = useState("");
   const hospital = hospitals.find((item) => item.id === scopedHospitalId);
   async function load() {
+    setLoading(true);
     const response = await fetch("/api/admin/hospitals");
     if (!response.ok) throw new Error("Unable to load hospital users.");
     const { hospitals: records } = await response.json();
     setHospitals(records);
+    setLoading(false);
   }
   useEffect(() => {
-    load().catch((error) => setMessage(error.message));
+    load().catch((error) => setMessage(error.message)).finally(() => setLoading(false));
   }, [scopedHospitalId]);
 
   useEffect(() => {
@@ -230,7 +234,8 @@ export default function AdminWorkspace({
             <Plus size={16} /> Add user
           </button>
         </div>
-        {hospital && tab === "assigned" && (
+        {loading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading users...</p>}
+        {!loading && hospital && tab === "assigned" && (
           <>
             <div className="panel-heading">
               <Users size={18} />

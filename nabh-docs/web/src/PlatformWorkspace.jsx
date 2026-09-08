@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, CheckCircle2, ClipboardCheck, GraduationCap, Layers, X } from "lucide-react";
+import { Building2, CheckCircle2, ClipboardCheck, GraduationCap, Layers, RefreshCw, X } from "lucide-react";
 import { institutionalProfileFields } from "./hospitalFormFields.js";
 
 function ProfileTab({ hospitalId, details, onSaved, disabled }) {
@@ -109,7 +109,7 @@ function AccreditationTab({ hospitalId, profileComplete, disabled }) {
     setMessage(data.job ? "Accreditation programme saved. Your document workspace is now being prepared - check the Documents tab shortly." : "Accreditation programme saved.");
   }
 
-  if (!state) return <p className="empty">Loading recommendation...</p>;
+  if (!state) return <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading recommendation...</p>;
 
   return (
     <section className="accreditation-workspace">
@@ -160,7 +160,7 @@ function WorkspaceOverviewTab({ hospitalId, hospitalStatus, onNavigateToDocument
   }, [hospitalId]);
 
   if (error) return <p className="access-message">{error}</p>;
-  if (!overview) return <p className="empty">Loading workspace overview...</p>;
+  if (!overview) return <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading workspace overview...</p>;
   const categoryRows = Object.entries(overview.categories);
   const columnTotals = Object.fromEntries(READINESS_COLUMNS.map(([status]) => [status, categoryRows.reduce((total, [, counts]) => total + (counts[status] || 0), 0)]));
 

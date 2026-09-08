@@ -2117,6 +2117,8 @@ const CODE_TO_DEPARTMENT = {
 };
 
 function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
+  const [auditTab, setAuditTab] = useState("statuses");
+  const [loadingAudit, setLoadingAudit] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedAction, setSelectedAction] = useState("all");
@@ -2125,6 +2127,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
   const [serverEntries, setServerEntries] = useState([]);
 
   useEffect(() => {
+    setLoadingAudit(true);
     fetch(
       hospitalId
         ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit`
@@ -2132,10 +2135,21 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
     )
       .then((response) => (response.ok ? response.json() : { entries: [] }))
       .then((result) => setServerEntries(result.entries || []))
-      .catch(() => setServerEntries([]));
+        .catch(() => setServerEntries([]))
+        .finally(() => setLoadingAudit(false));
   }, [hospitalId]);
 
   const auditEntries = serverEntries.length ? serverEntries : entries;
+
+  const isUploadAuditEntry = (entry) => {
+    const action = String(entry.action || "approved upload").toLowerCase();
+    return action.includes("upload") || action.includes("evidence") || action.includes("check-in") || action.includes("version") || Boolean(entry.objectKey || entry.fileHash || entry.nextHash);
+  };
+
+  const auditEntriesForTab = useMemo(() => {
+    if (auditTab === "uploads") return auditEntries.filter(isUploadAuditEntry);
+    return auditEntries.filter((entry) => !isUploadAuditEntry(entry));
+  }, [auditEntries, auditTab]);
 
   const getEntryDepartment = (entry) => {
     const isGeneric = (val) =>
@@ -2179,7 +2193,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
 
   const departments = useMemo(() => {
     const map = new Map();
-    auditEntries.forEach((entry) => {
+    auditEntriesForTab.forEach((entry) => {
       const dept = getEntryDepartment(entry);
       if (dept) {
         const upper = dept.toUpperCase();
@@ -2187,18 +2201,18 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
       }
     });
     return Array.from(map.values()).sort();
-  }, [auditEntries]);
+  }, [auditEntriesForTab]);
 
   const actions = useMemo(() => {
     const set = new Set();
-    auditEntries.forEach((entry) => {
+    auditEntriesForTab.forEach((entry) => {
       if (entry.action) set.add(entry.action);
     });
     return Array.from(set).sort();
-  }, [auditEntries]);
+  }, [auditEntriesForTab]);
 
   const visibleEntries = useMemo(() => {
-    return auditEntries.filter((entry) => {
+    return auditEntriesForTab.filter((entry) => {
       const entryDept = getEntryDepartment(entry);
       const entryAction = entry.action || "approved upload";
       const entryUser = entry.approvedBy || entry.editor || "System";
@@ -2242,7 +2256,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
       return true;
     });
   }, [
-    auditEntries,
+    auditEntriesForTab,
     query,
     selectedDepartment,
     selectedAction,
@@ -2280,7 +2294,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
           </div>
         </div>
         <p className="intro">
-          Immutable approval and version history for this hospital repository.
+          Document status transitions and upload history for this hospital repository.
         </p>
       </header>
       <section className="document-panel">
@@ -2289,6 +2303,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
           <h2>Approval activity</h2>
           <span className="count">{visibleEntries.length} entries</span>
         </div>
+        {hospitalId && <div className="user-tabs audit-tabs"><button className={auditTab === "statuses" ? "active" : ""} type="button" onClick={() => setAuditTab("statuses")}><ClipboardList size={16} /> Document status audit</button><button className={auditTab === "uploads" ? "active" : ""} type="button" onClick={() => setAuditTab("uploads")}><Upload size={16} /> Document uploads audit</button></div>}
         <div className="audit-filters-bar">
           <label className="filter-box document-search audit-search-box">
             <Search size={14} />
@@ -2362,7 +2377,9 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
             )}
           </div>
         </div>
-        {visibleEntries.length === 0 ? (
+        {loadingAudit ? (
+          <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading audit entries...</p>
+        ) : visibleEntries.length === 0 ? (
           <p className="empty">No matching audit log entries found.</p>
         ) : (
           <table>

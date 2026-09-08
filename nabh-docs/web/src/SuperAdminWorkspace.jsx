@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, CheckCircle2, KeyRound, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Building2, CheckCircle2, KeyRound, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import {
   emptyHospitalDetails,
   hospitalRegistrationSections,
@@ -18,11 +18,13 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
     [form, setForm] = useState(empty()),
     [query, setQuery] = useState(""),
     [message, setMessage] = useState(""),
+    [loading, setLoading] = useState(false),
     [statusFilter, setStatusFilter] = useState(initialStatusFilter),
     [pendingApproval, setPendingApproval] = useState(null),
     [approving, setApproving] = useState(false);
   const selected = hospitals.find((item) => item.id === id);
   async function load() {
+    setLoading(true);
     const response = await fetch("/api/admin/hospitals?view=registry");
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Unable to load hospitals.");
@@ -33,9 +35,10 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
         ? current
         : records[0]?.id || "",
     );
+      setLoading(false);
   }
   useEffect(() => {
-    load().catch((error) => setMessage(error.message));
+    load().catch((error) => setMessage(error.message)).finally(() => setLoading(false));
   }, []);
   useEffect(() => {
     setStatusFilter(initialStatusFilter);
@@ -167,7 +170,8 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             />
           </label>
           <label className="hospital-status-filter">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-          {filtered.map((item) => (
+          {loading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading hospitals...</p>}
+          {!loading && filtered.map((item) => (
             <button
               className={`hospital-row ${item.id === id ? "selected" : ""} ${item.status === "pending" ? "hospital-row-pending" : ""}`}
               key={item.id}
@@ -202,12 +206,20 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             <h3>Hospital identity</h3>
             <div className="admin-fields">
               <label>
-                Legal hospital name <b>*</b>
+                Hospital name <b>*</b>
                 <input
                   name="name"
                   value={form.name}
                   onChange={change}
                   required
+                />
+              </label>
+              <label>
+                Legal hospital name
+                <input
+                  name="legalHospitalName"
+                  value={form.details.legalHospitalName || ""}
+                  onChange={change}
                 />
               </label>
               <label>

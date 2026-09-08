@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, Search, Users } from "lucide-react";
+import { Building2, RefreshCw, Search, Users } from "lucide-react";
 import AdminWorkspace from "./AdminWorkspace.jsx";
 
 export default function SuperAdminUserManagement() {
@@ -7,9 +7,11 @@ export default function SuperAdminUserManagement() {
   const [selectedHospitalId, setSelectedHospitalId] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    setLoading(true);
     fetch("/api/admin/hospitals?view=registry")
       .then(async (response) => {
         const result = await response.json();
@@ -21,7 +23,8 @@ export default function SuperAdminUserManagement() {
         setHospitals(records);
         setSelectedHospitalId((current) => records.some((item) => item.id === current) ? current : records[0]?.id || "");
       })
-      .catch((error) => setMessage(error.message));
+      .catch((error) => setMessage(error.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const filteredHospitals = hospitals.filter((hospital) =>
@@ -57,8 +60,8 @@ export default function SuperAdminUserManagement() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search hospital, code, city" />
           </label>
           <label className="hospital-status-filter">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Pending</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-          {hospitals.length === 0 && !message && <p className="empty">Loading hospitals...</p>}
-          {filteredHospitals.map((item) => (
+          {loading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading hospitals...</p>}
+          {!loading && filteredHospitals.map((item) => (
             <button
               className={`hospital-row ${item.id === selectedHospitalId ? "selected" : ""} ${item.status === "pending" ? "hospital-row-pending" : ""}`}
               key={item.id}

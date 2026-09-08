@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList, Download, Eye, FileSearch, FileSpreadsheet, FileText, FolderOpen, History, Presentation, Search, Upload, X } from "lucide-react";
+import { CheckCircle2, ClipboardList, Download, Eye, FileSearch, FileSpreadsheet, FileText, FolderOpen, History, Presentation, RefreshCw, Search, Upload, X } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 const typeIcons = { DOCX: FileText, XLSX: FileSpreadsheet, PPTX: Presentation };
@@ -167,7 +167,7 @@ export default function TemplateLibrary() {
         </section>
       ) : <>
       {!programme && <p className="empty">Select an NABH accreditation programme to browse its templates.</p>}
-      {programme && loading && <p className="empty">Loading templates for "{programme}"...</p>}
+      {programme && loading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading templates for "{programme}"...</p>}
       {programme && !loading && libraryMessage && <p className="access-message">{libraryMessage}</p>}
 
       {programme && !loading && !libraryMessage && departments && (
@@ -227,7 +227,7 @@ export default function TemplateLibrary() {
                             <button className="icon-button" title={`Preview ${template.fileName} as PDF`} onClick={() => setPreview(template)}><Eye size={17} /></button>
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
                             <button className="icon-button" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
-                            <button className="icon-button" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={17} /></button>
+                            <button className="version-badge" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={13} /> History</button>
                             <button className="questionnaire-action" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /><span>{template.questionCount || 0}</span></button>
                           </span>
                         )}</td>
