@@ -13,6 +13,11 @@ const institutionalProfileSections = [
 
 const fieldDefinitions = Object.fromEntries(institutionalProfileFields.map((field) => [field[0], field]));
 
+function formatDate(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
+}
+
 function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [form, setForm] = useState(() => Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
   const [message, setMessage] = useState("");
@@ -145,7 +150,7 @@ function AccreditationTab({ hospitalId, profileComplete, disabled }) {
         <div className="accreditation-section-heading"><div><p className="eyebrow">Programme selection</p><h2>Select the Desired accreditation programme type</h2></div></div>
         <p className="accreditation-intro">Choose the programme your hospital intends to pursue. Your selection will be confirmed before the document workspace is prepared.</p>
         <label className="programme-select-field">Desired accreditation programme<select value={state.selection?.programme || ""} disabled={disabled || Boolean(state.selection)} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}><option value="">Select a programme type</option>{state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}</select></label>
-        {state.selection && <div className="current-programme"><span>Programme locked after confirmation</span><strong>{state.selection.programme}</strong><small>Confirmed by {state.selection.decidedBy} on {new Date(state.selection.decidedAt).toLocaleDateString()}. Contact a Super Admin if a reset is required.</small></div>}
+        {state.selection && <div className="current-programme"><span>Programme locked after confirmation</span><strong>{state.selection.programme}</strong><small>Confirmed by {state.selection.decidedBy} on {formatDate(state.selection.decidedAt)}. Contact a Super Admin if a reset is required.</small></div>}
         {message && <p className="access-message">{message}</p>}
       </section>
       {pendingProgramme && <div className="preview-backdrop" role="presentation" onClick={() => setPendingProgramme("")}><section className="preview-dialog accreditation-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="accreditation-confirmation-title" onClick={(event) => event.stopPropagation()}><div className="preview-header accreditation-confirm-header"><div className="accreditation-confirm-mark"><CheckCircle2 size={20} /></div><div><p className="eyebrow">Confirm programme selection</p><h2 id="accreditation-confirmation-title">{pendingProgramme}</h2></div><button className="icon-button" type="button" title="Close confirmation" onClick={() => setPendingProgramme("")}><X size={18} /></button></div><div className="accreditation-confirm-body"><p>Confirm that this is the accreditation programme your hospital intends to pursue.</p><label>Authorised representative name<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} placeholder="Enter your full name" autoFocus /></label><label>Notes for this hospital<textarea rows={4} value={decisionNotes} onChange={(event) => setDecisionNotes(event.target.value)} placeholder="Add context, scope, or notes for the accreditation decision" /></label><div className="accreditation-confirm-note">The selection will be stored for this hospital and used to prepare its programme-specific document workspace.</div></div><div className="accreditation-confirm-actions"><button className="secondary-button" type="button" onClick={() => setPendingProgramme("")}>Cancel</button><button className="primary-button" type="button" onClick={confirmSelection}><CheckCircle2 size={16} /> Confirm programme</button></div></section></div>}

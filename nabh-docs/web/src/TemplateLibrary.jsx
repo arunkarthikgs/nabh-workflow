@@ -4,6 +4,11 @@ import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 const typeIcons = { DOCX: FileText, XLSX: FileSpreadsheet, PPTX: Presentation };
 
+function formatDateTime(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(value));
+}
+
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
   "Hospitals (HCO)",
@@ -274,7 +279,7 @@ export default function TemplateLibrary() {
         <div className="preview-backdrop" role="presentation" onClick={() => setHistory(null)}>
           <section className="preview-dialog" role="dialog" aria-modal="true" aria-label={`Version history for ${history.template.documentName}`} onClick={(event) => event.stopPropagation()}>
             <div className="preview-header"><div><p className="eyebrow">Template version history</p><h2>{history.template.documentName}</h2></div><button className="icon-button" title="Close version history" onClick={() => setHistory(null)}><X size={18} /></button></div>
-            {!history.document ? <p className="empty">No approved versions yet.</p> : <table><thead><tr><th>Version</th><th>When</th><th>Approved by</th><th>Action</th><th>Note</th></tr></thead><tbody>{history.document.history.map((version) => <tr key={version.version}><td>v{version.version}</td><td>{new Date(version.timestamp || version.createdAt).toLocaleString()}</td><td>{version.approvedBy || "System"}</td><td>{version.action}</td><td>{version.note || "-"}</td></tr>)}</tbody></table>}
+            {!history.document ? <p className="empty">No approved versions yet.</p> : <table><thead><tr><th>Version</th><th>When</th><th>Approved by</th><th>Action</th><th>Note</th></tr></thead><tbody>{history.document.history.map((version) => <tr key={version.version}><td>v{version.version}</td><td>{formatDateTime(version.timestamp || version.createdAt)}</td><td>{version.approvedBy || "System"}</td><td>{version.action}</td><td>{version.note || "-"}</td></tr>)}</tbody></table>}
           </section>
         </div>
       )}

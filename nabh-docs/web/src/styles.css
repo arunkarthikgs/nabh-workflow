@@ -447,22 +447,22 @@ h2 { font-size: 19px; }
 .audit-filter-select, .audit-date-input { background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 8px; color: #3a3f6b; font: 400 13px "Poppins", sans-serif; padding: 7px 10px; outline: none; }
 .audit-filter-select:focus, .audit-date-input:focus { border-color: #3547d1; background: #ffffff; }
 .audit-table { min-width: 980px; table-layout: fixed; }
-.audit-table th:nth-child(1) { width: 190px; }
-.audit-table th:nth-child(2) { width: 29%; }
+.audit-table th:nth-child(1) { width: 220px; }
+.audit-table th:nth-child(2) { width: 28%; }
 .audit-table th:nth-child(3) { width: 135px; }
 .audit-table th:nth-child(4) { width: 42px; }
 .audit-table th:nth-child(5) { width: 128px; }
 .audit-table th:nth-child(6) { width: 130px; }
-.audit-table th:nth-child(7) { width: 29%; }
-.hospital-audit-table th:nth-child(1) { width: 190px; }
-.hospital-audit-table th:nth-child(2) { width: 29%; }
+.audit-table th:nth-child(7) { width: 28%; }
+.hospital-audit-table th:nth-child(1) { width: 220px; }
+.hospital-audit-table th:nth-child(2) { width: 28%; }
 .hospital-audit-table th:nth-child(3) { width: 135px; }
 .hospital-audit-table th:nth-child(4) { width: 42px; }
 .hospital-audit-table th:nth-child(5) { width: 128px; }
 .hospital-audit-table th:nth-child(6) { width: 130px; }
-.hospital-audit-table th:nth-child(7) { width: 29%; }
+.hospital-audit-table th:nth-child(7) { width: 28%; }
 .audit-table td { vertical-align: top; }
-.audit-time { color: #5f5e5b; font: 600 11px/1.45 "Manrope", sans-serif; white-space: normal; }
+.audit-time { color: #5f5e5b; font: 700 11px/1.45 "Manrope", sans-serif; white-space: nowrap; }
 .audit-table td strong { color: #37352f; display: block; font-size: 12px; line-height: 1.35; }
 .audit-document-path { color: #787774; display: block; font: 500 10px/1.35 "DM Mono", monospace; margin-top: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-version, .audit-user { color: #5f5e5b; font-size: 11px; }

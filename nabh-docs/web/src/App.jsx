@@ -112,6 +112,11 @@ function isApprovedDocument(doc) {
   return Boolean(doc.version && doc.version > 1);
 }
 
+function formatDateTime(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(value));
+}
+
 function readUrlState() {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -1619,9 +1624,7 @@ function MasterListWorkspace({
                                       <tr key={entry.version}>
                                         <td>v{entry.version}</td>
                                         <td>
-                                          {new Date(
-                                            entry.timestamp || entry.createdAt,
-                                          ).toLocaleString()}
+                                          {formatDateTime(entry.timestamp || entry.createdAt)}
                                         </td>
                                         <td>
                                           {entry.approvedBy ||
@@ -1774,7 +1777,7 @@ function MasterListWorkspace({
                 {evidenceEntries.length ? evidenceEntries.map((entry) => (
                   <div className="evidence-item" key={entry.id}>
                     <a href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/evidence/${encodeURIComponent(entry.id)}/file`} target="_blank" rel="noreferrer">{entry.fileName}</a>
-                    <span>{entry.evidenceType} · {new Date(entry.uploadedAt).toLocaleString()}</span>
+                    <span>{entry.evidenceType} · {formatDateTime(entry.uploadedAt)}</span>
                     {entry.description && <p>{entry.description}</p>}
                   </div>
                 )) : <p className="access-message">No evidence has been uploaded for this document yet.</p>}
@@ -2453,7 +2456,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                       `${entry.documentId}-${entry.version}-${entry.timestamp}`
                     }
                   >
-                    <td className="audit-time">{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td className="audit-time">{formatDateTime(entry.timestamp)}</td>
                     <td>
                       <strong>{entry.documentName || "Document"}</strong>
                       <br />

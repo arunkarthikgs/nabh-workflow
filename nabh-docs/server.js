@@ -1330,8 +1330,15 @@ app.use("/api/document-audit", requireApplicationSession);
 app.get("/api/document-audit", async (request, response, next) => {
   try {
     if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
-    if (!r2TemplateStorageEnabled() || usesPostgresDataStore()) return response.json({ entries: await readDocumentAudit() });
     const hospitals = await listHospitals();
+    if (!r2TemplateStorageEnabled() || usesPostgresDataStore()) {
+      const byId = new Map(hospitals.map((hospital) => [hospital.id, hospital]));
+      const byCode = new Map(hospitals.map((hospital) => [hospital.code, hospital]));
+      return response.json({ entries: (await readDocumentAudit()).map((entry) => {
+        const hospital = byId.get(entry.hospitalId) || byCode.get(entry.hospitalCode);
+        return hospital ? { ...entry, hospitalName: entry.hospitalName || hospital.name, hospitalCode: entry.hospitalCode || hospital.code } : entry;
+      }) });
+    }
     const clientEntries = await Promise.all(hospitals.filter((hospital) => hospital.accreditation?.programme).map(async (hospital) => (await listR2ClientAuditEvents(hospital.code, hospital.accreditation.programme)).map((entry) => ({ ...entry, hospitalCode: hospital.code, hospitalName: hospital.name }))));
     response.json({ entries: [...await listR2TemplateAuditEvents(), ...clientEntries.flat()].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp))) });
   } catch (error) { next(error); }
