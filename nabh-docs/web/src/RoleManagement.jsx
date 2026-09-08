@@ -16,6 +16,8 @@ const groups = {
 };
 const blankRole = { name: "", documentAccess: {}, permissions: ["view"] };
 const NABH_WORKSPACE_CATEGORIES = ["Manuals", "Policies", "Standard Operating Procedures", "Forms and Formats", "Registers", "Department Manuals", "Checklists", "Training Requirements", "Records and Evidence"];
+const CATEGORY_RULES = [["Standard Operating Procedures", /\bsops?\b|standard operating procedure/i], ["Checklists", /\bchecklist/i], ["Registers", /\bregister/i], ["Policies", /\bpolic(y|ies)\b/i], ["Forms and Formats", /\bforms?\b|\bformats?\b/i], ["Training Requirements", /\btraining\b|\binduction\b/i], ["Records and Evidence", /\brecords?\b|\bevidence\b|\baudit\b/i], ["Manuals", /\bmanual\b/i]];
+function classifyDocument(documentName) { for (const [category, pattern] of CATEGORY_RULES) if (pattern.test(documentName)) return category; return "Department Manuals"; }
 function groupRoles(roles) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
@@ -27,7 +29,7 @@ export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoP
     if (tab !== "scope" || Object.keys(departments).length) return undefined;
     fetch("/api/document-matches").then(async (response) => { if (!response.ok) throw new Error("Unable to load document access data."); return response.json(); }).then((sourceDepartments) => {
       const groupedDepartments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
-      Object.values(sourceDepartments || {}).flat().forEach((document) => { const category = NABH_WORKSPACE_CATEGORIES.includes(document.category) ? document.category : "Department Manuals"; groupedDepartments[category].push(document); });
+      Object.values(sourceDepartments || {}).flat().forEach((document) => { const category = classifyDocument(`${document.documentName || ""} ${document.documentId || ""}`); groupedDepartments[category].push(document); });
       setDepartments(groupedDepartments);
       setDepartment((current) => current || NABH_WORKSPACE_CATEGORIES.find((category) => groupedDepartments[category].length) || NABH_WORKSPACE_CATEGORIES[0]);
     }).catch((error) => setMessage(error.message));

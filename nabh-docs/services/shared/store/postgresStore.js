@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { configValue } from "../config.js";
+import { classifyDocument, NABH_WORKSPACE_CATEGORIES } from "../documentCategoryService.js";
 
 const outputDirectory = fileURLToPath(new URL("../../../output", import.meta.url));
 const profileFields = ["dateOfBirth", "gender", "mobileNumber", "address", "employeeId", "department", "dateOfJoining", "employmentType", "passwordHash", "passwordSalt", "passwordSet", "passwordSetupToken", "passwordSetupExpiresAt"];
@@ -128,6 +129,23 @@ const schemaStatements = [
      ordinal integer not null,
      document jsonb not null,
      primary key (department, ordinal)
+   )`,
+  `create table if not exists document_categories (
+     id uuid primary key,
+     name text not null unique,
+     display_order integer not null default 0
+   )`,
+  `create table if not exists documents (
+     id text primary key,
+     department text not null,
+     category_id uuid not null references document_categories (id),
+     document_name text not null,
+     document_path text not null default '',
+     active boolean not null default true,
+     confidence text not null default 'high',
+     source_document jsonb not null default '{}'::jsonb,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
    )`,
   `create table if not exists document_audit (
      seq bigserial primary key,
@@ -288,6 +306,7 @@ async function seedFromJsonFiles() {
     const matches = await readJsonFile("documentMatches.json");
     if (matches && Object.keys(matches).length) await saveDocumentMatches(matches);
   }
+  await ensureDocumentCatalog();
   if (Number(counts.audit) === 0) {
     const audit = await readJsonFile("documentAudit.json");
     if (Array.isArray(audit) && audit.length) await saveDocumentAudit(audit);
@@ -307,6 +326,23 @@ async function seedFromJsonFiles() {
     const bookings = await readJsonFile("bookings.json");
     if (Array.isArray(bookings) && bookings.length) await saveBookings(bookings);
   }
+}
+
+async function ensureDocumentCatalog() {
+  const { rows: [count] } = await pool.query(`select count(*) as count from documents`);
+  if (Number(count.count) > 0) return;
+  for (const [displayOrder, name] of NABH_WORKSPACE_CATEGORIES.entries()) await pool.query(`insert into document_categories (id, name, display_order) values ($1, $2, $3) on conflict (name) do nothing`, [randomUUID(), name, displayOrder]);
+  const matches = await readJsonFile("documentMatches.json");
+  if (!matches) return;
+  for (const [department, documents] of Object.entries(matches)) for (const document of documents) await upsertDocumentCatalogRecord(department, document, pool);
+}
+
+async function upsertDocumentCatalogRecord(department, document, database = pool) {
+  const documentName = document.documentName || document.name || document.documentId || "Document";
+  const id = document.id || `${department}:${document.documentId || documentName}`;
+  const category = NABH_WORKSPACE_CATEGORIES.includes(document.category) ? document.category : classifyDocument(`${documentName} ${document.documentId || ""}`);
+  const { rows: [categoryRow] } = await database.query(`select id from document_categories where name = $1`, [category]);
+  await database.query(`insert into documents (id, department, category_id, document_name, document_path, active, confidence, source_document) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) on conflict (id) do update set department = excluded.department, category_id = excluded.category_id, document_name = excluded.document_name, document_path = excluded.document_path, active = excluded.active, confidence = excluded.confidence, source_document = excluded.source_document, updated_at = now()`, [id, department, categoryRow.id, documentName, document.relativeFilePath || document.matchedFilePath || "", document.active !== false, document.confidence || "high", JSON.stringify({ ...document, category })]);
 }
 
 export async function initialize() {
@@ -502,6 +538,12 @@ export async function deleteHospitalRecord(hospitalId) { const client = await co
 
 export async function readDocumentMatches() {
   const client = await connect();
+  const { rows: catalogRows } = await client.query(`select d.department, d.source_document as document, c.name as category from documents d join document_categories c on c.id = d.category_id order by d.department, d.document_name`);
+  if (catalogRows.length) {
+    const departments = {};
+    for (const row of catalogRows) (departments[row.department] ||= []).push({ ...row.document, category: row.category });
+    return departments;
+  }
   const { rows } = await client.query(`select department, document from document_matches order by department_ordinal, ordinal`);
   if (!rows.length) return null;
   const departments = {};
@@ -522,6 +564,8 @@ export async function saveDocumentMatches(departments) {
         );
       }
     }
+    await client.query(`delete from documents`);
+    for (const [department, documents] of Object.entries(departments)) for (const document of documents) await upsertDocumentCatalogRecord(department, document, client);
     await client.query("commit");
   } catch (error) {
     await client.query("rollback");
