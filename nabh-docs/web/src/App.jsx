@@ -2570,20 +2570,6 @@ function App() {
           <>
             <button className={view === "home" ? "active" : ""} title="Open home" onClick={() => setView("home")}><House size={16} /> Home</button>
             <button
-              className={view === "admin" ? "active" : ""}
-              title="Open user management"
-              onClick={() => setView("admin")}
-            >
-              <Building2 size={16} /> User management
-            </button>
-            <button
-              className={view === "roles" ? "active" : ""}
-              title="Open roles"
-              onClick={() => setView("roles")}
-            >
-              <Users size={16} /> Roles
-            </button>
-            <button
               className={view === "platform" ? "active" : ""}
               title="Open readiness platform"
               onClick={() => setView("platform")}
@@ -2599,6 +2585,20 @@ function App() {
                 <FileSearch size={16} /> Documents
               </button>
             )}
+            <button
+              className={view === "admin" ? "active" : ""}
+              title="Open user management"
+              onClick={() => setView("admin")}
+            >
+              <Building2 size={16} /> User management
+            </button>
+            <button
+              className={view === "roles" ? "active" : ""}
+              title="Open roles"
+              onClick={() => setView("roles")}
+            >
+              <Users size={16} /> Roles
+            </button>
             <button
               className={view === "audit" ? "active" : ""}
               title="Open audit log"
