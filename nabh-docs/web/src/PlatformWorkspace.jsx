@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { Building2, CheckCircle2, ClipboardCheck, GraduationCap, Layers, RefreshCw, X } from "lucide-react";
 import { institutionalProfileFields } from "./hospitalFormFields.js";
 
+const institutionalProfileSections = [
+  ["Hospital identity", ["legalHospitalName", "hospitalType", "ownershipType", "website"]],
+  ["Address and contacts", ["addressLine1", "city", "state", "pinCode", "country", "mainPhone", "officialEmail", "responsiblePhone", "responsibleEmail"]],
+  ["Capacity and operations", ["operationalBeds", "operationalMonths", "averageBedOccupancy", "icuBeds", "operatingTheatres", "workingHours"]],
+  ["Clinical services", ["emergencyServices", "emergencyDepartment", "bloodBank", "specialties", "servicesOffered"]],
+  ["Programme eligibility", ["standaloneFacility", "outpatientOnly", "otherClinicalSpecialties", "publicHealthNetwork", "dcgiBloodCentreLicense", "nacoOrStateRecognition", "ayushInpatientBeds"]],
+  ["Leadership", ["directorName", "medicalSuperintendent", "qualityLead"]]
+];
+
+const fieldDefinitions = Object.fromEntries(institutionalProfileFields.map((field) => [field[0], field]));
+
 function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [form, setForm] = useState(() => Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
   const [message, setMessage] = useState("");
@@ -53,20 +64,28 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
     <form className="admin-form" onSubmit={save}>
       <h2>Institutional profile</h2>
       <p>This information drives the accreditation recommendation and the document workspace. Identity and regulatory details (NABH accreditation number, license, PAN/GST) are set once during hospital registration.</p>
-      <div className="admin-fields">
-        {institutionalProfileFields.map(([key, label, type, options]) => (
-          <label key={key} className={fieldErrors[key] ? "field-error" : ""}>
-            {label}
-            {type === "select" ? (
-              <select value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
-                <option value="">Select</option>
-                {options.map((option) => <option key={option}>{option}</option>)}
-              </select>
-            ) : (
-              <input type={type || (key.includes("Email") ? "email" : "text")} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
-            )}
-            {fieldErrors[key] && <small className="field-error-message">{fieldErrors[key]}</small>}
-          </label>
+      <div className="profile-sections">
+        {institutionalProfileSections.map(([section, keys]) => (
+          <section className="profile-section" key={section}>
+            <h3>{section}</h3>
+            <div className="admin-fields">
+              {keys.map((key) => {
+                const [, label, type, options] = fieldDefinitions[key];
+                return <label key={key} className={fieldErrors[key] ? "field-error" : ""}>
+                  {label}
+                  {type === "select" ? (
+                    <select value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
+                      <option value="">Select</option>
+                      {options.map((option) => <option key={option}>{option}</option>)}
+                    </select>
+                  ) : (
+                    <input type={type || (key.includes("Email") ? "email" : "text")} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
+                  )}
+                  {fieldErrors[key] && <small className="field-error-message">{fieldErrors[key]}</small>}
+                </label>;
+              })}
+            </div>
+          </section>
         ))}
       </div>
       <div className="profile-logo-upload">

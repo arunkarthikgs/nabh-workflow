@@ -38,8 +38,6 @@ export default function TemplateLibrary() {
   const [approvalNote, setApprovalNote] = useState("");
   const [approvalMessage, setApprovalMessage] = useState("");
   const [history, setHistory] = useState(null);
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [auditEntries, setAuditEntries] = useState([]);
   const [questionnaireReport, setQuestionnaireReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
@@ -86,15 +84,6 @@ export default function TemplateLibrary() {
     const result = await response.json();
     if (!response.ok) { setError(result.error || "Unable to load template history."); return; }
     setHistory({ template, document: result.document });
-  }
-
-  async function toggleAudit() {
-    if (auditOpen) { setAuditOpen(false); return; }
-    const response = await fetch("/api/document-audit");
-    const result = await response.json();
-    if (!response.ok) { setError(result.error || "Unable to load the audit log."); return; }
-    setAuditEntries(result.entries || []);
-    setAuditOpen(true);
   }
 
   async function showQuestionnaireReport() {
@@ -146,7 +135,7 @@ export default function TemplateLibrary() {
             <h1>Template library</h1>
           </div>
         </div>
-        <div className="template-library-header-actions"><button className="secondary-button" type="button" title={auditOpen ? "Back to template library" : "Open audit log"} onClick={toggleAudit}><ClipboardList size={16} /> {auditOpen ? "Back to library" : "Audit log"}</button><button className="secondary-button" type="button" title="Open questionnaire report" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
+        <div className="template-library-header-actions"><button className="secondary-button" type="button" title="Open questionnaire report" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
         </div>
         <p className="intro template-library-description">Browse programme-specific master templates and configure the questions hospitals must answer for each document.</p>
         <div className="template-library-selector">
@@ -160,12 +149,6 @@ export default function TemplateLibrary() {
         {departments && <p className="intro">{departmentEntries.length} workspace categories &middot; {total} templates &middot; <span className="active-count">available</span></p>}
       </header>
 
-      {auditOpen ? (
-        <section className="document-panel">
-          <div className="panel-heading"><ClipboardList size={18} /><h2>Global approval activity</h2><span className="count">{auditEntries.length} entries</span></div>
-          {auditEntries.length === 0 ? <p className="empty">No template or hospital approval events have been recorded.</p> : <table><thead><tr><th>When</th><th>Scope</th><th>Document</th><th>Version</th><th>Approved by</th><th>Action</th><th>Note</th></tr></thead><tbody>{auditEntries.map((entry) => <tr key={entry.objectKey || `${entry.timestamp}-${entry.documentId}`}><td>{new Date(entry.timestamp).toLocaleString()}</td><td>{entry.scope === "template" ? "Master template" : entry.hospitalCode || "Hospital"}</td><td><strong>{entry.documentName || "-"}</strong><br /><span className="mono">{entry.documentId || "-"}</span></td><td>v{entry.version || "-"}</td><td>{entry.approvedBy || "System"}</td><td>{entry.action || "-"}</td><td>{entry.note || "-"}</td></tr>)}</tbody></table>}
-        </section>
-      ) : <>
       {!programme && <p className="empty">Select an NABH accreditation programme to browse its templates.</p>}
       {programme && loading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading templates for "{programme}"...</p>}
       {programme && !loading && libraryMessage && <p className="access-message">{libraryMessage}</p>}
@@ -240,7 +223,6 @@ export default function TemplateLibrary() {
           </section>
         </section>
       )}
-      </>}
 
       {approval && (
         <div className="preview-backdrop" role="presentation" onClick={() => setApproval(null)}>
