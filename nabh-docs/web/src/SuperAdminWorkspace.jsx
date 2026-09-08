@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, CheckCircle2, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Building2, CheckCircle2, KeyRound, Plus, Save, Search, Trash2, X } from "lucide-react";
 import {
   emptyHospitalDetails,
   hospitalRegistrationSections,
@@ -281,7 +281,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
             <button className="primary-button">
               <Save size={16} /> Save hospital
             </button>
-            {selected?.status === "pending" && <><button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button><button className="secondary-button" type="button" onClick={resendRegistration}>Resend registration link</button></>}
+            {selected?.status === "pending" && <><button className="approve-onboarding-button" type="button" onClick={() => setPendingApproval(selected)}><CheckCircle2 size={16} /> Approve onboarding</button><button className="resend-registration-button" type="button" onClick={resendRegistration}><KeyRound size={16} /> Resend setup link</button></>}
           </div>
           {message && <p className="admin-message">{message}</p>}
         </form>
