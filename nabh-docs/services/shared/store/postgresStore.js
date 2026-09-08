@@ -753,10 +753,10 @@ export async function createRegistrationToken(hospitalId, email, rawToken, expir
 export async function findRegistrationToken(rawToken) {
   const client = await connect();
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-  const { rows } = await client.query(`select t.*, h.name as hospital_name, h.code as hospital_code, u.* from registration_tokens t join hospitals h on h.id = t.hospital_id join hospital_users u on u.hospital_id = h.id and lower(u.email) = lower(t.email) where t.token_hash = $1 and t.used_at is null and t.revoked_at is null and t.expires_at > now() limit 1`, [tokenHash]);
+  const { rows } = await client.query(`select t.id as token_id, t.hospital_id as token_hospital_id, t.expires_at as token_expires_at, h.name as hospital_name, h.code as hospital_code, u.id as user_id, u.user_id as numeric_user_id, u.name as user_name, u.email as user_email, u.role as user_role, u.active as user_active, u.status as user_status, u.profile as user_profile, u.created_at as user_created_at, u.updated_at as user_updated_at from registration_tokens t join hospitals h on h.id = t.hospital_id join hospital_users u on u.hospital_id = h.id and lower(u.email) = lower(t.email) where t.token_hash = $1 and t.used_at is null and t.revoked_at is null and t.expires_at > now() limit 1`, [tokenHash]);
   if (!rows[0]) return null;
   const row = rows[0];
-  return { tokenId: row.id, hospitalId: row.hospital_id, hospital: { id: row.hospital_id, name: row.hospital_name, code: row.hospital_code }, user: toUser(row) };
+  return { tokenId: row.token_id, hospitalId: row.token_hospital_id, hospital: { id: row.token_hospital_id, name: row.hospital_name, code: row.hospital_code }, user: { id: row.user_id, userId: row.numeric_user_id, name: row.user_name, email: row.user_email, role: row.user_role, active: row.user_active, status: row.user_status, ...(row.user_profile || {}), createdAt: isoDate(row.user_created_at), updatedAt: isoDate(row.user_updated_at || row.user_created_at) } };
 }
 
 export async function consumeRegistrationToken(tokenId) {
