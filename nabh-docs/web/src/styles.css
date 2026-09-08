@@ -730,6 +730,7 @@ tr.history-row td { background: #f7f7f5; }
 .admin-fields label.field-error { color: #a32947; }
 .admin-fields label.field-error input, .admin-fields label.field-error select { border-color: #c95d78; }
 .field-error-message { color: #a32947; display: block; font-size: 11px; font-weight: 500; margin-top: 5px; }
+.required-indicator { color: #c23a56; font-weight: 700; }
 .profile-logo-upload input { display: block; font: 12px Poppins; margin-top: 7px; }
 .profile-logo-upload img { background: #ffffff; border: 1px solid #d9dcf3; border-radius: 6px; height: 64px; object-fit: contain; padding: 5px; width: 64px; }
 .profile-logo-upload small { color: #8a8dc7; font-size: 11px; }

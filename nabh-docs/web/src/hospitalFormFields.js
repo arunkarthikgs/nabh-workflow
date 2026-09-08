@@ -46,6 +46,8 @@ export const institutionalProfileFields = [
   ["website", "Website"]
 ];
 
+export const requiredInstitutionalProfileFields = ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"];
+
 export const hospitalDetailFields = [...hospitalRegistrationFields, ...institutionalProfileFields];
 
 export const emptyHospitalDetails = () => Object.fromEntries(hospitalDetailFields.map(([key]) => [key, ""]));

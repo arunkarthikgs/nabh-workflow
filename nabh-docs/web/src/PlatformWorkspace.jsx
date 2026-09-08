@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Building2, CheckCircle2, ClipboardCheck, GraduationCap, Layers, RefreshCw, X } from "lucide-react";
-import { institutionalProfileFields } from "./hospitalFormFields.js";
+import { institutionalProfileFields, requiredInstitutionalProfileFields } from "./hospitalFormFields.js";
 
 const institutionalProfileSections = [
   ["Hospital identity", ["legalHospitalName", "hospitalType", "ownershipType", "website"]],
@@ -76,15 +76,16 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
             <div className="admin-fields">
               {keys.map((key) => {
                 const [, label, type, options] = fieldDefinitions[key];
+                const required = requiredInstitutionalProfileFields.includes(key);
                 return <label key={key} className={fieldErrors[key] ? "field-error" : ""}>
-                  {label}
+                  {label}{required && <span className="required-indicator" aria-hidden="true"> *</span>}
                   {type === "select" ? (
-                    <select value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
+                    <select required={required} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
                       <option value="">Select</option>
                       {options.map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
-                    <input type={type || (key.includes("Email") ? "email" : "text")} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
+                    <input required={required} type={type || (key.includes("Email") ? "email" : "text")} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
                   )}
                   {fieldErrors[key] && <small className="field-error-message">{fieldErrors[key]}</small>}
                 </label>;
