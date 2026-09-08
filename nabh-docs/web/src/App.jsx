@@ -2377,7 +2377,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
         ) : visibleEntries.length === 0 ? (
           <p className="empty">No matching audit log entries found.</p>
         ) : (
-          <table className="audit-table">
+          <table className={`audit-table ${hospitalId ? "hospital-audit-table" : ""}`}>
             <thead>
               <tr>
                 <th>When</th>
