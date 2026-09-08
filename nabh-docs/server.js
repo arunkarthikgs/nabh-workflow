@@ -180,18 +180,22 @@ app.get("/api/health", async (_request, response) => {
 
 app.get("/api/admin/hospitals", async (request, response, next) => {
   try {
+    const targetHospitalId = request.appSession.hospital_id || request.appSession.hospitalId;
     if (request.query.view === "summary") {
       if (request.appSession.role === "Super Admin") return response.json(await readHospitalSummaries());
-      const own = await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId);
+      const own = (await listHospitals()).find((item) => item.id === targetHospitalId);
       return response.json({ total: own ? 1 : 0, pending: own?.status === "pending" ? 1 : 0, active: own?.status === "active" ? 1 : 0, users: own?.users?.length || 0 });
     }
     if (request.query.view === "registry") {
       if (request.appSession.role === "Super Admin") return response.json({ hospitals: await readHospitalRegistry() });
-      const own = await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId);
+      const own = (await listHospitals()).find((item) => item.id === targetHospitalId);
       return response.json({ hospitals: own ? [own] : [] });
     }
-    const hospitals = await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation));
-    const visible = request.appSession.role === "Super Admin" ? hospitals : hospitals.filter((hospital) => hospital.id === request.appSession.hospital_id || hospital.id === request.appSession.hospitalId);
+    const allHospitals = await listHospitals();
+    const visibleRaw = request.appSession.role === "Super Admin"
+      ? allHospitals
+      : allHospitals.filter((hospital) => hospital.id === targetHospitalId);
+    const visible = await Promise.all((await backfillHospitalLogos(visibleRaw)).map(hydrateHospitalAccreditation));
     response.json({ hospitals: visible });
   } catch (error) { if (error instanceof Error && error.validationErrors) response.status(422).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
@@ -510,9 +514,11 @@ function withDocumentStatus(departments, hospitalStatus) {
 async function loadHospitalDepartments(hospital) {
   if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
   const programme = hospital.accreditation?.programme;
-  const questionnaireSummaries = await readTemplateQuestionnaireSummaries(programme);
+  const [questionnaireSummaries, clientFiles] = await Promise.all([
+    readTemplateQuestionnaireSummaries(programme),
+    listR2ClientFiles(hospital.code, programme)
+  ]);
   const questionCountByPath = new Map(questionnaireSummaries.map((item) => [item.templatePath, item.questionCount]));
-  const clientFiles = await listR2ClientFiles(hospital.code, programme);
   const departments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));
   for (const templatePath of clientFiles) {
     if (path.basename(templatePath) === masterListTemplateFile) continue;
@@ -599,8 +605,10 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
-    const hospitalStatus = await getPersistentDocumentStatus(hospital);
-    const departments = await loadHospitalDepartments(hospital);
+    const [hospitalStatus, departments] = await Promise.all([
+      getPersistentDocumentStatus(hospital),
+      loadHospitalDepartments(hospital)
+    ]);
     response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository });
   } catch (error) { next(error); }
 });

@@ -504,86 +504,54 @@ function MasterListWorkspace({
     setAccreditationRequired(null);
     setProfileIncomplete([]);
     fetch(
-      `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/accreditation`,
+      `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`,
     )
-      .then((response) => response.json())
-      .then((accreditation) => {
-        if (!accreditation?.selection?.programme) {
-          setAccreditationRequired(
-            "Select and accept an NABH accreditation programme before the document workspace is available.",
-          );
+      .then(async (response) => {
+        const result = await response.json();
+        if (
+          response.status === 400 &&
+          result.reason === "accreditation_required"
+        ) {
+          setAccreditationRequired(result.error);
           return null;
         }
-        return fetch(
-          `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/client-repository/status`,
-        );
-      })
-      .then(async (response) => {
-        if (!response) return null;
-        const result = await response.json();
+        if (response.status === 409 && result.reason === "profile_incomplete") {
+          setProfileIncomplete(result.missingProfileFields || []);
+          setAccreditationRequired(result.error);
+          return null;
+        }
+        if (response.status === 404) {
+          setRepositoryStatus({
+            repository: {
+              mode: result.repository?.mode || "r2",
+              exists: false,
+              status: "missing",
+              ...result.repository,
+            },
+            job: result.job || null,
+          });
+          return null;
+        }
         if (!response.ok)
           throw new Error(
-            result.error || "Unable to check the hospital document repository.",
+            result.error ||
+              "Unable to load the hospital document repository.",
           );
         return result;
       })
       .then((data) => {
-        if (!data) return null;
-        setRepositoryStatus(data);
-        if (data.profileComplete === false) {
-          setProfileIncomplete(data.missingProfileFields || []);
-          setAccreditationRequired("Complete the institutional profile before accessing the document workspace.");
-          return null;
-        }
-        if (data.job?.status === "running") {
+        if (!data) return;
+        setRepositoryStatus(data.repository);
+        if (data.repository?.job?.status === "running") {
           pollSyncStatus(
             "Template synchronization is currently in progress...",
           );
-        } else if (data.job?.status === "failed") {
+        } else if (data.repository?.job?.status === "failed") {
           setSyncMessage(
-            data.job.error ||
+            data.repository.job.error ||
               "Previous template synchronization failed or was incomplete.",
           );
         }
-        if (!data.repository.exists) return null;
-        return fetch(
-          `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents`,
-        ).then(async (response) => {
-          const result = await response.json();
-          if (
-            response.status === 400 &&
-            result.reason === "accreditation_required"
-          ) {
-            setAccreditationRequired(result.error);
-            return null;
-          }
-          if (response.status === 409 && result.reason === "profile_incomplete") {
-            setProfileIncomplete(result.missingProfileFields || []);
-            setAccreditationRequired(result.error);
-            return null;
-          }
-          if (response.status === 404) {
-            setRepositoryStatus({
-              repository: {
-                mode: result.repository?.mode || "r2",
-                exists: false,
-                status: "missing",
-                ...result.repository,
-              },
-              job: result.job || null,
-            });
-            return null;
-          }
-          if (!response.ok)
-            throw new Error(
-              result.error ||
-                "Unable to load the hospital document repository.",
-            );
-          return result;
-        });
-      })
-      .then((data) => {
-        if (!data) return;
         setDepartments(data.departments);
         const wanted = initialUrlState.category;
         setSelected(
@@ -592,8 +560,8 @@ function MasterListWorkspace({
             : NABH_WORKSPACE_CATEGORIES[0],
         );
       })
-        .catch((err) => setError(err.message))
-        .finally(() => setLoadingDocuments(false));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingDocuments(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hospitalId, initialUrlState.category]);
 
