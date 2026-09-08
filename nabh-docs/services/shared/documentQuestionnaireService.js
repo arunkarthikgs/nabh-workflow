@@ -21,31 +21,25 @@ function profileSummary(hospital) {
 
 export async function getDocumentQuestions(hospital, documentId, documentName, templatePath) {
   if (!hospital || !documentId) throw new Error("Hospital and document are required.");
-  const profile = profileSummary(hospital);
   const configured = await readTemplateQuestionnaire(hospital.accreditation?.programme, templatePath || documentId);
   return {
     documentId,
     documentName: documentName || documentId,
     programme: configured?.programme || hospital.accreditation?.programme || "",
     templatePath: configured?.templatePath || templatePath || documentId,
-    questions: configured?.questions?.length ? configured.questions.map((question) => ({ ...question, value: profile[question.prefillField] || "" })) : [
-      { id: "hospitalName", label: "Hospital name", type: "text", required: true, readOnly: true, value: profile.hospitalName },
-      { id: "departments", label: "Which departments are covered by this document?", type: "textarea", required: true, value: profile.departments },
-      { id: "services", label: "Which clinical or support services are relevant?", type: "textarea", required: true, value: profile.services },
-      { id: "organisationalStructure", label: "Describe the organisational structure and reporting responsibilities.", type: "textarea", required: true, value: profile.organizationalStructure || "" },
-      { id: "operatingPractices", label: "Describe the hospital-specific operating practices that should appear in the document.", type: "textarea", required: true, value: profile.operatingPractices }
-    ].filter((question) => QUESTION_TYPES.has(question.type))
+    questions: configured?.questions?.length ? configured.questions : []
   };
 }
 
 export function validateDocumentAnswers(questionnaire, answers) {
+  if (!questionnaire.questions?.length) throw new Error("No questions are available to answer for this document.");
   const submitted = answers && typeof answers === "object" && !Array.isArray(answers) ? answers : {};
   const errors = {};
-  for (const question of questionnaire.questions) {
-    if (question.required && !text(submitted[question.id])) errors[question.id] = `${question.label} is required.`;
+  for (const question of questionnaire.questions || []) {
+    if (!text(submitted[question.id])) errors[question.id] = `${question.label} is required.`;
   }
   if (Object.keys(errors).length) {
-    const error = new Error("Complete all required hospital-specific questions before generating the draft.");
+    const error = new Error("Answer all configured questions before generating the draft.");
     error.validationErrors = errors;
     throw error;
   }

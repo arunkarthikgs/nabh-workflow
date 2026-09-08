@@ -1574,9 +1574,9 @@ function MasterListWorkspace({
             </div>
             {!generatedDraft ? (
               <div className="profile-form">
-                {questionnaire.questions.map((question) => (
+                {questionnaire.questions.length === 0 ? <p className="access-message">No questions are configured for this document. You can generate the draft without responses.</p> : questionnaire.questions.map((question) => (
                   <label key={question.id}>
-                    {question.label}{question.required && " *"}
+                    {question.label} *
                     {question.type === "textarea" ? (
                       <textarea rows={3} value={questionAnswers[question.id] || ""} disabled={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
                     ) : (
@@ -1585,7 +1585,7 @@ function MasterListWorkspace({
                   </label>
                 ))}
                 {questionError && <p className="status error">{questionError}</p>}
-                <button className="primary-button" disabled={generatingDraft} onClick={generatePersonalizedDraft}>{generatingDraft ? "Submitting..." : "Submit answers and generate draft"}</button>
+                <button className="primary-button" disabled={generatingDraft} onClick={generatePersonalizedDraft}>{generatingDraft ? "Generating..." : questionnaire.questions.length ? "Submit answers and generate draft" : "Generate draft"}</button>
               </div>
             ) : (
               <div className="profile-form">
