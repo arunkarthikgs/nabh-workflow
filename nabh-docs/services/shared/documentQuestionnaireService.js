@@ -5,6 +5,14 @@ function text(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function answerText(question, value) {
+  if (question.type === "multiselect") {
+    const selected = Array.isArray(value) ? value.map(text).filter(Boolean) : text(value).split(",").map(text).filter(Boolean);
+    return selected.join(", ");
+  }
+  return text(value);
+}
+
 function profileSummary(hospital) {
   const details = hospital.details || {};
   return {
@@ -36,14 +44,14 @@ export function validateDocumentAnswers(questionnaire, answers) {
   const submitted = answers && typeof answers === "object" && !Array.isArray(answers) ? answers : {};
   const errors = {};
   for (const question of questionnaire.questions || []) {
-    if (!text(submitted[question.id])) errors[question.id] = `${question.label} is required.`;
+    if (question.required !== false && !answerText(question, submitted[question.id])) errors[question.id] = `${question.label} is required.`;
   }
   if (Object.keys(errors).length) {
     const error = new Error("Answer all configured questions before generating the draft.");
     error.validationErrors = errors;
     throw error;
   }
-  return Object.fromEntries(questionnaire.questions.map((question) => [question.id, text(submitted[question.id])]));
+  return Object.fromEntries(questionnaire.questions.map((question) => [question.id, answerText(question, submitted[question.id])]));
 }
 
 export function validateQuestionnaireDefinition(input) {
@@ -58,7 +66,9 @@ export function validateQuestionnaireDefinition(input) {
     if (!QUESTION_TYPES.has(type)) throw new Error(`Question "${id}" has an unsupported type.`);
     const label = text(question.label);
     if (!label) throw new Error(`Question "${id}" requires a label.`);
+    const options = Array.isArray(question.options) ? question.options.map(text).filter(Boolean) : text(question.options).split(/\r?\n|,/).map(text).filter(Boolean);
+    if (type === "multiselect" && options.length < 2) throw new Error(`Question "${id}" needs at least two options for multiple selection.`);
     ids.add(id);
-    return { id, label, type, required: question.required !== false, options: Array.isArray(question.options) ? question.options.map(text).filter(Boolean) : [], prefillField: text(question.prefillField) };
+    return { id, label, type, required: question.required !== false, options, prefillField: text(question.prefillField) };
   });
 }

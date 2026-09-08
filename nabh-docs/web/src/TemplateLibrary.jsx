@@ -129,6 +129,10 @@ export default function TemplateLibrary() {
     setQuestionnaireQuestions((current) => current.map((question, questionIndex) => questionIndex === index ? { ...question, ...patch } : question));
   }
 
+  function updateQuestionOptions(index, value) {
+    updateQuestion(index, { options: value.split(/\r?\n/).map((option) => option.trim()).filter(Boolean) });
+  }
+
   if (error) return <main className="admin-main"><p className="status error">{error}</p></main>;
 
   return (
@@ -261,7 +265,26 @@ export default function TemplateLibrary() {
         <div className="preview-backdrop" role="presentation" onClick={() => setQuestionnaireTemplate(null)}>
           <form className="preview-dialog questionnaire-dialog" onSubmit={saveQuestions} onClick={(event) => event.stopPropagation()}>
             <div className="questionnaire-header"><div><p className="eyebrow">Template questionnaire</p><h2>{questionnaireTemplate.documentName}</h2><p>Configure what Hospital Admin respondents must provide for this document.</p></div><button className="icon-button" type="button" title="Close questionnaire" onClick={() => setQuestionnaireTemplate(null)}><X size={18} /></button></div>
-            <div className="questionnaire-body"><div className="questionnaire-summary"><strong>{questionnaireQuestions.length} question{questionnaireQuestions.length === 1 ? "" : "s"}</strong><span>Responses are stored against each hospital document.</span></div><div className="questionnaire-list">{questionnaireQuestions.map((question, index) => <fieldset className="question-config" key={`${question.id}-${index}`}><div className="question-config-heading"><legend>Question {index + 1}</legend><button type="button" className="text-button danger-button" onClick={() => setQuestionnaireQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index))}>Remove</button></div><div className="question-config-grid"><label>Question ID<input value={question.id || ""} onChange={(event) => updateQuestion(index, { id: event.target.value })} /></label><label>Response type<select value={question.type || "textarea"} onChange={(event) => updateQuestion(index, { type: event.target.value })}><option value="text">Short answer</option><option value="textarea">Long answer</option><option value="multiselect">Multiple selection</option></select></label></div><label>Question text<textarea rows={2} value={question.label || ""} onChange={(event) => updateQuestion(index, { label: event.target.value })} placeholder="Ask for the hospital-specific information needed for this document" /></label><label className="question-required"><input type="checkbox" checked={question.required !== false} onChange={(event) => updateQuestion(index, { required: event.target.checked })} /> Required answer</label></fieldset>)}</div><button type="button" className="secondary-button add-question-button" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true }])}><ClipboardList size={15} /> Add question</button>{questionnaireMessage && <p className="access-message">{questionnaireMessage}</p>}</div><div className="questionnaire-footer"><button className="secondary-button" type="button" onClick={() => setQuestionnaireTemplate(null)}>Cancel</button><button className="primary-button" type="submit">Save questionnaire</button></div>
+            <div className="questionnaire-body">
+              <div className="questionnaire-summary"><strong>{questionnaireQuestions.length} question{questionnaireQuestions.length === 1 ? "" : "s"}</strong><span>Responses are stored against each hospital document.</span></div>
+              <div className="questionnaire-list">
+                {questionnaireQuestions.map((question, index) => (
+                  <fieldset className="question-config" key={`${question.id}-${index}`}>
+                    <div className="question-config-heading"><legend>Question {index + 1}</legend><button type="button" className="text-button danger-button" onClick={() => setQuestionnaireQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index))}>Remove</button></div>
+                    <div className="question-config-grid">
+                      <label>Question ID<input value={question.id || ""} onChange={(event) => updateQuestion(index, { id: event.target.value })} /></label>
+                      <label>Response type<select value={question.type || "textarea"} onChange={(event) => updateQuestion(index, { type: event.target.value, options: event.target.value === "multiselect" ? question.options || [] : [] })}><option value="text">Short answer</option><option value="textarea">Long answer</option><option value="multiselect">Multiple selection</option></select></label>
+                    </div>
+                    <label>Question text<textarea rows={2} value={question.label || ""} onChange={(event) => updateQuestion(index, { label: event.target.value })} placeholder="Ask for the hospital-specific information needed for this document" /></label>
+                    {question.type === "multiselect" && <label>Selection options<textarea rows={4} value={(question.options || []).join("\n")} onChange={(event) => updateQuestionOptions(index, event.target.value)} placeholder="Enter one option per line" /></label>}
+                    <label className="question-required"><input type="checkbox" checked={question.required !== false} onChange={(event) => updateQuestion(index, { required: event.target.checked })} /> Required answer</label>
+                  </fieldset>
+                ))}
+              </div>
+              <button type="button" className="secondary-button add-question-button" onClick={() => setQuestionnaireQuestions((current) => [...current, { id: `question_${current.length + 1}`, label: "", type: "textarea", required: true, options: [] }])}><ClipboardList size={15} /> Add question</button>
+              {questionnaireMessage && <p className="access-message">{questionnaireMessage}</p>}
+            </div>
+            <div className="questionnaire-footer"><button className="secondary-button" type="button" onClick={() => setQuestionnaireTemplate(null)}>Cancel</button><button className="primary-button" type="submit">Save questionnaire</button></div>
           </form>
         </div>
       )}

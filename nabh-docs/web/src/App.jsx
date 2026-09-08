@@ -371,7 +371,14 @@ function MasterListWorkspace({
     const data = await response.json();
     if (!response.ok) return setQuestionError(data.error || "Unable to load document questions.");
     setQuestionnaire({ ...data, document: doc });
-    setQuestionAnswers(Object.fromEntries((data.questions || []).map((question) => [question.id, question.value || ""])));
+    setQuestionAnswers(Object.fromEntries((data.questions || []).map((question) => [question.id, question.type === "multiselect" ? String(question.value || "").split(",").map((value) => value.trim()).filter(Boolean) : question.value || ""])));
+  }
+
+  function toggleMultiSelectAnswer(questionId, option) {
+    setQuestionAnswers((current) => {
+      const values = Array.isArray(current[questionId]) ? current[questionId] : [];
+      return { ...current, [questionId]: values.includes(option) ? values.filter((value) => value !== option) : [...values, option] };
+    });
   }
 
   async function generatePersonalizedDraft() {
@@ -1692,9 +1699,18 @@ function MasterListWorkspace({
               <div className="profile-form">
                 {questionnaire.questions.length === 0 ? <p className="access-message">No questions are configured for this document. You can generate the draft without responses.</p> : questionnaire.questions.map((question) => (
                   <label key={question.id}>
-                    {question.label} *
-                    {question.type === "textarea" ? (
-                      <textarea rows={3} value={questionAnswers[question.id] || ""} disabled={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
+                    {question.label}{question.required !== false && " *"}
+                    {question.type === "multiselect" ? (
+                      <span className="question-option-list">
+                        {(question.options || []).map((option) => (
+                          <span className="question-option" key={option}>
+                            <input type="checkbox" checked={(questionAnswers[question.id] || []).includes(option)} disabled={question.readOnly} onChange={() => toggleMultiSelectAnswer(question.id, option)} />
+                            {option}
+                          </span>
+                        ))}
+                      </span>
+                    ) : question.type === "textarea" ? (
+                      <textarea rows={6} value={questionAnswers[question.id] || ""} disabled={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
                     ) : (
                       <input value={questionAnswers[question.id] || ""} readOnly={question.readOnly} onChange={(event) => setQuestionAnswers((current) => ({ ...current, [question.id]: event.target.value }))} />
                     )}
