@@ -166,6 +166,24 @@ const schemaStatements = [
      draft jsonb not null,
      primary key (hospital_id, document_id)
    )`,
+  `create table if not exists evidence (
+     id uuid primary key,
+     hospital_id uuid not null references hospitals (id) on delete cascade,
+     document_id text not null,
+     storage_type text not null,
+     storage_key text not null,
+     file_name text not null,
+     mime_type text not null,
+     size_bytes integer not null,
+     evidence_type text not null default 'implementation evidence',
+     description text not null default '',
+     uploaded_by text not null default 'system',
+     uploaded_at timestamptz not null default now(),
+     review_status text not null default 'submitted',
+     reviewed_by text,
+     reviewed_at timestamptz,
+     metadata jsonb not null default '{}'::jsonb
+   )`,
   `create table if not exists service_bookings (
      id uuid primary key,
      hospital_id uuid not null references hospitals (id) on delete cascade,
@@ -213,6 +231,7 @@ const schemaStatements = [
     `create index if not exists hospital_users_email_idx on hospital_users (lower(email))`,
     `create index if not exists document_status_hospital_idx on document_status (hospital_id)`,
     `create index if not exists document_drafts_hospital_idx on document_drafts (hospital_id)`,
+    `create index if not exists evidence_document_idx on evidence (hospital_id, document_id, uploaded_at desc)`,
     `create index if not exists template_questions_questionnaire_idx on template_questions (questionnaire_id, ordinal)`,
     `create index if not exists hospital_document_answers_document_idx on hospital_document_answers (hospital_id, document_id)`,
     `create index if not exists document_audit_timestamp_idx on document_audit ((entry->>'timestamp'))`,
@@ -659,6 +678,55 @@ export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
     [hospitalId, documentId, entry.status, isoDate(entry.updatedAt), entry.updatedBy || "system", entry.note || ""]
   );
   return entry;
+}
+
+export async function readEvidenceByDocument(hospitalId, documentId) {
+  const client = await connect();
+  const { rows } = await client.query(`select * from evidence where hospital_id = $1 and document_id = $2 order by uploaded_at desc`, [hospitalId, documentId]);
+  return rows.map(mapEvidenceRow);
+}
+
+export async function readEvidenceById(hospitalId, evidenceId) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(`select * from evidence where hospital_id = $1 and id = $2`, [hospitalId, evidenceId]);
+  return row ? mapEvidenceRow(row) : null;
+}
+
+function mapEvidenceRow(row) {
+  return {
+    id: row.id,
+    hospitalId: row.hospital_id,
+    documentId: row.document_id,
+    storageType: row.storage_type,
+    storageKey: row.storage_key,
+    fileName: row.file_name,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+    evidenceType: row.evidence_type,
+    description: row.description,
+    uploadedBy: row.uploaded_by,
+    uploadedAt: isoDate(row.uploaded_at),
+    reviewStatus: row.review_status,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: isoDate(row.reviewed_at),
+    metadata: row.metadata || {}
+  };
+}
+
+export async function addEvidence(evidence) {
+  const client = await connect();
+  await client.query(
+    `insert into evidence (id, hospital_id, document_id, storage_type, storage_key, file_name, mime_type, size_bytes, evidence_type, description, uploaded_by, uploaded_at, review_status, metadata)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb)`,
+    [evidence.id, evidence.hospitalId, evidence.documentId, evidence.storageType, evidence.storageKey, evidence.fileName, evidence.mimeType, evidence.sizeBytes, evidence.evidenceType, evidence.description, evidence.uploadedBy, isoDate(evidence.uploadedAt), evidence.reviewStatus, JSON.stringify(evidence.metadata || {})]
+  );
+  return evidence;
+}
+
+export async function deleteEvidence(hospitalId, evidenceId) {
+  const client = await connect();
+  const result = await client.query(`delete from evidence where hospital_id = $1 and id = $2`, [hospitalId, evidenceId]);
+  return result.rowCount > 0;
 }
 
 export async function readDocumentDrafts() {

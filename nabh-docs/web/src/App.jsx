@@ -71,6 +71,16 @@ const READINESS_LABELS = {
   evidence_available: "Evidence Available",
 };
 
+const READINESS_TRANSITIONS = {
+  not_started: ["information_required", "draft_generated"],
+  information_required: ["draft_generated"],
+  draft_generated: ["under_review"],
+  under_review: ["draft_generated", "approved"],
+  approved: ["implemented"],
+  implemented: ["evidence_available"],
+  evidence_available: [],
+};
+
 function confidenceClass(confidence) {
   return `badge badge-${confidence}`;
 }
@@ -332,6 +342,13 @@ function MasterListWorkspace({
   const [questionError, setQuestionError] = useState("");
   const [generatingDraft, setGeneratingDraft] = useState(false);
   const [generatedDraft, setGeneratedDraft] = useState(null);
+  const [evidenceDocument, setEvidenceDocument] = useState(null);
+  const [evidenceEntries, setEvidenceEntries] = useState([]);
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [evidenceType, setEvidenceType] = useState("implementation evidence");
+  const [evidenceDescription, setEvidenceDescription] = useState("");
+  const [evidenceError, setEvidenceError] = useState("");
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const canEdit = permissions.includes("edit");
 
   async function openQuestionnaire(doc) {
@@ -360,6 +377,52 @@ function MasterListWorkspace({
     setGeneratedDraft(data.draft);
     setQuestionnaire((current) => ({ ...current, questions: data.questionnaire.questions }));
     setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === questionnaire.document.id ? { ...item, readinessStatus: "draft_generated" } : item)])) : current);
+  }
+
+  async function openEvidence(doc) {
+    setEvidenceDocument(doc);
+    setEvidenceFile(null);
+    setEvidenceType("implementation evidence");
+    setEvidenceDescription("");
+    setEvidenceError("");
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(doc.id)}/evidence`);
+    const data = await response.json();
+    if (!response.ok) return setEvidenceError(data.error || "Unable to load evidence.");
+    setEvidenceEntries(data.evidence || []);
+  }
+
+  async function uploadEvidence(event) {
+    event.preventDefault();
+    if (!evidenceDocument || !evidenceFile) return setEvidenceError("Choose an evidence file before uploading.");
+    setUploadingEvidence(true);
+    setEvidenceError("");
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("The evidence file could not be read."));
+        reader.readAsDataURL(evidenceFile);
+      });
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(evidenceDocument.id)}/evidence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: evidenceFile.name, mimeType: evidenceFile.type, data: dataUrl, evidenceType, description: evidenceDescription })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to upload evidence.");
+      setDepartments((current) => ({
+        ...current,
+        [evidenceDocument.department]: current[evidenceDocument.department].map((document) => document.id === evidenceDocument.id ? { ...document, readinessStatus: data.entry.status } : document)
+      }));
+      setEvidenceEntries((current) => [data.evidence, ...current]);
+      setEvidenceFile(null);
+      setEvidenceDescription("");
+      setSyncMessage("Evidence uploaded successfully. The document is now marked Evidence Available.");
+    } catch (err) {
+      setEvidenceError(err.message);
+    } finally {
+      setUploadingEvidence(false);
+    }
   }
 
   const pollSyncStatus = (initialMsg) => {
@@ -639,25 +702,36 @@ function MasterListWorkspace({
     ).catch((err) => setError(err.message));
   }
 
-  function setReadinessStatus(doc, nextStatus) {
-    setDepartments((current) => ({
-      ...current,
-      [doc.department]: current[doc.department].map((d) =>
-        d.id === doc.id ? { ...d, readinessStatus: nextStatus } : d,
-      ),
-    }));
-    fetch(
-      `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentId: doc.id,
-          status: nextStatus,
-          updatedBy: hospitalName || "Hospital",
-        }),
-      },
-    ).catch((err) => setError(err.message));
+  async function setReadinessStatus(doc, nextStatus) {
+    try {
+      const response = await fetch(
+        `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentId: doc.id,
+            status: nextStatus,
+            updatedBy: hospitalName || "Hospital",
+          }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to update the document status.");
+      setDepartments((current) => ({
+        ...current,
+        [doc.department]: current[doc.department].map((d) =>
+          d.id === doc.id ? { ...d, readinessStatus: data.entry.status } : d,
+        ),
+      }));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function allowedReadinessStatuses(status) {
+    const currentStatus = READINESS_LABELS[status] ? status : "not_started";
+    return [currentStatus, ...(READINESS_TRANSITIONS[currentStatus] || [])];
   }
 
   async function runDocumentAction(doc, action) {
@@ -1353,7 +1427,7 @@ function MasterListWorkspace({
                               setReadinessStatus(doc, event.target.value)
                             }
                           >
-                            {READINESS_STATUSES.map((status) => (
+                            {allowedReadinessStatuses(doc.readinessStatus).map((status) => (
                               <option key={status} value={status}>
                                 {READINESS_LABELS[status]}
                               </option>
@@ -1407,18 +1481,13 @@ function MasterListWorkspace({
                                   Implemented
                                 </button>
                               )}
-                              {doc.readinessStatus === "implemented" && (
+                              {(doc.readinessStatus === "implemented" || doc.readinessStatus === "evidence_available") && (
                                 <button
                                   className="icon-button"
-                                  title="Mark evidence available"
-                                  onClick={() =>
-                                    runDocumentAction(
-                                      doc,
-                                      "mark-evidence-available",
-                                    )
-                                  }
+                                  title={doc.readinessStatus === "implemented" ? "Upload implementation evidence" : "View or upload evidence"}
+                                  onClick={() => openEvidence(doc)}
                                 >
-                                  Evidence
+                                  <Upload size={14} /> Evidence
                                 </button>
                               )}
                             </span>
@@ -1594,6 +1663,52 @@ function MasterListWorkspace({
                 <button className="primary-button" onClick={() => setQuestionnaire(null)}>Done</button>
               </div>
             )}
+          </section>
+        </div>
+      )}
+      {evidenceDocument && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setEvidenceDocument(null)}>
+          <section className="questionnaire-dialog evidence-dialog" role="dialog" aria-modal="true" aria-label="Upload implementation evidence" onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Implementation evidence</p>
+                <h2>{evidenceDocument.documentName}</h2>
+                <p className="editor-file-name">Upload records, logs, photographs, or certificates that prove this document has been implemented.</p>
+              </div>
+              <button className="icon-button" title="Close evidence" onClick={() => setEvidenceDocument(null)}><Close size={18} /></button>
+            </div>
+            <form className="profile-form" onSubmit={uploadEvidence}>
+              <label>
+                Evidence file
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.csv,.txt,.docx,.xlsx" onChange={(event) => setEvidenceFile(event.target.files?.[0] || null)} />
+              </label>
+              <label>
+                Evidence type
+                <select value={evidenceType} onChange={(event) => setEvidenceType(event.target.value)}>
+                  <option>Implementation evidence</option>
+                  <option>Record or register</option>
+                  <option>Photograph</option>
+                  <option>Training record</option>
+                  <option>Certificate or report</option>
+                </select>
+              </label>
+              <label>
+                Description
+                <textarea rows={3} value={evidenceDescription} onChange={(event) => setEvidenceDescription(event.target.value)} placeholder="Describe what this file proves and the period it covers." />
+              </label>
+              {evidenceError && <p className="status error">{evidenceError}</p>}
+              <button className="primary-button" type="submit" disabled={uploadingEvidence}>{uploadingEvidence ? "Uploading evidence..." : "Upload evidence"}</button>
+              <div className="evidence-list">
+                <h3>Uploaded evidence</h3>
+                {evidenceEntries.length ? evidenceEntries.map((entry) => (
+                  <div className="evidence-item" key={entry.id}>
+                    <a href={`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/evidence/${encodeURIComponent(entry.id)}/file`} target="_blank" rel="noreferrer">{entry.fileName}</a>
+                    <span>{entry.evidenceType} · {new Date(entry.uploadedAt).toLocaleString()}</span>
+                    {entry.description && <p>{entry.description}</p>}
+                  </div>
+                )) : <p className="access-message">No evidence has been uploaded for this document yet.</p>}
+              </div>
+            </form>
           </section>
         </div>
       )}

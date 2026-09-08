@@ -22,6 +22,7 @@ import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainin
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
 import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReportPdf } from "./services/shared/questionnaireReportPdf.js";
+import { createEvidence, getEvidenceFile, listDocumentEvidence } from "./services/shared/evidenceService.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
 import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
@@ -101,7 +102,7 @@ const onlyOffice = createOnlyOfficeService({
 app.use(express.static(webBuildDir, { etag: false, lastModified: false, setHeaders: (response) => response.set("Cache-Control", "no-store") }));
 app.use("/prototype", express.static(prototypeDir));
 app.use("/logos", express.static(logosDir));
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "8mb" }));
 
 function requestCookies(request) {
   return Object.fromEntries(String(request.headers.cookie || "").split(";").map((part) => part.trim().split("=")).filter(([key, value]) => key && value).map(([key, ...value]) => [key, decodeURIComponent(value.join("="))]));
@@ -540,8 +541,8 @@ async function getPersistentDocumentStatus(hospital) {
   return r2TemplateStorageEnabled() && !usesPostgresDataStore() ? getR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme) : getHospitalDocumentStatus(hospital.id);
 }
 
-async function persistDocumentStatus(hospital, documentId, status, updatedBy, note) {
-  const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note);
+async function persistDocumentStatus(hospital, documentId, status, updatedBy, note, currentStatus) {
+  const entry = await setHospitalDocumentStatus(hospital.id, documentId, status, updatedBy, note, currentStatus);
   if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...await getPersistentDocumentStatus(hospital), [documentId]: entry });
   return entry;
 }
@@ -556,6 +557,44 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
     const hospitalStatus = await getPersistentDocumentStatus(hospital);
     const departments = await loadHospitalDepartments(hospital);
     response.json({ departments: withDocumentStatus(departments, hospitalStatus), repository });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const evidence = await listDocumentEvidence(hospital.id, request.params.documentId);
+    response.json({ evidence });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireActiveHospital(hospital);
+    const departments = await loadHospitalDepartments(hospital);
+    const documentExists = Object.values(departments).flat().some((document) => document.id === request.params.documentId);
+    if (!documentExists) return response.status(404).json({ error: "Document not found in this hospital workspace." });
+    const persistentStatus = await getPersistentDocumentStatus(hospital);
+    const previousStatus = persistentStatus[request.params.documentId]?.status || "not_started";
+    const result = await createEvidence(hospital, request.params.documentId, request.body || {}, request.appSession?.user_id || request.appSession?.userId || "Hospital user", previousStatus);
+    if (r2TemplateStorageEnabled() && !usesPostgresDataStore()) await saveR2ClientDocumentStatuses(hospital.code, hospital.accreditation?.programme, { ...persistentStatus, [request.params.documentId]: result.entry });
+    await recordDocumentStatusAudit(hospital, request.params.documentId, result.previousStatus, result.entry, "evidence uploaded");
+    response.status(201).json(result);
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/evidence/:evidenceId/file", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const result = await getEvidenceFile(hospital, request.params.evidenceId);
+    if (!result) return response.status(404).json({ error: "Evidence not found." });
+    response.setHeader("Content-Type", result.evidence.mimeType);
+    response.setHeader("Content-Disposition", `inline; filename="${result.evidence.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}"`);
+    response.send(result.buffer);
   } catch (error) { next(error); }
 });
 
@@ -574,7 +613,7 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     requireActiveHospital(hospital);
     const { documentId, status, updatedBy, note } = request.body || {};
     const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
-    const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note);
+    const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note, previousStatus);
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry);
     response.json({ documentId, entry });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }

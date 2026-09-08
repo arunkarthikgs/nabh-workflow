@@ -88,6 +88,22 @@ export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
   return (await store()).saveDocumentStatusRecord(hospitalId, documentId, entry);
 }
 
+export async function readEvidenceByDocument(hospitalId, documentId) {
+  return (await store()).readEvidenceByDocument(hospitalId, documentId);
+}
+
+export async function readEvidenceById(hospitalId, evidenceId) {
+  return (await store()).readEvidenceById(hospitalId, evidenceId);
+}
+
+export async function addEvidence(evidence) {
+  return (await store()).addEvidence(evidence);
+}
+
+export async function deleteEvidence(hospitalId, evidenceId) {
+  return (await store()).deleteEvidence(hospitalId, evidenceId);
+}
+
 export async function readDocumentDrafts() {
   return (await store()).readDocumentDrafts();
 }

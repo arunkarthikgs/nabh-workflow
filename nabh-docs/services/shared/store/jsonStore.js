@@ -11,6 +11,7 @@ const documentAuditPath = path.join(dataDirectory, "documentAudit.json");
 const documentStatusPath = path.join(dataDirectory, "documentStatus.json");
 const documentDraftsPath = path.join(dataDirectory, "documentDrafts.json");
 const bookingsPath = path.join(dataDirectory, "bookings.json");
+const evidencePath = path.join(dataDirectory, "evidence.json");
 
 async function readJson(filePath, fallback) {
   try { return JSON.parse(await readFile(filePath, "utf8")); }
@@ -112,6 +113,29 @@ export async function saveDocumentStatusRecord(hospitalId, documentId, entry) {
   statusByHospital[hospitalId] = { ...(statusByHospital[hospitalId] || {}), [documentId]: entry };
   await writeJson(documentStatusPath, statusByHospital);
   return entry;
+}
+
+export async function readEvidenceByDocument(hospitalId, documentId) {
+  return (await readJson(evidencePath, [])).filter((item) => item.hospitalId === hospitalId && item.documentId === documentId);
+}
+
+export async function readEvidenceById(hospitalId, evidenceId) {
+  return (await readJson(evidencePath, [])).find((item) => item.hospitalId === hospitalId && item.id === evidenceId) || null;
+}
+
+export async function addEvidence(evidence) {
+  const entries = await readJson(evidencePath, []);
+  entries.unshift(evidence);
+  await writeJson(evidencePath, entries);
+  return evidence;
+}
+
+export async function deleteEvidence(hospitalId, evidenceId) {
+  const entries = await readJson(evidencePath, []);
+  const remaining = entries.filter((item) => !(item.hospitalId === hospitalId && item.id === evidenceId));
+  if (remaining.length === entries.length) return false;
+  await writeJson(evidencePath, remaining);
+  return true;
 }
 
 export async function readDocumentDrafts() {

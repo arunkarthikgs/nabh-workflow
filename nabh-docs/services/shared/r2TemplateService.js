@@ -1,4 +1,4 @@
-import { CopyObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { CopyObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
 import path from "path";
 import { customizeDocumentTemplate } from "./documentCustomizer.js";
@@ -121,6 +121,22 @@ export async function getR2ClientFile(hospitalCode, relativePath, programme) {
   const settings = config();
   const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode, programme)}${relativePath}` }));
   return Buffer.from(await result.Body.transformToByteArray());
+}
+
+export async function saveR2EvidenceFile(hospitalCode, programme, relativePath, buffer, contentType) {
+  const settings = config();
+  const key = `${clientPrefix(hospitalCode, programme)}${relativePath}`;
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: key, Body: buffer, ContentType: contentType || "application/octet-stream" }));
+  return key;
+}
+
+export async function getR2EvidenceFile(hospitalCode, programme, relativePath) {
+  return getR2ClientFile(hospitalCode, relativePath, programme);
+}
+
+export async function deleteR2EvidenceFile(hospitalCode, programme, relativePath) {
+  const settings = config();
+  await client().send(new DeleteObjectCommand({ Bucket: settings.bucket, Key: `${clientPrefix(hospitalCode, programme)}${relativePath}` }));
 }
 
 function hospitalAssetPrefix(code) {
