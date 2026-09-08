@@ -446,17 +446,17 @@ h2 { font-size: 19px; }
 .filter-label { color: #6c6fb0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .audit-filter-select, .audit-date-input { background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 8px; color: #3a3f6b; font: 400 13px "Poppins", sans-serif; padding: 7px 10px; outline: none; }
 .audit-filter-select:focus, .audit-date-input:focus { border-color: #3547d1; background: #ffffff; }
-.audit-table { min-width: 1380px; table-layout: fixed; }
-.audit-table th:nth-child(1), .audit-table td:nth-child(1) { width: 195px; }
-.audit-table th:nth-child(2), .audit-table td:nth-child(2) { width: 330px; }
+.audit-table { min-width: 1380px; table-layout: fixed; width: 1380px; }
+.audit-table th:nth-child(1), .audit-table td:nth-child(1) { width: 210px; }
+.audit-table th:nth-child(2), .audit-table td:nth-child(2) { width: 360px; }
 .audit-table th:nth-child(3), .audit-table td:nth-child(3) { width: 170px; }
 .audit-table th:nth-child(4), .audit-table td:nth-child(4) { width: 72px; }
 .audit-table th:nth-child(5), .audit-table td:nth-child(5) { width: 210px; }
 .audit-table th:nth-child(6), .audit-table td:nth-child(6) { width: 150px; }
 .audit-table th:nth-child(7), .audit-table td:nth-child(7) { width: 240px; }
 .audit-table td { box-sizing: border-box; vertical-align: top; }
-.audit-time { color: #5f5e5b; font: 700 11px/1.45 "Manrope", sans-serif; white-space: nowrap; }
-.audit-table td strong { color: #37352f; display: block; font-size: 12px; line-height: 1.35; max-width: 100%; overflow-wrap: anywhere; }
+.audit-time { color: #5f5e5b; font: 700 11px/1.45 "Manrope", sans-serif; max-width: 210px; overflow-wrap: anywhere; white-space: normal; }
+.audit-table td strong { color: #37352f; display: block; font-size: 12px; line-height: 1.35; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
 .audit-document-path { color: #787774; display: block; font: 500 10px/1.35 "DM Mono", monospace; margin-top: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-version, .audit-user { color: #5f5e5b; font-size: 11px; overflow-wrap: anywhere; }
 .audit-action-pill { background: #f1f1ef; border-radius: 4px; color: #5f5e5b; display: inline-block; font-size: 10px; font-weight: 700; line-height: 1.35; max-width: 100%; padding: 4px 7px; text-transform: capitalize; }
