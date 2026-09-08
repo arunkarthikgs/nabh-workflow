@@ -219,7 +219,30 @@ export async function deleteHospitalRole(hospitalId, roleId) {
   return deleteHospitalRoleRecord(hospital.id, roleId);
 }
 
-const requiredProfileFields = ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"];
+export const requiredProfileFields = ["hospitalType", "ownershipType", "operationalBeds", "addressLine1", "city", "state", "pinCode", "mainPhone", "officialEmail"];
+
+const requiredProfileFieldLabels = {
+  hospitalType: "Hospital type",
+  ownershipType: "Ownership type",
+  operationalBeds: "Operational beds",
+  addressLine1: "Address line 1",
+  city: "City",
+  state: "State",
+  pinCode: "PIN code",
+  mainPhone: "Main phone number",
+  officialEmail: "Official email"
+};
+
+export function validateInstitutionalProfile(details = {}) {
+  const errors = {};
+  for (const field of requiredProfileFields) {
+    if (!text(details[field])) errors[field] = `${requiredProfileFieldLabels[field]} is required.`;
+  }
+  if (text(details.operationalBeds) && (!/^\d+$/.test(text(details.operationalBeds)) || Number(details.operationalBeds) < 1)) errors.operationalBeds = "Operational beds must be a whole number greater than zero.";
+  if (text(details.pinCode) && !/^\d{4,10}$/.test(text(details.pinCode))) errors.pinCode = "PIN code must contain 4 to 10 digits.";
+  if (text(details.officialEmail) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text(details.officialEmail))) errors.officialEmail = "Enter a valid official email address.";
+  return errors;
+}
 
 export function isProfileComplete(hospital) {
   const details = hospital?.details || {};
@@ -385,7 +408,14 @@ export async function submitHospitalProfile(hospitalId, details, logoDataUrl) {
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return null;
-  hospital.details = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
+  const nextDetails = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
+  const validationErrors = validateInstitutionalProfile(nextDetails);
+  if (Object.keys(validationErrors).length) {
+    const error = new Error("Complete the required institutional profile fields before saving.");
+    error.validationErrors = validationErrors;
+    throw error;
+  }
+  hospital.details = nextDetails;
   if (typeof logoDataUrl === "string" && logoDataUrl.trim()) hospital.logoDataUrl = logoDataUrl.trim();
   hospital.updatedAt = new Date().toISOString();
   return saveHospital(hospital);

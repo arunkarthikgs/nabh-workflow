@@ -72,6 +72,27 @@ function requireActiveHospital(hospital) {
   if (hospital?.status === "inactive") throw new Error("Hospital is inactive. Contact a Super Admin to restore access.");
 }
 
+function requireCompleteHospitalProfile(hospital) {
+  if (isProfileComplete(hospital)) return;
+  const error = new Error("Complete the institutional profile before viewing, downloading, generating, or finalising documents.");
+  error.status = 409;
+  error.reason = "profile_incomplete";
+  error.missingProfileFields = missingProfileFields(hospital);
+  throw error;
+}
+
+async function requireCompleteProfileMiddleware(request, response, next) {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireCompleteHospitalProfile(hospital);
+    next();
+  } catch (error) {
+    if (error?.reason === "profile_incomplete") return response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields });
+    next(error);
+  }
+}
+
 // Kicks off (or reuses) a background repository-provisioning job for a hospital, since copying
 // programme templates into R2 can take minutes. Callers read progress via repositorySyncJobs.
 function startRepositoryProvisioning(hospital, { syncNewTemplates = false } = {}) {
@@ -171,7 +192,7 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
     const hospitals = await Promise.all((await backfillHospitalLogos(await listHospitals())).map(hydrateHospitalAccreditation));
     const visible = request.appSession.role === "Super Admin" ? hospitals : hospitals.filter((hospital) => hospital.id === request.appSession.hospital_id || hospital.id === request.appSession.hospitalId);
     response.json({ hospitals: visible });
-  } catch (error) { next(error); }
+  } catch (error) { if (error instanceof Error && error.validationErrors) response.status(422).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 app.post("/api/admin/hospitals", async (request, response, next) => {
@@ -208,7 +229,7 @@ app.get("/api/admin/hospitals/:hospitalId/client-repository/status", async (requ
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const job = repositorySyncJobs.get(hospital.id);
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
-    response.json({ repository, job: job || null });
+    response.json({ repository, job: job || null, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
   } catch (error) { next(error); }
 });
 
@@ -547,6 +568,8 @@ async function persistDocumentStatus(hospital, documentId, status, updatedBy, no
   return entry;
 }
 
+app.use("/api/admin/hospitals/:hospitalId/documents", requireCompleteProfileMiddleware);
+
 app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
@@ -602,8 +625,9 @@ app.get("/api/admin/hospitals/:hospitalId/document-status", async (request, resp
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireCompleteHospitalProfile(hospital);
     response.json({ status: await getPersistentDocumentStatus(hospital), statuses: DOCUMENT_STATUSES });
-  } catch (error) { next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else next(error); }
 });
 
 app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, response, next) => {
@@ -611,18 +635,20 @@ app.patch("/api/admin/hospitals/:hospitalId/document-status", async (request, re
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    requireCompleteHospitalProfile(hospital);
     const { documentId, status, updatedBy, note } = request.body || {};
     const previousStatus = (await getPersistentDocumentStatus(hospital))[documentId]?.status || "not_started";
     const entry = await persistDocumentStatus(hospital, documentId, status, updatedBy, note, previousStatus);
     await recordDocumentStatusAudit(hospital, documentId, previousStatus, entry);
     response.json({ documentId, entry });
-  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
 app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, response, next) => {
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    requireCompleteHospitalProfile(hospital);
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
     const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
@@ -639,7 +665,7 @@ app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, r
       }
     }
     response.json({ categories, total, readinessPercent: total ? Math.round((ready / total) * 100) : 0, profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
-  } catch (error) { next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else next(error); }
 });
 
 app.get("/api/admin/hospitals/:hospitalId/accreditation", async (request, response, next) => {
@@ -675,7 +701,7 @@ app.patch("/api/admin/hospitals/:hospitalId/profile", async (request, response, 
     const hospital = await submitHospitalProfile(request.params.hospitalId, request.body?.details, request.body?.logoDataUrl);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     response.json({ hospital: await persistHospitalLogo(hospital), profileComplete: isProfileComplete(hospital), missingProfileFields: missingProfileFields(hospital) });
-  } catch (error) { next(error); }
+  } catch (error) { if (error instanceof Error && error.validationErrors) response.status(422).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 app.post("/api/register", async (request, response, next) => {
@@ -793,10 +819,11 @@ app.get("/api/admin/hospitals/:hospitalId/document-questions", async (request, r
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    requireCompleteHospitalProfile(hospital);
     const documentId = String(request.query.documentId || "").trim();
     if (!documentId) return response.status(400).json({ error: "documentId is required." });
     response.json(await getDocumentQuestions(hospital, documentId, request.query.documentName, request.query.templatePath));
-  } catch (error) { if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 app.get("/api/admin/hospitals/:hospitalId/document-draft", async (request, response, next) => {
@@ -804,10 +831,11 @@ app.get("/api/admin/hospitals/:hospitalId/document-draft", async (request, respo
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    requireCompleteHospitalProfile(hospital);
     const documentId = String(request.query.documentId || "").trim();
     if (!documentId) return response.status(400).json({ error: "documentId is required." });
     response.json({ draft: await getDocumentDraft(hospital.id, documentId) });
-  } catch (error) { next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/document-draft", async (request, response, next) => {
@@ -815,12 +843,13 @@ app.post("/api/admin/hospitals/:hospitalId/document-draft", async (request, resp
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
+    requireCompleteHospitalProfile(hospital);
     const { documentId, documentName, answers } = request.body || {};
     const prepared = await prepareDocumentDraft(hospital, documentId, documentName, answers, request.body?.templatePath);
     await saveDocumentAnswers(hospital.id, documentId, prepared.answers, prepared.questionnaire);
     const draft = await generateDocumentDraft(hospital, documentId, documentName, prepared.answers);
     response.status(201).json({ draft, questionnaire: prepared.questionnaire });
-  } catch (error) { if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
+  } catch (error) { if (error?.reason === "profile_incomplete") response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields }); else if (error instanceof Error) response.status(error.validationErrors ? 422 : 400).json({ error: error.message, fields: error.validationErrors }); else next(error); }
 });
 
 async function hospitalQuestionnaireReport(hospital) {

@@ -303,6 +303,7 @@ function MasterListWorkspace({
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState("");
   const [accreditationRequired, setAccreditationRequired] = useState(null);
+  const [profileIncomplete, setProfileIncomplete] = useState([]);
   const [documentSearch, setDocumentSearch] = useState(
     initialUrlState.documentSearch,
   );
@@ -496,6 +497,11 @@ function MasterListWorkspace({
       .then((data) => {
         if (!data) return null;
         setRepositoryStatus(data);
+        if (data.profileComplete === false) {
+          setProfileIncomplete(data.missingProfileFields || []);
+          setAccreditationRequired("Complete the institutional profile before accessing the document workspace.");
+          return null;
+        }
         if (data.job?.status === "running") {
           pollSyncStatus(
             "Template synchronization is currently in progress...",
@@ -515,6 +521,11 @@ function MasterListWorkspace({
             response.status === 400 &&
             result.reason === "accreditation_required"
           ) {
+            setAccreditationRequired(result.error);
+            return null;
+          }
+          if (response.status === 409 && result.reason === "profile_incomplete") {
+            setProfileIncomplete(result.missingProfileFields || []);
             setAccreditationRequired(result.error);
             return null;
           }
@@ -1062,11 +1073,9 @@ function MasterListWorkspace({
         </header>
         <section className="document-panel repository-empty">
           <ClipboardList size={28} />
-          <h2>Accreditation programme required</h2>
+          <h2>{profileIncomplete.length ? "Institutional profile required" : "Accreditation programme required"}</h2>
           <p>
-            {accreditationRequired} Each programme has its own document
-            templates, so the workspace can only be prepared once you know which
-            one applies.
+            {accreditationRequired} {profileIncomplete.length ? `Missing fields: ${profileIncomplete.join(", ")}.` : "Each programme has its own document templates, so the workspace can only be prepared once you know which one applies."}
           </p>
           {onGoToAccreditation && (
             <button
@@ -1074,7 +1083,7 @@ function MasterListWorkspace({
               type="button"
               onClick={onGoToAccreditation}
             >
-              Go to Accreditation
+              {profileIncomplete.length ? "Go to Institutional Profile" : "Go to Accreditation"}
             </button>
           )}
         </section>

@@ -5,6 +5,7 @@ import { institutionalProfileFields } from "./hospitalFormFields.js";
 function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [form, setForm] = useState(() => Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
   const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState("");
 
@@ -21,6 +22,7 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
     event.preventDefault();
     setSaving(true);
     setMessage("");
+    setFieldErrors({});
     try {
       const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/profile`, {
         method: "PATCH",
@@ -28,11 +30,16 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
         body: JSON.stringify({ details: form, logoDataUrl })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to save profile.");
+      if (!response.ok) {
+        const error = new Error(data.error || "Unable to save profile.");
+        error.fields = data.fields || {};
+        throw error;
+      }
       setMessage(data.profileComplete ? "Institutional profile complete." : "Saved. A few required fields are still missing.");
       onSaved(data);
     } catch (err) {
       setMessage(err.message);
+      setFieldErrors(err.fields || {});
     } finally {
       setSaving(false);
     }
@@ -44,7 +51,7 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
       <p>This information drives the accreditation recommendation and the document workspace. Identity and regulatory details (NABH accreditation number, license, PAN/GST) are set once during hospital registration.</p>
       <div className="admin-fields">
         {institutionalProfileFields.map(([key, label, type, options]) => (
-          <label key={key}>
+          <label key={key} className={fieldErrors[key] ? "field-error" : ""}>
             {label}
             {type === "select" ? (
               <select value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
@@ -54,6 +61,7 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
             ) : (
               <input type={type || (key.includes("Email") ? "email" : "text")} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
             )}
+            {fieldErrors[key] && <small className="field-error-message">{fieldErrors[key]}</small>}
           </label>
         ))}
       </div>
