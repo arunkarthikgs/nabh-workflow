@@ -241,6 +241,7 @@ export async function registerHospital(input) {
   if (!name || !adminName || !adminEmail || !text(details.addressLine1) || !text(details.city) || !text(details.responsiblePhone || details.mainPhone)) throw new Error("Hospital name, administrator name, email, address, city, and contact phone are required.");
   if (input.acceptedTerms !== true) throw new Error("Accept the Privacy Policy and Terms before registering.");
   const hospitals = await readHospitals();
+  if (hospitals.some((hospital) => (hospital.users || []).some((user) => user.email?.toLowerCase() === adminEmail))) throw new Error("An account with this email already exists. Use the existing account or contact a Super Admin.");
   const requestedCode = text(input.code).toUpperCase();
   if (requestedCode && !/^[A-Z0-9]{4}$/.test(requestedCode)) throw new Error("Hospital code must be exactly four letters or numbers.");
   if (requestedCode && hospitals.some((hospital) => hospital.code === requestedCode)) throw new Error("Client code already exists.");
@@ -308,6 +309,10 @@ export async function completePasswordSetup(token, password, registration = {}) 
   if (typeof password !== "string" || password.length < 8) throw new Error("Password must be at least 8 characters.");
   const requestedCode = text(registration.code).toUpperCase();
   if (!/^[A-Z0-9]{4}$/.test(requestedCode)) throw new Error("Hospital code must be exactly four letters or numbers.");
+  const addressLine1 = text(registration.addressLine1);
+  const city = text(registration.city);
+  const contactPhone = text(registration.contactPhone);
+  if (!addressLine1 || !city || !contactPhone) throw new Error("Hospital address, city, and contact phone are required.");
   const { salt, hash } = hashPassword(password);
   if (dataStoreDriver() === "postgres") {
     const hospitals = await readHospitals();
@@ -317,6 +322,8 @@ export async function completePasswordSetup(token, password, registration = {}) 
     if (hospitals.some((item) => item.id !== hospital.id && item.code === requestedCode)) throw new Error("Hospital code already exists.");
     if (!(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
     hospital.code = requestedCode;
+    hospital.details = { ...(hospital.details || {}), addressLine1, city };
+    user.contactPhone = contactPhone;
     user.passwordSalt = salt; user.passwordHash = hash; user.passwordSet = true; user.emailVerifiedAt = new Date().toISOString(); user.updatedAt = new Date().toISOString();
     hospital.status = "pending"; hospital.registrationStatus = "pending_activation"; hospital.updatedAt = user.updatedAt;
     await saveHospitalUser(hospital.id, user); await saveHospital(hospital);
@@ -327,6 +334,8 @@ export async function completePasswordSetup(token, password, registration = {}) 
   const user = hospital.users.find((item) => item.id === found.user.id);
   if (hospitals.some((item) => item.id !== hospital.id && item.code === requestedCode)) throw new Error("Hospital code already exists.");
   if (!(await consumeRegistrationToken(found.tokenId))) throw new Error("Invalid or expired setup link.");
+  hospital.details = { ...(hospital.details || {}), addressLine1, city };
+  user.contactPhone = contactPhone;
   hospital.code = requestedCode;
   user.passwordSalt = salt;
   user.passwordHash = hash;

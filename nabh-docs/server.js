@@ -683,7 +683,7 @@ app.get("/api/set-password/:token", async (request, response, next) => {
 
 app.post("/api/set-password", async (request, response, next) => {
   try {
-    const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password, { code: request.body?.hospitalCode });
+    const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password, { code: request.body?.hospitalCode, addressLine1: request.body?.addressLine1, city: request.body?.city, contactPhone: request.body?.contactPhone });
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "registration_completed", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const role = hospital.roles?.find((item) => item.name === user.role);
     const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath };

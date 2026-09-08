@@ -7,6 +7,9 @@ export default function SetPassword({ token, onComplete }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [hospitalCode, setHospitalCode] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -16,6 +19,9 @@ export default function SetPassword({ token, onComplete }) {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "This setup link is invalid or has expired.");
         setHospitalCode(data.hospitalCode || "");
+        setAddressLine1(data.address || "");
+        setCity(data.city || "");
+        setContactPhone(data.contactPhone || "");
         setState({ status: "ready", ...data });
       })
       .catch((err) => setState({ status: "error", error: err.message }));
@@ -31,7 +37,7 @@ export default function SetPassword({ token, onComplete }) {
       const response = await fetch("/api/set-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password, hospitalCode: hospitalCode.trim().toUpperCase() })
+        body: JSON.stringify({ token, password, hospitalCode: hospitalCode.trim().toUpperCase(), addressLine1: addressLine1.trim(), city: city.trim(), contactPhone: contactPhone.trim() })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to set your password.");
@@ -58,32 +64,42 @@ export default function SetPassword({ token, onComplete }) {
   }
 
   return (
-    <main className="login-main">
-      <section className="login-intro">
-        <div className="login-mark"><ShieldCheck size={20} /></div>
-        <p className="eyebrow">Activate your account</p>
-        <h1>Set your password for {state.hospitalName}.</h1>
-        <p>Signing in as {state.email}. Once your password is set, you'll be taken straight to your hospital home page.</p>
-      </section>
-      <form className="login-panel registration-activation-panel" onSubmit={submit}>
-        <img src={hospitalLogo} alt="NABH Docs" className="login-logo" />
-        <p className="eyebrow">First-time setup</p>
-        <h2>Complete registration</h2>
-        <div className="activation-fields">
-          <label>Hospital name<input value={state.hospitalName} readOnly /></label>
-          <label>Hospital address<input value={state.address} readOnly /></label>
-          <label>Hospital city<input value={state.city} readOnly /></label>
-          <label>Hospital Admin name<input value={state.adminName} readOnly /></label>
-          <label>Hospital email<input value={state.email} readOnly /></label>
-          <label>Contact phone<input value={state.contactPhone} readOnly /></label>
-          <label>Hospital code<input value={hospitalCode} maxLength={4} pattern="[A-Za-z0-9]{4}" onChange={(event) => setHospitalCode(event.target.value.toUpperCase())} required /></label>
+    <main className="admin-main">
+      <header>
+        <div className="brand">
+          <img src={hospitalLogo} alt="NABH Readiness System" />
+          <div><p className="eyebrow">NABH readiness platform</p><h1>Complete hospital registration</h1></div>
         </div>
-        <p className="login-hint">Hospital code must be exactly four letters or numbers.</p>
-        <h3>Set your password</h3>
-        <label>New password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" /></label>
-        <label>Confirm password<input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" /></label>
+        <p className="intro">Review your hospital details, choose a hospital code, and set your password to activate the administrator account.</p>
+      </header>
+      <form className="admin-form registration-form registration-activation-form" onSubmit={submit}>
+        <section>
+          <h3>Hospital and administrator details</h3>
+          <div className="admin-fields">
+            <label>Hospital name<input value={state.hospitalName} readOnly /></label>
+            <label>Hospital address<input value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} required /></label>
+            <label>Hospital city<input value={city} onChange={(event) => setCity(event.target.value)} required /></label>
+            <label>Hospital Admin name<input value={state.adminName} readOnly /></label>
+            <label>Hospital email<input value={state.email} readOnly /></label>
+            <label>Contact phone<input value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} required /></label>
+          </div>
+        </section>
+        <section>
+          <h3>Hospital code</h3>
+          <div className="admin-fields">
+            <label>Hospital code<input value={hospitalCode} maxLength={4} pattern="[A-Za-z0-9]{4}" onChange={(event) => setHospitalCode(event.target.value.toUpperCase())} required /></label>
+          </div>
+          <p className="access-message">Hospital code must be exactly four letters or numbers.</p>
+        </section>
+        <section>
+          <h3>Set password</h3>
+          <div className="admin-fields">
+            <label>New password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></label>
+            <label>Confirm password<input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" required /></label>
+          </div>
+        </section>
         {error && <p className="status error">{error}</p>}
-        <button className="login-submit" disabled={submitting}>{submitting ? "Setting password..." : "Set password & continue"} <ArrowRight size={16} /></button>
+        <button className="primary-button" disabled={submitting}>{submitting ? "Completing registration..." : "Complete registration"} <ArrowRight size={16} /></button>
       </form>
     </main>
   );
