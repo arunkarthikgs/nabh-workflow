@@ -595,7 +595,8 @@ tr.history-row td { background: #f7f7f5; }
 .permission-summary span { border-radius: 3px; font-size: 10px; font-weight: 700; padding: 2px 5px; text-transform: capitalize; }
 .permission-summary .allowed { background: #dbeddb; color: #2f6b47; }
 .permission-summary .denied { background: #f1f1ef; color: #9b9a97; text-decoration: line-through; }
-.access-control { max-width: 1120px; }
+.admin-main:has(.access-control) { width: min(1440px, calc(100% - 32px)); }
+.access-control { max-width: none; width: 100%; }
 .access-tabs { border-bottom: 1px solid #e9e9e7; display: flex; gap: 4px; margin-bottom: 24px; }
 .access-tabs button { align-items: center; background: transparent; border: 0; border-radius: 4px 4px 0 0; color: #787774; cursor: pointer; display: inline-flex; font: 600 12px "Manrope", sans-serif; gap: 7px; padding: 10px 12px; }
 .access-tabs button:hover { background: #f7f7f5; color: #37352f; }
@@ -664,8 +665,10 @@ tr.history-row td { background: #f7f7f5; }
 .role-group-row td { background: #f7f7f5; border-top: 1px solid #dededb; padding: 8px 10px; text-align: left !important; }
 .role-group-row .role-group-toggle { padding: 0; }
 .role-group-row:hover td { background: #efefed; }
-.permission-table { overflow-x: auto; }
-.permission-table table { min-width: 680px; }
+.permission-table { overflow-x: auto; width: 100%; }
+.permission-table table { min-width: 1420px; table-layout: fixed; }
+.permission-table th, .permission-table td { min-width: 84px; }
+.permission-table th:first-child, .permission-table td:first-child { min-width: 220px; width: 220px; }
 .matrix-group { border-bottom: 1px solid #e9e9e7; }
 .matrix-group > .role-group-toggle { padding: 10px 4px; }
 .matrix-group > table { margin: 0 0 12px; }
