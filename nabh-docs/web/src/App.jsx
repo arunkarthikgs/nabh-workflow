@@ -117,6 +117,14 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(value));
 }
 
+function parseAuditFilterDate(value, endOfDay = false) {
+  const match = String(value || "").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day), endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  return date.getFullYear() === Number(year) && date.getMonth() === Number(month) - 1 && date.getDate() === Number(day) ? date : null;
+}
+
 function readUrlState() {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -2295,14 +2303,12 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
       if (entry.timestamp) {
         const entryDate = new Date(entry.timestamp);
         if (startDate) {
-          const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
-          const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
-          if (entryDate < start) return false;
+          const start = parseAuditFilterDate(startDate);
+          if (start && entryDate < start) return false;
         }
         if (endDate) {
-          const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
-          const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
-          if (entryDate > end) return false;
+          const end = parseAuditFilterDate(endDate, true);
+          if (end && entryDate > end) return false;
         }
       }
 
@@ -2412,22 +2418,28 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
             <div className="audit-filter-item">
               <label className="filter-label">From Date</label>
               <input
-                type="date"
-                lang="en-GB"
+                type="text"
                 className="audit-date-input"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                placeholder="DD/MM/YYYY"
+                inputMode="numeric"
+                maxLength={10}
+                aria-label="From date in DD/MM/YYYY format"
               />
             </div>
 
             <div className="audit-filter-item">
               <label className="filter-label">To Date</label>
               <input
-                type="date"
-                lang="en-GB"
+                type="text"
                 className="audit-date-input"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                placeholder="DD/MM/YYYY"
+                inputMode="numeric"
+                maxLength={10}
+                aria-label="To date in DD/MM/YYYY format"
               />
             </div>
 
@@ -2450,6 +2462,15 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
           <>
           {selectedHospitalLabel && <div className="audit-scope-banner"><span>Hospital</span><strong>{selectedHospitalLabel}</strong></div>}
           <table className={`audit-table ${hospitalId ? "hospital-audit-table" : ""}`}>
+            <colgroup>
+              <col className="audit-col-when" />
+              <col className="audit-col-document" />
+              <col className="audit-col-department" />
+              <col className="audit-col-version" />
+              <col className="audit-col-approved-by" />
+              <col className="audit-col-action" />
+              <col className="audit-col-note" />
+            </colgroup>
             <thead>
               <tr>
                 <th>When</th>
@@ -2473,7 +2494,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
                     }
                   >
                     <td className="audit-time">{formatDateTime(entry.timestamp)}</td>
-                    <td>
+                    <td className="audit-document-cell">
                       <strong>{entry.documentName || "Document"}</strong>
                       <br />
                       <span className="audit-document-path">{entry.documentId || entry.templatePath || entry.objectKey || "-"}</span>
