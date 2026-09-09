@@ -428,7 +428,7 @@ export function info() {
 
 export async function listRegistryMetadata() {
   const client = await connect();
-  const { rows } = await client.query(`select id, label, registry_type, category, description, is_enabled from nabh_registry_metadata where is_enabled = true order by category, label`);
+  const { rows } = await client.query(`select id, label, registry_type, category, description, is_enabled from nabh_registry_metadata where is_enabled = true order by category asc, label asc`);
   return rows.map((row) => ({ id: row.id, label: row.label, registryType: row.registry_type, category: row.category, description: row.description }));
 }
 
