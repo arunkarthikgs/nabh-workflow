@@ -38,6 +38,8 @@ export async function saveHospitalDocumentCatalog(hospitalId, programme, entries
 export async function hospitalDocumentCatalogExists(hospitalId) { return (await store()).hospitalDocumentCatalogExists(hospitalId); }
 export async function listTemplateCatalog(programme) { return (await store()).listTemplateCatalog(programme); }
 export async function saveTemplateCatalog(programme, entries) { return (await store()).saveTemplateCatalog(programme, entries); }
+export async function getDocumentVersionCache(scope, hospitalId, programme, documentKey) { return (await store()).getDocumentVersionCache(scope, hospitalId, programme, documentKey); }
+export async function saveDocumentVersionCache(scope, hospitalId, programme, documentKey, manifest) { return (await store()).saveDocumentVersionCache(scope, hospitalId, programme, documentKey, manifest); }
 
 export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);

@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -1143,6 +1143,7 @@ app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ typ
       approvedBy: request.get("X-Approved-By"),
       note: request.get("X-Approval-Note")
     });
+    if (usesPostgresDataStore()) saveDocumentVersionCache("client", hospital.id, hospital.accreditation?.programme, manifest.documentKey, manifest).catch((error) => console.warn("Unable to cache document version manifest:", error.message));
     response.status(201).json({ document: manifest });
   } catch (error) { if (error?.reason === "document_locked") response.status(error.status).json({ error: error.message, reason: error.reason }); else if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -1152,7 +1153,15 @@ app.get("/api/admin/template-library/versions", async (request, response, next) 
     const programme = String(request.query.programme || "").trim();
     const relativePath = String(request.query.path || "");
     if (!programme || !relativePath) return response.status(400).json({ error: "Programme and template path are required." });
-    response.json({ document: await getR2TemplateVersionManifest(programme, relativePath) });
+    // Must resolve the same key used when the version was approved (documentId takes priority over path there too).
+    const resolvedKey = getDocumentKey(request.query.documentId, request.query.documentName, relativePath);
+    if (usesPostgresDataStore()) {
+      const cached = await getDocumentVersionCache("template", "", programme, resolvedKey);
+      if (cached) return response.json({ document: cached });
+    }
+    const manifest = await getR2TemplateVersionManifest(programme, relativePath);
+    if (usesPostgresDataStore() && manifest) saveDocumentVersionCache("template", "", programme, resolvedKey, manifest).catch((error) => console.warn("Unable to cache template version manifest:", error.message));
+    response.json({ document: manifest });
   } catch (error) { next(error); }
 });
 
@@ -1161,6 +1170,7 @@ app.post("/api/admin/template-library/approve", express.raw({ type: "application
     const manifest = await approveR2TemplateDocumentVersion({
       programme: request.get("X-Programme"), documentId: request.get("X-Document-Id"), documentName: request.get("X-Document-Name"), department: request.get("X-Department"), relativePath: request.get("X-Document-Path"), fileName: request.get("X-File-Name"), bytes: request.body, approvedBy: request.get("X-Approved-By"), note: request.get("X-Approval-Note")
     });
+    if (usesPostgresDataStore()) saveDocumentVersionCache("template", "", manifest.programme, manifest.documentKey, manifest).catch((error) => console.warn("Unable to cache template version manifest:", error.message));
     response.status(201).json({ document: manifest });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
@@ -1341,7 +1351,14 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version-manifest", async (re
     if (!documentKey) return response.status(400).json({ error: "documentKey is required." });
     // Must resolve the same key used when the version was approved (documentId takes priority over path there too).
     const resolvedKey = getDocumentKey(request.query.documentId, request.query.documentName, documentKey);
-    response.json({ manifest: await getR2ClientVersionManifest(hospital.code, resolvedKey, hospital.accreditation?.programme) });
+    const programme = hospital.accreditation?.programme;
+    if (usesPostgresDataStore()) {
+      const cached = await getDocumentVersionCache("client", hospital.id, programme, resolvedKey);
+      if (cached) return response.json({ manifest: cached });
+    }
+    const manifest = await getR2ClientVersionManifest(hospital.code, resolvedKey, programme);
+    if (usesPostgresDataStore() && manifest) saveDocumentVersionCache("client", hospital.id, programme, resolvedKey, manifest).catch((error) => console.warn("Unable to cache document version manifest:", error.message));
+    response.json({ manifest });
   } catch (error) { next(error); }
 });
 

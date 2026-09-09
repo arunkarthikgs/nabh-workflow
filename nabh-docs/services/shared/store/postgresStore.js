@@ -307,6 +307,16 @@ const schemaStatements = [
      unique (programme, template_path)
    )`,
   `create index if not exists idx_nabh_template_catalog_programme on nabh_template_catalog(programme)`,
+  `create table if not exists nabh_document_version_cache (
+     id uuid primary key,
+     scope text not null check (scope in ('client', 'template')),
+     hospital_id text not null default '',
+     programme text not null,
+     document_key varchar(500) not null,
+     manifest jsonb not null,
+     updated_at timestamptz not null default now(),
+     unique (scope, hospital_id, programme, document_key)
+   )`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -521,6 +531,26 @@ export async function saveTemplateCatalog(programme, entries) {
     await client.query("rollback");
     throw error;
   }
+}
+
+// Caches the R2 version manifest (approval history) so the version-history icon doesn't need a
+// GetObject on every click. R2 stays the source of truth for the approve/upload write path; this
+// is only refreshed on a cache miss or right after a new version is approved.
+export async function getDocumentVersionCache(scope, hospitalId, programme, documentKey) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(
+    `select manifest from nabh_document_version_cache where scope = $1 and hospital_id = $2 and programme = $3 and document_key = $4`,
+    [scope, hospitalId || "", programme, documentKey]
+  );
+  return row ? row.manifest : null;
+}
+
+export async function saveDocumentVersionCache(scope, hospitalId, programme, documentKey, manifest) {
+  const client = await connect();
+  await client.query(
+    `insert into nabh_document_version_cache (id, scope, hospital_id, programme, document_key, manifest) values ($1, $2, $3, $4, $5, $6::jsonb) on conflict (scope, hospital_id, programme, document_key) do update set manifest = excluded.manifest, updated_at = now()`,
+    [randomUUID(), scope, hospitalId || "", programme, documentKey, JSON.stringify(manifest)]
+  );
 }
 
 function isoDate(value) {

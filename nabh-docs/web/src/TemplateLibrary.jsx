@@ -94,7 +94,8 @@ export default function TemplateLibrary() {
   async function showHistory(template) {
     setHistoryLoadingPath(template.templatePath);
     try {
-      const response = await fetch(`/api/admin/template-library/versions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
+      const params = new URLSearchParams({ programme, path: template.templatePath, documentId: template.documentId || "", documentName: template.documentName || "" });
+      const response = await fetch(`/api/admin/template-library/versions?${params.toString()}`);
       const result = await response.json();
       if (!response.ok) { setError(result.error || "Unable to load template history."); return; }
       setHistory({ template, document: result.document });
