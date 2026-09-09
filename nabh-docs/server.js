@@ -188,7 +188,7 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
     }
     if (request.query.view === "registry") {
       if (request.appSession.role === "Super Admin") {
-        const registryHospitals = (await listHospitals()).map(({ users, roles, ...hospital }) => hospital);
+        const registryHospitals = await readHospitalRegistry();
         return response.json({ hospitals: await Promise.all(registryHospitals.map(hydrateHospitalAccreditation)) });
       }
       const own = (await listHospitals()).find((item) => item.id === targetHospitalId);
@@ -271,6 +271,15 @@ app.patch("/api/admin/hospitals/:hospitalId/users/:userId", async (request, resp
 
 app.delete("/api/admin/hospitals/:hospitalId/users/:userId", async (request, response, next) => {
   try { const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId); if (!hospital) return response.status(404).json({ error: "Hospital not found." }); requireActiveHospital(hospital); const deleted = await deleteHospitalUser(request.params.hospitalId, request.params.userId); if (!deleted) return response.status(404).json({ error: "User not found." }); response.status(204).end(); } catch (error) { next(error); }
+});
+
+app.get("/api/admin/hospitals/:hospitalId/users", async (request, response, next) => {
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const users = (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }));
+    response.json({ hospital: { id: hospital.id, name: hospital.name, code: hospital.code, status: hospital.status, logoPath: hospital.logoPath || "" }, users });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/admin/users", async (request, response, next) => {

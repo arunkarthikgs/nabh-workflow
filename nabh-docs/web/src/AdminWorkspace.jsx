@@ -110,10 +110,10 @@ export default function AdminWorkspace({
   const hospital = hospitals.find((item) => item.id === scopedHospitalId);
   async function load() {
     setLoading(true);
-    const response = await fetch("/api/admin/hospitals");
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(scopedHospitalId)}/users`);
     if (!response.ok) throw new Error("Unable to load hospital users.");
-    const { hospitals: records } = await response.json();
-    setHospitals(records);
+    const result = await response.json();
+    setHospitals([{ ...result.hospital, users: result.users || [] }]);
     setLoading(false);
   }
   useEffect(() => {
