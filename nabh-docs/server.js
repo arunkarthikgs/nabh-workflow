@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
@@ -329,6 +329,12 @@ app.get("/api/admin/me/session", async (request, response, next) => {
     const role = roles.find((item) => item.name === user.role);
     response.json({ role: user.role, permissions: role?.permissions || ["view_documents"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath });
   } catch (error) { next(error); }
+});
+
+// Backs the role/department dropdowns; source of truth is the nabh_registry_metadata table.
+app.get("/api/admin/registry-metadata", async (_request, response, next) => {
+  try { response.json({ groups: await listRegistryGroups() }); }
+  catch (error) { next(error); }
 });
 
 app.post("/api/admin/smtp/verify", async (_request, response) => {

@@ -8,26 +8,20 @@ const actions = [
   ["manage_roles", "Manage roles"], ["manage_profile", "Manage profile"], ["select_accreditation", "Select accreditation"],
   ["manage_bookings", "Manage bookings"], ["delete_documents", "Delete documents"]
 ].map(([id, label]) => ({ id, label }));
-const groups = {
-  "Administrative & Management": ["Hospital Administrator", "Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator", "Medical Records Officer (MRD)", "Front Office Executive", "Billing Executive"],
-  "Clinical Care": ["Consultant Doctors", "Resident Medical Officer (RMO)", "Nurses", "Anesthesiologist", "Surgeon", "Physiotherapist", "Dietician"],
-  "Emergency & Critical Care": ["Emergency Medical Officer", "Trauma Nurse", "Intensivist", "Critical Care Nurse"],
-  "Diagnostics & Laboratory": ["Lab Technician", "Pathologist", "Radiologist", "Radiology Technician"],
-  "Pharmacy & Medication": ["Pharmacist", "Pharmacy Store Manager", "Clinical Pharmacist"],
-  "Quality, Safety & NABH": ["Infection Control Nurse (ICN)", "Patient Safety Officer", "Safety Officer", "Biomedical Engineer"],
-  "Facility Management & Support": ["Housekeeping Supervisor", "Security Officer", "Maintenance Engineer", "Ward Boy / Patient Transporter"],
-  "Finance, Insurance & TPA": ["Accounts Manager", "TPA Coordinator", "Audit Officer"],
-  "Operation Theatre": ["OT Nurse", "Scrub Nurse", "Circulating Nurse", "OT Technician"],
-  "NABH-Mandated Committees": ["Quality Committee Members", "Infection Control Committee (ICC)", "Pharmacy & Therapeutics Committee (PTC)", "Safety Committee", "Medical Records Committee", "Biomedical Committee"]
-};
 const blankRole = { name: "", documentAccess: {}, scopeMode: "selected_documents", permissions: ["view_documents"] };
 const NABH_WORKSPACE_CATEGORIES = ["Manuals", "Policies", "Standard Operating Procedures", "Forms and Formats", "Registers", "Department Manuals", "Checklists", "Training Requirements", "Records and Evidence"];
 const CATEGORY_RULES = [["Standard Operating Procedures", /\bsops?\b|standard operating procedure/i], ["Checklists", /\bchecklist/i], ["Registers", /\bregister/i], ["Policies", /\bpolic(y|ies)\b/i], ["Forms and Formats", /\bforms?\b|\bformats?\b/i], ["Training Requirements", /\btraining\b|\binduction\b/i], ["Records and Evidence", /\brecords?\b|\bevidence\b|\baudit\b/i], ["Manuals", /\bmanual\b/i]];
 function classifyDocument(documentName) { for (const [category, pattern] of CATEGORY_RULES) if (pattern.test(documentName)) return category; return "Department Manuals"; }
-function groupRoles(roles) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
+function groupRoles(roles, groups) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
-  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending");
+  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
+  useEffect(() => {
+    fetch("/api/admin/registry-metadata")
+      .then((response) => (response.ok ? response.json() : { groups: {} }))
+      .then((result) => setRoleGroups(result.groups || {}))
+      .catch(() => setRoleGroups({}));
+  }, []);
   const isReadOnly = hospitalStatus !== "active";
   async function load() { const roleResponse = await fetch(`/api/admin/hospitals/${hospitalId}/roles`); if (!roleResponse.ok) throw new Error("Unable to load role access data."); const result = await roleResponse.json(), loadedRoles = result.roles || [], hospital = result.hospital || {}; setRoles(loadedRoles); setSelectedId((current) => loadedRoles.some((role) => role.id === current) ? current : loadedRoles[0]?.id || ""); setLogoPath(hospital.logoPath || hospitalLogoPath || ""); setHospitalStatus(hospital.status || "pending"); }
   useEffect(() => { load().catch((error) => setMessage(error.message)); }, [hospitalId]);
@@ -113,7 +107,7 @@ export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoP
     panel.before(input);
     return () => { input.removeEventListener("input", handleInput); input.remove(); };
   }, [tab, roles]);
-  const selectedRole = roles.find((role) => role.id === selectedId), docs = departments[department] || [], selectedDocs = draft.documentAccess[department] || [], grouped = groupRoles(roles);
+  const selectedRole = roles.find((role) => role.id === selectedId), docs = departments[department] || [], selectedDocs = draft.documentAccess[department] || [], grouped = groupRoles(roles, roleGroups);
   const visibleRoleGroups = rolesQuery ? grouped.map(([group, members]) => [group, members.filter((role) => group.toLowerCase().includes(rolesQuery) || role.name.toLowerCase().includes(rolesQuery))]).filter(([, members]) => members.length) : grouped;
   const count = (role) => Object.values(role.documentAccess || {}).flat().length;
   const complete = (name) => departments[name]?.length > 0 && (draft.documentAccess[name] || []).length === departments[name].length;

@@ -11,76 +11,6 @@ import {
   Users,
 } from "lucide-react";
 
-const roleGroups = {
-  "Administrative & Management": [
-    "Hospital Administrator",
-    "Quality Manager",
-    "NABH Coordinator",
-    "Internal Auditor",
-    "HR Manager",
-    "IT Administrator",
-    "Medical Records Officer (MRD)",
-    "Front Office Executive",
-    "Billing Executive",
-  ],
-  "Clinical Care": [
-    "Consultant Doctors",
-    "Resident Medical Officer (RMO)",
-    "Nurses",
-    "Anesthesiologist",
-    "Surgeon",
-    "Physiotherapist",
-    "Dietician",
-  ],
-  "Emergency & Critical Care": [
-    "Emergency Medical Officer",
-    "Trauma Nurse",
-    "Intensivist",
-    "Critical Care Nurse",
-  ],
-  "Diagnostics & Laboratory": [
-    "Lab Technician",
-    "Pathologist",
-    "Radiologist",
-    "Radiology Technician",
-  ],
-  "Pharmacy & Medication": [
-    "Pharmacist",
-    "Pharmacy Store Manager",
-    "Clinical Pharmacist",
-  ],
-  "Quality, Safety & NABH": [
-    "Infection Control Nurse (ICN)",
-    "Patient Safety Officer",
-    "Safety Officer",
-    "Biomedical Engineer",
-  ],
-  "Facility Management & Support": [
-    "Housekeeping Supervisor",
-    "Security Officer",
-    "Maintenance Engineer",
-    "Ward Boy / Patient Transporter",
-  ],
-  "Finance, Insurance & TPA": [
-    "Accounts Manager",
-    "TPA Coordinator",
-    "Audit Officer",
-  ],
-  "Operation Theatre": [
-    "OT Nurse",
-    "Scrub Nurse",
-    "Circulating Nurse",
-    "OT Technician",
-  ],
-  "NABH-Mandated Committees": [
-    "Quality Committee Members",
-    "Infection Control Committee (ICC)",
-    "Pharmacy & Therapeutics Committee (PTC)",
-    "Safety Committee",
-    "Medical Records Committee",
-    "Biomedical Committee",
-  ],
-};
 const blankUser = {
   name: "",
   dateOfBirth: "",
@@ -106,6 +36,7 @@ export default function AdminWorkspace({
     [query, setQuery] = useState(""),
     [tab, setTab] = useState("assigned"),
     [loading, setLoading] = useState(false),
+    [roleGroups, setRoleGroups] = useState({}),
     [message, setMessage] = useState("");
   const hospital = hospitals.find((item) => item.id === scopedHospitalId);
   async function load() {
@@ -119,6 +50,13 @@ export default function AdminWorkspace({
   useEffect(() => {
     load().catch((error) => setMessage(error.message)).finally(() => setLoading(false));
   }, [scopedHospitalId]);
+
+  useEffect(() => {
+    fetch("/api/admin/registry-metadata")
+      .then((response) => (response.ok ? response.json() : { groups: {} }))
+      .then((result) => setRoleGroups(result.groups || {}))
+      .catch(() => setRoleGroups({}));
+  }, []);
 
   useEffect(() => {
     setUser(blankUser);

@@ -396,6 +396,22 @@ export function info() {
   return { driver: "postgres", target: `${config.host}:${config.port}/${config.database}` };
 }
 
+export async function listRegistryMetadata() {
+  const client = await connect();
+  const { rows } = await client.query(`select id, label, registry_type, category, description, is_enabled from nabh_registry_metadata where is_enabled = true order by category, label`);
+  return rows.map((row) => ({ id: row.id, label: row.label, registryType: row.registry_type, category: row.category, description: row.description }));
+}
+
+export async function seedRegistryMetadata(rows) {
+  const client = await connect();
+  for (const row of rows) {
+    await client.query(
+      `insert into nabh_registry_metadata (id, label, registry_type, category, description) values ($1, $2, $3, $4, $5) on conflict (id) do nothing`,
+      [row.id, row.label, row.registryType, row.category, row.description]
+    );
+  }
+}
+
 function isoDate(value) {
   return value instanceof Date ? value.toISOString() : value || new Date().toISOString();
 }

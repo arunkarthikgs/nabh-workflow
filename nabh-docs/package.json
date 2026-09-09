@@ -10,6 +10,7 @@
     "server": "node server.js",
     "db:migrate": "DATA_STORE=postgres node scripts/migrateToPostgres.js",
     "db:reset-hospitals": "DATA_STORE=postgres RESET_HOSPITAL_DOMAIN=1 node scripts/resetHospitalsAndUsers.js",
+    "db:seed-registry": "DATA_STORE=postgres node scripts/seedRegistryMetadata.js",
     "ui": "npm --prefix web run dev",
     "ui:build": "npm --prefix web run build",
     "prototype": "node workflows/generateFullStaticPrototype.js",

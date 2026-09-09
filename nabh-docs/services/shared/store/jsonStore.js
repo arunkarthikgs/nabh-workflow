@@ -29,6 +29,11 @@ export function info() {
   return { driver: "json", hospitalsPath, documentMatchesPath, documentAuditPath };
 }
 
+// The registry catalog (nabh_registry_metadata) currently lives only in PostgreSQL.
+export async function listRegistryMetadata() {
+  throw new Error("The NABH registry catalog requires DATA_STORE=postgres.");
+}
+
 export async function readHospitals() {
   return readJson(hospitalsPath, []);
 }

@@ -1,14 +1,27 @@
 import { randomBytes, randomUUID } from "crypto";
 import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
-import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
+import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, listRegistryMetadata, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
   ["maitri_mental_health.png", "Maitri Mental Health"], ["prana_mother_child_care.png", "Prana Mother Child Care"], ["surya_multispecialty.png", "Surya Multispecialty"], ["trishul_orthopedic_centre.png", "Trishul Orthopedic Centre"], ["vaidya_rural_health.png", "Vaidya Rural Health"]
 ];
-const defaultRoles = [
-  "Hospital Administrator", "Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator", "Medical Records Officer (MRD)", "Front Office Executive", "Billing Executive", "Consultant Doctors", "Resident Medical Officer (RMO)", "Nurses", "Anesthesiologist", "Surgeon", "Physiotherapist", "Dietician", "Emergency Medical Officer", "Trauma Nurse", "Intensivist", "Critical Care Nurse", "Lab Technician", "Pathologist", "Radiologist", "Radiology Technician", "Pharmacist", "Pharmacy Store Manager", "Clinical Pharmacist", "Infection Control Nurse (ICN)", "Patient Safety Officer", "Safety Officer", "Biomedical Engineer"
-].map((name) => ({ id: randomUUID(), name, reports: name.includes("Quality") || name.includes("NABH") || name.includes("Auditor") ? ["Master List", "Compliance Summary", "Document Matches"] : name.includes("Records") ? ["Master List", "Document Matches"] : ["Master List"] }));
+function reportsFor(name) {
+  if (name.includes("Quality") || name.includes("NABH") || name.includes("Auditor")) return ["Master List", "Compliance Summary", "Document Matches"];
+  if (name.includes("Records")) return ["Master List", "Document Matches"];
+  return ["Master List"];
+}
+// Role catalog now lives in the nabh_registry_metadata table (departments/specialties/committees).
+export async function listRegistryGroups() {
+  const rows = await listRegistryMetadata();
+  const groups = {};
+  for (const row of rows) (groups[row.category] ||= []).push(row.label);
+  return groups;
+}
+async function defaultRoles() {
+  const rows = await listRegistryMetadata();
+  return rows.map(({ label: name }) => ({ id: randomUUID(), name, reports: reportsFor(name) }));
+}
 export const roleActions = ["view_documents", "edit_documents", "submit_documents", "approve_documents", "request_changes", "reopen_documents", "upload_evidence", "view_audit", "manage_users", "manage_roles", "manage_profile", "select_accreditation", "manage_bookings", "delete_documents"];
 const legacyPermissionMap = { view: "view_documents", edit: "edit_documents", delete: "delete_documents", destroy: "delete_documents" };
 const privilegedRoles = new Set(["Hospital Administrator", "IT Administrator"]);
@@ -19,14 +32,15 @@ function defaultPermissions(roleName) {
   return ["view_documents"];
 }
 
-function rolesForHospital(hospital) {
-  if (!Array.isArray(hospital.roles)) hospital.roles = defaultRoles.map((role) => ({ ...role, id: randomUUID(), documentAccess: {}, scopeMode: privilegedRoles.has(role.name) ? "all_documents" : "selected_documents", permissions: defaultPermissions(role.name) }));
+async function rolesForHospital(hospital) {
+  if (!Array.isArray(hospital.roles)) hospital.roles = (await defaultRoles()).map((role) => ({ ...role, id: randomUUID(), documentAccess: {}, scopeMode: privilegedRoles.has(role.name) ? "all_documents" : "selected_documents", permissions: defaultPermissions(role.name) }));
   hospital.roles.forEach((role) => {
     role.permissions = permissions(role.permissions, role.name);
     role.scopeMode = ["all_documents", "assigned_departments", "selected_documents", "own_submissions"].includes(role.scopeMode) ? role.scopeMode : "selected_documents";
   });
   return hospital.roles;
 }
+
 
 function documentAccess(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -168,7 +182,7 @@ export async function deleteHospitalUser(hospitalId, userId) {
 export async function listHospitalRoles(hospitalId, knownHospital = null) {
   const hospital = knownHospital || (await listHospitals()).find((item) => item.id === hospitalId);
   if (!hospital) return null;
-  const roles = rolesForHospital(hospital);
+  const roles = await rolesForHospital(hospital);
   if (roles.length && roles.every((role) => role.defaultAccessApplied)) return roles;
   const allDocuments = await allDocumentsByDepartment();
   if (!Object.keys(allDocuments).length) return roles;
@@ -195,7 +209,7 @@ export async function createHospitalRole(hospitalId, input) {
   if (!hospital) return null;
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
-  const roles = rolesForHospital(hospital);
+  const roles = await rolesForHospital(hospital);
   if (roles.some((role) => role.name.toLowerCase() === name.toLowerCase())) throw new Error("This role already exists.");
   const role = { id: randomUUID(), name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), scopeMode: ["all_documents", "assigned_departments", "selected_documents", "own_submissions"].includes(input.scopeMode) ? input.scopeMode : "selected_documents", permissions: permissions(input.permissions, name) };
   return saveHospitalRole(hospital.id, role);
@@ -205,7 +219,7 @@ export async function updateHospitalRole(hospitalId, roleId, input) {
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return undefined;
-  const role = rolesForHospital(hospital).find((item) => item.id === roleId);
+  const role = (await rolesForHospital(hospital)).find((item) => item.id === roleId);
   if (!role) return null;
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
@@ -217,7 +231,7 @@ export async function deleteHospitalRole(hospitalId, roleId) {
   const hospitals = await readHospitals();
   const hospital = hospitals.find((item) => item.id === hospitalId);
   if (!hospital) return undefined;
-  const roles = rolesForHospital(hospital);
+  const roles = await rolesForHospital(hospital);
   const remaining = roles.filter((role) => role.id !== roleId);
   if (remaining.length === roles.length) return false;
   return deleteHospitalRoleRecord(hospital.id, roleId);
