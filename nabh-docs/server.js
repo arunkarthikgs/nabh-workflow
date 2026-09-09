@@ -187,7 +187,10 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
       return response.json({ total: own ? 1 : 0, pending: own?.status === "pending" ? 1 : 0, active: own?.status === "active" ? 1 : 0, users: own?.users?.length || 0 });
     }
     if (request.query.view === "registry") {
-      if (request.appSession.role === "Super Admin") return response.json({ hospitals: await readHospitalRegistry() });
+      if (request.appSession.role === "Super Admin") {
+        const registryHospitals = (await listHospitals()).map(({ users, roles, ...hospital }) => hospital);
+        return response.json({ hospitals: await Promise.all(registryHospitals.map(hydrateHospitalAccreditation)) });
+      }
       const own = (await listHospitals()).find((item) => item.id === targetHospitalId);
       return response.json({ hospitals: own ? [own] : [] });
     }

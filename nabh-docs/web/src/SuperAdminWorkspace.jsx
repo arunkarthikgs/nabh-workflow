@@ -188,6 +188,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
               <span>
                 <strong>{item.name}</strong>
                 <small>{item.code}</small>
+                <small>{item.accreditation?.programme || "Accreditation not selected"}</small>
                 <small className={`hospital-status hospital-status-${item.status || "active"}`}>{item.status || "active"}</small>
               </span>
             </button>

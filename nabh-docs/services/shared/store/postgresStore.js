@@ -453,7 +453,7 @@ export async function readHospitalRegistry() {
 
 export async function readHospitalSummaries() {
   const client = await connect();
-  const { rows: [summary] } = await client.query(`select count(*)::int as total, count(*) filter (where status = 'pending')::int as pending, count(*) filter (where status = 'active')::int as active, (select count(*)::int from hospital_users) as users from hospitals`);
+  const { rows: [summary] } = await client.query(`select count(*)::int as total, count(*) filter (where status = 'pending')::int as pending, count(*) filter (where status = 'active')::int as active, count(*) filter (where accreditation->>'programme' is not null and accreditation->>'programme' <> '')::int as "accreditationSelected", count(*) filter (where accreditation->>'programme' is null or accreditation->>'programme' = '')::int as "accreditationNotSelected", (select count(*)::int from hospital_users) as users from hospitals`);
   return summary;
 }
 

@@ -55,6 +55,10 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .superadmin-home-card.pending > svg, .superadmin-home-card.pending strong { color: #9a6700; }
 .superadmin-home-card.active { background: #f2f8f2; border-color: #cfe6d1; }
 .superadmin-home-card.active > svg, .superadmin-home-card.active strong { color: #2f6b47; }
+.superadmin-home-card.accreditation { background: #eef9f8; border-color: #b8e1dc; }
+.superadmin-home-card.accreditation > svg, .superadmin-home-card.accreditation strong { color: #147d78; }
+.superadmin-home-card.accreditation-missing { background: #fff1f1; border-color: #efc2c2; }
+.superadmin-home-card.accreditation-missing > svg, .superadmin-home-card.accreditation-missing strong { color: #b44343; }
 .workspace-status-banner { align-items: flex-start; border-left: 3px solid; display: grid; gap: 4px; padding: 13px 16px; }
 .workspace-status-banner strong { font-size: 13px; }
 .workspace-status-banner span { color: #5f5e5b; font-size: 12px; line-height: 1.5; }

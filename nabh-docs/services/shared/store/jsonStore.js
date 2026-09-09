@@ -39,7 +39,8 @@ export async function readHospitalRegistry() {
 
 export async function readHospitalSummaries() {
   const hospitals = await readHospitals();
-  return { total: hospitals.length, pending: hospitals.filter((hospital) => hospital.status === "pending").length, active: hospitals.filter((hospital) => hospital.status === "active").length, users: hospitals.reduce((total, hospital) => total + (hospital.users || []).length, 0) };
+  const accreditationSelected = hospitals.filter((hospital) => hospital.accreditation?.programme).length;
+  return { total: hospitals.length, pending: hospitals.filter((hospital) => hospital.status === "pending").length, active: hospitals.filter((hospital) => hospital.status === "active").length, accreditationSelected, accreditationNotSelected: hospitals.length - accreditationSelected, users: hospitals.reduce((total, hospital) => total + (hospital.users || []).length, 0) };
 }
 
 export async function saveHospitals(hospitals) {
