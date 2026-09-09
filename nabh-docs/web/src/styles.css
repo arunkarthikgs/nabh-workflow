@@ -789,8 +789,8 @@ tr.history-row td { background: #f7f7f5; }
 .specialty-multiselect fieldset { border: 0; margin: 0 0 10px; padding: 0; }
 .specialty-multiselect fieldset:last-child { margin-bottom: 0; }
 .specialty-multiselect legend { color: #4a4e82; font: 700 10px "Manrope", sans-serif; letter-spacing: .04em; margin-bottom: 4px; padding: 0; text-transform: uppercase; }
-.specialty-option { align-items: center; color: #37352f; display: flex; font: 500 12px "Manrope", sans-serif; gap: 6px; padding: 3px 0; text-transform: none; }
-.specialty-option input { margin: 0; min-height: auto; width: auto; }
+.profile-section .admin-fields .specialty-multiselect .specialty-option { align-items: center; color: #37352f; display: flex; font: 500 12px "Manrope", sans-serif; gap: 6px; padding: 3px 0; text-transform: none; white-space: nowrap; }
+.profile-section .admin-fields .specialty-multiselect input[type="checkbox"] { appearance: auto; background: none; border: 0; border-radius: 0; flex: none; height: auto; margin: 0; min-height: auto; padding: 0; width: auto; }
 .registration-activation-form input[readonly] { background: #f1f2f0; color: #787774; }
 .login-logo { display: block; height: 45px; margin-bottom: 24px; max-width: 150px; object-fit: contain; object-position: left center; }
 .login-panel h2 { font-size: 23px; margin: 5px 0 24px; }
