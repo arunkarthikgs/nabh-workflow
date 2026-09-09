@@ -58,6 +58,11 @@ export async function readHospitals() {
   return readJson(hospitalsPath, []);
 }
 
+export async function readHospitalById(idOrCode) {
+  const hospitals = await readHospitals();
+  return hospitals.find((item) => item.id === idOrCode || item.code === idOrCode) || null;
+}
+
 export async function readHospitalRegistry() {
   return (await readHospitals()).map(({ users, roles, logoDataUrl, ...hospital }) => hospital);
 }

@@ -29,6 +29,10 @@ export async function readHospitals() {
   return (await store()).readHospitals();
 }
 
+export async function readHospitalById(idOrCode) {
+  return (await store()).readHospitalById(idOrCode);
+}
+
 export async function readHospitalSummaries() { return (await store()).readHospitalSummaries(); }
 export async function readHospitalRegistry() { return (await store()).readHospitalRegistry(); }
 export async function listRegistryMetadata() { return (await store()).listRegistryMetadata(); }

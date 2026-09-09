@@ -98,9 +98,8 @@ export function recommendAccreditationProgramme(hospital) {
   return generalFacilityRecommendation(details, text);
 }
 
-export async function getAccreditationState(hospitalId) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+export async function getAccreditationState(hospitalId, knownHospital = null) {
+  const hospital = knownHospital || (await readHospitals()).find((item) => item.id === hospitalId);
   if (!hospital) return null;
   return { recommendation: recommendAccreditationProgramme(hospital), selection: hospital.accreditation || null, programmes: NABH_ACCREDITATION_PROGRAMMES };
 }

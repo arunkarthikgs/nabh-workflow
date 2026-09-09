@@ -602,6 +602,19 @@ export async function readHospitals() {
   return hospitals.rows.map((row) => toHospital(row, usersByHospital.get(row.id) || [], rolesByHospital.get(row.id) || []));
 }
 
+// Indexed single-hospital lookup (by id or code) so callers don't have to pull every hospital
+// plus every hospital's users/roles just to find one - readHospitals() scales with platform size.
+export async function readHospitalById(idOrCode) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(`select * from hospitals where id::text = $1 or code = $1 limit 1`, [idOrCode]);
+  if (!row) return null;
+  const [users, roles] = await Promise.all([
+    client.query(`select * from hospital_users where hospital_id = $1 order by ordinal, created_at`, [row.id]),
+    client.query(`select * from hospital_roles where hospital_id = $1 order by ordinal`, [row.id])
+  ]);
+  return toHospital(row, users.rows.map(toUser), roles.rows.map(toRole));
+}
+
 export async function readHospitalRegistry() {
   const client = await connect();
   const { rows } = await client.query(`select id, ordinal, name, code, location, status, logo_path, repository, details, registration_status, accreditation, created_at, updated_at from hospitals order by ordinal, created_at`);
