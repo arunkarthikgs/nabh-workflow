@@ -286,6 +286,27 @@ const schemaStatements = [
      updated_at timestamptz not null default now()
    )`,
   `create index if not exists idx_nabh_role_master_category on nabh_role_master(category)`,
+  `create table if not exists nabh_hospital_document_catalog (
+     id uuid primary key,
+     hospital_id uuid not null,
+     programme text not null,
+     department text not null,
+     template_path varchar(500) not null,
+     file_path varchar(500) not null,
+     synced_at timestamptz not null default now(),
+     unique (hospital_id, template_path)
+   )`,
+  `create index if not exists idx_nabh_hospital_document_catalog_hospital on nabh_hospital_document_catalog(hospital_id)`,
+  `create table if not exists nabh_template_catalog (
+     id uuid primary key,
+     programme text not null,
+     department text not null,
+     template_path varchar(500) not null,
+     file_path varchar(500) not null,
+     synced_at timestamptz not null default now(),
+     unique (programme, template_path)
+   )`,
+  `create index if not exists idx_nabh_template_catalog_programme on nabh_template_catalog(programme)`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -439,6 +460,58 @@ export async function seedRegistryMetadata(rows) {
       `insert into nabh_registry_metadata (id, label, registry_type, category, description) values ($1, $2, $3, $4, $5) on conflict (id) do nothing`,
       [row.id, row.label, row.registryType, row.category, row.description]
     );
+  }
+}
+
+// Cache of each hospital's client document files (template_path + real R2 object key), populated
+// once when templates are synced so the document workspace doesn't need to list R2 on every load.
+export async function listHospitalDocumentCatalog(hospitalId) {
+  const client = await connect();
+  const { rows } = await client.query(`select programme, department, template_path, file_path from nabh_hospital_document_catalog where hospital_id = $1 order by department, template_path`, [hospitalId]);
+  return rows.map((row) => ({ programme: row.programme, department: row.department, templatePath: row.template_path, filePath: row.file_path }));
+}
+
+export async function saveHospitalDocumentCatalog(hospitalId, programme, entries) {
+  const client = await connect();
+  await client.query("begin");
+  try {
+    await client.query(`delete from nabh_hospital_document_catalog where hospital_id = $1 and programme = $2`, [hospitalId, programme]);
+    for (const entry of entries) {
+      await client.query(
+        `insert into nabh_hospital_document_catalog (id, hospital_id, programme, department, template_path, file_path) values ($1, $2, $3, $4, $5, $6) on conflict (hospital_id, template_path) do update set department = excluded.department, file_path = excluded.file_path, synced_at = now()`,
+        [randomUUID(), hospitalId, programme, entry.department, entry.templatePath, entry.filePath]
+      );
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  }
+}
+
+// Same idea as the hospital document catalog above, but for the global Template Library
+// (Templates/<programme>/...) so its listing doesn't need to hit R2 on every page load either.
+export async function listTemplateCatalog(programme) {
+  const client = await connect();
+  const { rows } = await client.query(`select department, template_path, file_path from nabh_template_catalog where programme = $1 order by department, template_path`, [programme]);
+  return rows.map((row) => ({ department: row.department, templatePath: row.template_path, filePath: row.file_path }));
+}
+
+export async function saveTemplateCatalog(programme, entries) {
+  const client = await connect();
+  await client.query("begin");
+  try {
+    await client.query(`delete from nabh_template_catalog where programme = $1`, [programme]);
+    for (const entry of entries) {
+      await client.query(
+        `insert into nabh_template_catalog (id, programme, department, template_path, file_path) values ($1, $2, $3, $4, $5) on conflict (programme, template_path) do update set department = excluded.department, file_path = excluded.file_path, synced_at = now()`,
+        [randomUUID(), programme, entry.department, entry.templatePath, entry.filePath]
+      );
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
   }
 }
 

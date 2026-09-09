@@ -49,11 +49,12 @@ export default function TemplateLibrary() {
   const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
   const [questionnaireQuestions, setQuestionnaireQuestions] = useState([]);
   const [questionnaireMessage, setQuestionnaireMessage] = useState("");
+  const [refreshingCatalog, setRefreshingCatalog] = useState(false);
 
-  useEffect(() => {
+  function loadTemplates(refresh = false) {
     if (!programme) { setDepartments(null); setLibraryMessage(""); setSelectedDepartment(""); return; }
-    setLoading(true);
-    fetch(`/api/admin/template-library?programme=${encodeURIComponent(programme)}`)
+    (refresh ? setRefreshingCatalog : setLoading)(true);
+    fetch(`/api/admin/template-library?programme=${encodeURIComponent(programme)}${refresh ? "&refresh=1" : ""}`)
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to load the template library.");
@@ -62,10 +63,15 @@ export default function TemplateLibrary() {
       .then((result) => {
         setLibraryMessage(result.error || "");
         setDepartments(result.departments || {});
-        setSelectedDepartment(Object.keys(result.departments || {})[0] || "");
+        setSelectedDepartment((current) => current && result.departments?.[current] ? current : Object.keys(result.departments || {})[0] || "");
       })
       .catch((requestError) => setError(requestError.message))
-      .finally(() => setLoading(false));
+      .finally(() => (refresh ? setRefreshingCatalog : setLoading)(false));
+  }
+
+  useEffect(() => {
+    loadTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programme]);
 
   const departmentEntries = useMemo(() => Object.entries(departments || {}).sort(([left], [right]) => left.localeCompare(right)), [departments]);
@@ -146,7 +152,7 @@ export default function TemplateLibrary() {
             <h1>Template library</h1>
           </div>
         </div>
-        <div className="template-library-header-actions"><button className="secondary-button" type="button" title="Open questionnaire report" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
+        <div className="template-library-header-actions"><button className="secondary-button" type="button" title="Refresh the template catalog from R2 (only needed if files were added directly in R2)" disabled={!programme || refreshingCatalog} onClick={() => loadTemplates(true)}><RefreshCw size={16} className={refreshingCatalog ? "spin-icon" : ""} /> {refreshingCatalog ? "Refreshing..." : "Refresh catalog"}</button><button className="secondary-button" type="button" title="Open questionnaire report" onClick={showQuestionnaireReport}><ClipboardList size={16} /> {reportLoading ? "Loading..." : "Questionnaire report"}</button><a className="secondary-button" title="Export questionnaire report PDF" href="/api/admin/template-library/questionnaire-report.pdf"><Download size={16} /> Export PDF</a></div>
         </div>
         <p className="intro template-library-description">Browse programme-specific master templates and configure the questions hospitals must answer for each document.</p>
         <div className="template-library-selector">

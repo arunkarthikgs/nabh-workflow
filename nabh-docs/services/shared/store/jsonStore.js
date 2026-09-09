@@ -40,6 +40,17 @@ export async function listRoleMaster() {
   return flatRoleMaster();
 }
 
+// No document-catalog cache in json mode; callers fall back to listing R2 directly.
+export async function listHospitalDocumentCatalog() {
+  return [];
+}
+export async function saveHospitalDocumentCatalog() {}
+
+export async function listTemplateCatalog() {
+  return [];
+}
+export async function saveTemplateCatalog() {}
+
 export async function readHospitals() {
   return readJson(hospitalsPath, []);
 }

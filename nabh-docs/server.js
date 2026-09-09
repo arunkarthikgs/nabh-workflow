@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -25,7 +25,7 @@ import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReport
 import { createEvidence, getEvidenceFile, listDocumentEvidence } from "./services/shared/evidenceService.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientObjectKey, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateObjectKey, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -106,9 +106,15 @@ function startRepositoryProvisioning(hospital, { syncNewTemplates = false } = {}
   const job = { status: "running", hospitalCode: hospital.code, startedAt: new Date().toISOString(), copied: 0, skipped: 0 };
   repositorySyncJobs.set(hospital.id, job);
   provisionR2ClientRepository(hospital, { syncNewTemplates })
-    .then((repository) => Object.assign(job, repository.provisioned === false
-      ? { status: "failed", completedAt: new Date().toISOString(), error: repository.error || "No templates found.", ...repository }
-      : { status: "complete", completedAt: new Date().toISOString(), ...repository }))
+    .then((repository) => {
+      Object.assign(job, repository.provisioned === false
+        ? { status: "failed", completedAt: new Date().toISOString(), error: repository.error || "No templates found.", ...repository }
+        : { status: "complete", completedAt: new Date().toISOString(), ...repository });
+      if (repository.provisioned !== false && usesPostgresDataStore()) {
+        resolveHospitalClientFiles(hospital, hospital.accreditation?.programme, { forceRefresh: true })
+          .catch((error) => console.warn("Unable to refresh hospital document catalog after sync:", error.message));
+      }
+    })
     .catch((error) => Object.assign(job, { status: "failed", completedAt: new Date().toISOString(), error: error.message }));
   return job;
 }
@@ -420,8 +426,26 @@ async function listTemplateFiles(directory = templateRoot, relativePath = "") {
   return files;
 }
 
-async function getTemplateFiles(programme) {
-  if (r2TemplateStorageEnabled()) return programme ? listR2ProgrammeTemplateFiles(programme) : listR2TemplateFiles();
+async function getTemplateFiles(programme, { forceRefresh = false } = {}) {
+  if (r2TemplateStorageEnabled()) {
+    if (!programme) return listR2TemplateFiles();
+    if (usesPostgresDataStore() && !forceRefresh) {
+      const cached = await listTemplateCatalog(programme);
+      if (cached.length) return cached.map((entry) => entry.templatePath);
+    }
+    const files = await listR2ProgrammeTemplateFiles(programme);
+    if (usesPostgresDataStore() && files.length) {
+      const entries = files
+        .filter((templatePath) => path.basename(templatePath) !== masterListTemplateFile)
+        .map((templatePath) => {
+          const [folder] = templatePath.split("/");
+          const department = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
+          return { department, templatePath, filePath: getR2TemplateObjectKey(programme, templatePath) };
+        });
+      saveTemplateCatalog(programme, entries).catch((error) => console.warn("Unable to cache template catalog:", error.message));
+    }
+    return files;
+  }
   const root = programme ? path.join(templateRoot, accreditationProgrammeSlug(programme)) : templateRoot;
   try { return await listTemplateFiles(root); } catch (error) { if (error.code === "ENOENT") return []; throw error; }
 }
@@ -497,7 +521,7 @@ app.get("/api/admin/template-library", async (request, response, next) => {
   const programme = typeof request.query.programme === "string" && request.query.programme.trim() ? request.query.programme.trim() : "";
   try {
     if (programme && !NABH_ACCREDITATION_PROGRAMMES.includes(programme)) return response.status(400).json({ error: "Unknown NABH accreditation programme." });
-    const templateFiles = await getTemplateFiles(programme || undefined);
+    const templateFiles = await getTemplateFiles(programme || undefined, { forceRefresh: request.query.refresh === "1" });
     if (programme && !templateFiles.length) {
       return response.json({ departments: {}, programmes: NABH_ACCREDITATION_PROGRAMMES, programme, storage: r2TemplateStorageInfo(), unmatchedTemplateCount: 0, error: `No templates found yet for the "${programme}" programme. Ask an administrator to upload templates for this programme.` });
     }
@@ -582,12 +606,34 @@ function withDocumentStatus(departments, hospitalStatus) {
   ]));
 }
 
+// Reads the hospital's client file listing from the Postgres cache (populated once from R2)
+// instead of listing R2 on every page load. Falls back to a live R2 listing on a cache miss
+// (or when forceRefresh is requested after a template sync), and writes the result back to Postgres.
+async function resolveHospitalClientFiles(hospital, programme, { forceRefresh = false } = {}) {
+  if (usesPostgresDataStore() && !forceRefresh) {
+    const cached = (await listHospitalDocumentCatalog(hospital.id)).filter((entry) => entry.programme === programme);
+    if (cached.length) return cached.map((entry) => entry.templatePath);
+  }
+  const files = await listR2ClientFiles(hospital.code, programme);
+  if (usesPostgresDataStore() && files.length) {
+    const entries = files
+      .filter((templatePath) => path.basename(templatePath) !== masterListTemplateFile)
+      .map((templatePath) => {
+        const [folder] = templatePath.split("/");
+        const department = NABH_WORKSPACE_CATEGORIES.includes(folder) ? folder : classifyDocument(path.basename(templatePath));
+        return { department, templatePath, filePath: getR2ClientObjectKey(hospital.code, programme, templatePath) };
+      });
+    saveHospitalDocumentCatalog(hospital.id, programme, entries).catch((error) => console.warn("Unable to cache hospital document catalog:", error.message));
+  }
+  return files;
+}
+
 async function loadHospitalDepartments(hospital) {
   if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
   const programme = hospital.accreditation?.programme;
   const [questionnaireSummaries, clientFiles] = await Promise.all([
     readTemplateQuestionnaireSummaries(programme),
-    listR2ClientFiles(hospital.code, programme)
+    resolveHospitalClientFiles(hospital, programme)
   ]);
   const questionCountByPath = new Map(questionnaireSummaries.map((item) => [item.templatePath, item.questionCount]));
   const departments = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, []]));

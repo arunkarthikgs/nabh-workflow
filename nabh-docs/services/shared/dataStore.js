@@ -33,6 +33,10 @@ export async function readHospitalSummaries() { return (await store()).readHospi
 export async function readHospitalRegistry() { return (await store()).readHospitalRegistry(); }
 export async function listRegistryMetadata() { return (await store()).listRegistryMetadata(); }
 export async function listRoleMaster() { return (await store()).listRoleMaster(); }
+export async function listHospitalDocumentCatalog(hospitalId) { return (await store()).listHospitalDocumentCatalog(hospitalId); }
+export async function saveHospitalDocumentCatalog(hospitalId, programme, entries) { return (await store()).saveHospitalDocumentCatalog(hospitalId, programme, entries); }
+export async function listTemplateCatalog(programme) { return (await store()).listTemplateCatalog(programme); }
+export async function saveTemplateCatalog(programme, entries) { return (await store()).saveTemplateCatalog(programme, entries); }
 
 export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);

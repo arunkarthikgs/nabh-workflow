@@ -416,11 +416,21 @@ function clientPrefix(code, programme) {
   return `${baseFolder.replace(/^\/+|\/+$/g, "")}/${normalized}/${slug}/`;
 }
 
+// Full R2 object key for a hospital's copy of a template, for callers caching the client file catalog.
+export function getR2ClientObjectKey(hospitalCode, programme, relativePath) {
+  return `${clientPrefix(hospitalCode, programme)}${relativePath}`;
+}
+
 // Each NABH accreditation programme has its own template set: Templates/<programme-slug>/...
 function programmeSourcePrefix(settings, programme) {
   const slug = accreditationProgrammeSlug(programme);
   if (!slug) throw new Error("Select and accept an NABH accreditation programme before the document workspace can be created.");
   return `${settings.prefix}${slug}/`;
+}
+
+// Full R2 object key for a global template, for callers caching the template catalog.
+export function getR2TemplateObjectKey(programme, relativePath) {
+  return `${programmeSourcePrefix(config(), programme)}${relativePath}`;
 }
 
 export async function listR2ProgrammeTemplateFiles(programme) {
