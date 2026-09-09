@@ -31,6 +31,7 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .count-pill-active { background: #e4f7ec; color: #1e9e5c; }
 .count-pill-inactive { background: #eceafd; color: #8a8dc7; }
 .count-pill-questions { background: #e7f3f8; color: #0b6e99; font-size: 9px; }
+.count-pill-questions { align-items: center; display: inline-flex; gap: 3px; }
 
 .filter-box { align-items: center; background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 10px; color: #8a8dc7; display: flex; gap: 8px; margin-bottom: 8px; padding: 9px 12px; }
 .filter-box input { background: transparent; border: 0; color: #3a3f6b; flex: 1; font: 400 13px Poppins; outline: none; }
@@ -750,6 +751,8 @@ tr.history-row td { background: #f7f7f5; }
 .onlyoffice-setup label { color: #5f5e5b; font-size: 11px; font-weight: 700; }
 .onlyoffice-setup input { background: #ffffff; border: 1px solid #d3d2cf; border-radius: 3px; color: #37352f; display: block; font: 12px "Manrope", sans-serif; margin-top: 6px; padding: 9px; width: 100%; }
 .onlyoffice-setup input:focus { border-color: #2383e2; outline: 1px solid #2383e2; }
+.onlyoffice-setup textarea { background: #ffffff; border: 1px solid #d3d2cf; border-radius: 3px; box-sizing: border-box; color: #37352f; display: block; font: 12px "Manrope", sans-serif; line-height: 1.5; margin-top: 6px; min-height: 90px; padding: 9px; resize: vertical; width: 100%; }
+.onlyoffice-setup textarea:focus { border-color: #2383e2; outline: 1px solid #2383e2; }
 .onlyoffice-setup .primary-button { align-items: center; border: 0; color: #ffffff; cursor: pointer; display: inline-flex; font: 600 12px "Manrope", sans-serif; gap: 7px; justify-content: center; padding: 10px 12px; }
 .onlyoffice-frame { flex: 1; min-height: 0; width: 100%; }
 

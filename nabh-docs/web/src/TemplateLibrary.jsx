@@ -231,13 +231,15 @@ export default function TemplateLibrary() {
 
       {approval && (
         <div className="preview-backdrop" role="presentation" onClick={() => setApproval(null)}>
-          <form className="preview-dialog admin-form" onSubmit={approveTemplate} onClick={(event) => event.stopPropagation()}>
+          <section className="document-editor-dialog approval-dialog" role="dialog" aria-modal="true" aria-label={`Approve new version of ${approval.documentName}`} onClick={(event) => event.stopPropagation()}>
             <div className="preview-header"><div><p className="eyebrow">Template approval</p><h2>{approval.documentName}</h2><p className="editor-file-name">{approval.fileName}</p></div><button className="icon-button" type="button" title="Close approval" onClick={() => setApproval(null)}><X size={18} /></button></div>
-            <label>Approved replacement file<input type="file" accept={`.${approval.fileType?.toLowerCase() || "docx"}`} onChange={(event) => setApprovalFile(event.target.files?.[0] || null)} required /></label>
-            <label>Approval note<textarea value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>
-            {approvalMessage && <p className="access-message">{approvalMessage}</p>}
-            <button className="primary-button" type="submit" title="Approve new template version"><CheckCircle2 size={16} /> Approve new version</button>
-          </form>
+            <form className="onlyoffice-setup" onSubmit={approveTemplate}>
+              <label>Approved replacement file<input type="file" accept={`.${approval.fileType?.toLowerCase() || "docx"}`} onChange={(event) => setApprovalFile(event.target.files?.[0] || null)} required /></label>
+              <label>Approval note<textarea value={approvalNote} onChange={(event) => setApprovalNote(event.target.value)} placeholder="Describe the approved change" /></label>
+              {approvalMessage && <p className="access-message">{approvalMessage}</p>}
+              <button className="primary-button" type="submit" title="Approve new template version"><CheckCircle2 size={16} /> Approve new version</button>
+            </form>
+          </section>
         </div>
       )}
       {questionnaireReport && (

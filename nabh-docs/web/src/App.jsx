@@ -1033,7 +1033,8 @@ function MasterListWorkspace({
   async function toggleHistory(doc) {
     if (expandedHistoryId === doc.id) { setExpandedHistoryId(null); return; }
     const documentKey = doc.relativeFilePath || doc.matchedFilePath || doc.id;
-    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version-manifest?documentKey=${encodeURIComponent(documentKey)}`);
+    const params = new URLSearchParams({ documentKey, documentId: doc.documentId || "", documentName: doc.documentName || "" });
+    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version-manifest?${params.toString()}`);
     const result = await response.json();
     if (!response.ok) return setError(result.error || "Unable to load version history.");
     setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === doc.id ? { ...item, history: result.manifest?.history || [], version: result.manifest?.currentVersion || null, approved: Boolean(result.manifest?.history?.length) } : item)])) : current);
@@ -1436,6 +1437,9 @@ function MasterListWorkspace({
                   <span className="count-pill count-pill-inactive">
                     {docs.length - activeCount}
                   </span>
+                  <span className="count-pill count-pill-questions" title="Configured questions">
+                    <ClipboardList size={12} /> {docs.reduce((total, doc) => total + (doc.questionCount || 0), 0)}
+                  </span>
                 </button>
               );
             })}
@@ -1579,7 +1583,14 @@ function MasterListWorkspace({
                               }
                             />
                           ) : (
-                            doc.documentName
+                            <>
+                              {doc.documentName}
+                              {(doc.relativeFilePath || doc.matchedFilePath) && (
+                                <small className="template-context">
+                                  {(doc.relativeFilePath || doc.matchedFilePath).split("/").slice(0, -1).filter(Boolean).join(" / ")}
+                                </small>
+                              )}
+                            </>
                           )}
                         </td>
                         <td>
@@ -1623,11 +1634,13 @@ function MasterListWorkspace({
                           </span>
                         </td>
                       </tr>
-                      {expandedHistoryId === doc.id &&
-                        isApprovedDocument(doc) && (
-                          <tr className="history-row">
-                            <td colSpan={5}>
-                              <table className="history-table">
+                      {expandedHistoryId === doc.id && (
+                        <tr className="history-row">
+                          <td colSpan={5}>
+                            {!isApprovedDocument(doc) ? (
+                              <p className="empty">No version history available yet for this document.</p>
+                            ) : (
+                            <table className="history-table">
                                 <thead>
                                   <tr>
                                     <th>Version</th>
@@ -1693,9 +1706,10 @@ function MasterListWorkspace({
                                     ))}
                                 </tbody>
                               </table>
-                            </td>
-                          </tr>
-                        )}
+                            )}
+                          </td>
+                        </tr>
+                      )}
                     </Fragment>
                   );
                 })}

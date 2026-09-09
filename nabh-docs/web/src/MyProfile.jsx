@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Building2, Mail, UserCircle } from "lucide-react";
 
 const profileFields = [
+  ["userId", "User ID"],
   ["email", "Email"],
   ["role", "Role"],
   ["mobileNumber", "Mobile number"],

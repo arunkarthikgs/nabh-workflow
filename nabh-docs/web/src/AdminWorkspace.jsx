@@ -265,6 +265,7 @@ export default function AdminWorkspace({
                         {current.role} · {current.department}
                       </p>
                       <small>
+                        {current.userId ? `User ID: ${current.userId} · ` : ""}
                         {current.employeeId} · {current.email}
                       </small>
                     </div>

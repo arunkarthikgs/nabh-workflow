@@ -1254,7 +1254,9 @@ app.get("/api/admin/hospitals/:hospitalId/documents/version-manifest", async (re
     const hospital = await findHospital(request);
     const documentKey = String(request.query.documentKey || "").trim();
     if (!documentKey) return response.status(400).json({ error: "documentKey is required." });
-    response.json({ manifest: await getR2ClientVersionManifest(hospital.code, documentKey, hospital.accreditation?.programme) });
+    // Must resolve the same key used when the version was approved (documentId takes priority over path there too).
+    const resolvedKey = getDocumentKey(request.query.documentId, request.query.documentName, documentKey);
+    response.json({ manifest: await getR2ClientVersionManifest(hospital.code, resolvedKey, hospital.accreditation?.programme) });
   } catch (error) { next(error); }
 });
 
