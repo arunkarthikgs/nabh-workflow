@@ -32,7 +32,7 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 .count-pill-inactive { background: #eceafd; color: #8a8dc7; }
 .count-pill-questions { background: #e7f3f8; color: #0b6e99; font-size: 9px; }
 .count-pill-questions { align-items: center; display: inline-flex; gap: 3px; }
-.count-pill-readiness { align-items: center; background: #fdecc8; color: #9a6700; display: inline-flex; font-size: 9px; gap: 3px; }
+.count-pill-readiness { align-items: center; display: inline-flex; font-size: 9px; gap: 3px; }
 
 .filter-box { align-items: center; background: #f4f5ff; border: 1px solid #e2e4fb; border-radius: 10px; color: #8a8dc7; display: flex; gap: 8px; margin-bottom: 8px; padding: 9px 12px; }
 .filter-box input { background: transparent; border: 0; color: #3a3f6b; flex: 1; font: 400 13px Poppins; outline: none; }

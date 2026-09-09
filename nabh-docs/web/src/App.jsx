@@ -1415,7 +1415,7 @@ function MasterListWorkspace({
                     <ClipboardList size={12} /> {docs.reduce((total, doc) => total + (doc.questionCount || 0), 0)}
                   </span>
                   {readinessFilterCount !== null && (
-                    <span className="count-pill count-pill-readiness" title={`${READINESS_LABELS[readinessStatusFilter]} in this category`}>
+                    <span className={`count-pill count-pill-readiness readiness-${readinessStatusFilter}`} title={`${READINESS_LABELS[readinessStatusFilter]} in this category`}>
                       <Filter size={12} /> {readinessFilterCount}
                     </span>
                   )}
