@@ -39,6 +39,7 @@ const masterListTemplatePath = path.join(templateRoot, masterListTemplateFile);
 const previewCacheRoot = path.join("/tmp", "nabh-template-previews");
 const execFileAsync = promisify(execFile);
 const repositorySyncJobs = new Map();
+const hospitalAccreditationCache = new Map();
 
 function withTimeout(promise, milliseconds, message) {
   return Promise.race([
@@ -64,7 +65,10 @@ async function backfillHospitalLogos(hospitals) {
 async function hydrateHospitalAccreditation(hospital) {
   if (!hospital || !r2TemplateStorageEnabled() || usesPostgresDataStore()) return hospital;
   if (hospital.accreditation?.programme) return hospital;
+  const cached = hospitalAccreditationCache.get(hospital.code);
+  if (cached && cached.expiresAt > Date.now()) return cached.accreditation?.programme ? { ...hospital, accreditation: cached.accreditation } : hospital;
   const accreditation = await getR2HospitalAccreditation(hospital.code);
+  hospitalAccreditationCache.set(hospital.code, { accreditation, expiresAt: Date.now() + 5 * 60 * 1000 });
   return accreditation?.programme ? { ...hospital, accreditation } : hospital;
 }
 

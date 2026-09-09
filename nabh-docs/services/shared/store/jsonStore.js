@@ -34,7 +34,7 @@ export async function readHospitals() {
 }
 
 export async function readHospitalRegistry() {
-  return (await readHospitals()).map(({ users, roles, ...hospital }) => hospital);
+  return (await readHospitals()).map(({ users, roles, logoDataUrl, ...hospital }) => hospital);
 }
 
 export async function readHospitalSummaries() {

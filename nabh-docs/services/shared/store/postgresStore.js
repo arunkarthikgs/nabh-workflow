@@ -447,7 +447,7 @@ export async function readHospitals() {
 
 export async function readHospitalRegistry() {
   const client = await connect();
-  const { rows } = await client.query(`select id, ordinal, name, code, location, status, logo_data_url, logo_path, repository, details, registration_status, accreditation, created_at, updated_at from hospitals order by ordinal, created_at`);
+  const { rows } = await client.query(`select id, ordinal, name, code, location, status, logo_path, repository, details, registration_status, accreditation, created_at, updated_at from hospitals order by ordinal, created_at`);
   return rows.map((row) => toHospital(row, [], []));
 }
 
