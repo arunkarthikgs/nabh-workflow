@@ -41,7 +41,7 @@ export const institutionalProfileFields = [
   ["responsiblePhone", "Responsible person phone"],
   ["responsibleEmail", "Responsible person email"],
   ["workingHours", "Working hours / 24x7"],
-  ["specialties", "Departments / specialties offered"],
+  ["specialties", "Departments / specialties offered", "multiselect"],
   ["servicesOffered", "Key services offered"],
   ["website", "Website"]
 ];

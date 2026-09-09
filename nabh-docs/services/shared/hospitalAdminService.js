@@ -12,10 +12,13 @@ function reportsFor(name) {
   return ["Master List"];
 }
 // Role catalog now lives in the nabh_registry_metadata table (departments/specialties/committees).
-export async function listRegistryGroups() {
+export async function listRegistryGroups(registryType = null) {
   const rows = await listRegistryMetadata();
   const groups = {};
-  for (const row of rows) (groups[row.category] ||= []).push(row.label);
+  for (const row of rows) {
+    if (registryType && row.registryType !== registryType) continue;
+    (groups[row.category] ||= []).push(row.label);
+  }
   return groups;
 }
 async function defaultRoles() {

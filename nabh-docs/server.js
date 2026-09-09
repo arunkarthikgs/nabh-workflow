@@ -332,8 +332,9 @@ app.get("/api/admin/me/session", async (request, response, next) => {
 });
 
 // Backs the role/department dropdowns; source of truth is the nabh_registry_metadata table.
-app.get("/api/admin/registry-metadata", async (_request, response, next) => {
-  try { response.json({ groups: await listRegistryGroups() }); }
+// Optional ?type= filters to a single registry_type (e.g. OPTIONAL_SPECIALTY).
+app.get("/api/admin/registry-metadata", async (request, response, next) => {
+  try { response.json({ groups: await listRegistryGroups(request.query.type ? String(request.query.type) : null) }); }
   catch (error) { next(error); }
 });
 

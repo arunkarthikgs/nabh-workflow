@@ -24,6 +24,14 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState("");
+  const [specialtyGroups, setSpecialtyGroups] = useState({});
+
+  useEffect(() => {
+    fetch("/api/admin/registry-metadata?type=OPTIONAL_SPECIALTY")
+      .then((response) => (response.ok ? response.json() : { groups: {} }))
+      .then((result) => setSpecialtyGroups(result.groups || {}))
+      .catch(() => setSpecialtyGroups({}));
+  }, []);
 
   useEffect(() => {
     setForm(Object.fromEntries(institutionalProfileFields.map(([key]) => [key, details?.[key] || ""])));
@@ -79,7 +87,33 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
                 const required = requiredInstitutionalProfileFields.includes(key);
                 return <label key={key} className={fieldErrors[key] ? "field-error" : ""}>
                   {label}{required && <span className="required-indicator" aria-hidden="true"> *</span>}
-                  {type === "select" ? (
+                  {type === "multiselect" ? (
+                    <div className="specialty-multiselect">
+                      {Object.entries(specialtyGroups).map(([category, names]) => (
+                        <fieldset key={category}>
+                          <legend>{category}</legend>
+                          {names.map((name) => {
+                            const selected = form[key] ? form[key].split(",").map((item) => item.trim()).filter(Boolean) : [];
+                            const checked = selected.includes(name);
+                            return (
+                              <label key={name} className="specialty-option">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(event) => {
+                                    const next = event.target.checked ? [...selected, name] : selected.filter((item) => item !== name);
+                                    setForm((current) => ({ ...current, [key]: next.join(", ") }));
+                                  }}
+                                />
+                                {name}
+                              </label>
+                            );
+                          })}
+                        </fieldset>
+                      ))}
+                      {Object.keys(specialtyGroups).length === 0 && <p className="empty">No specialties are configured yet.</p>}
+                    </div>
+                  ) : type === "select" ? (
                     <select required={required} value={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
                       <option value="">Select</option>
                       {options.map((option) => <option key={option}>{option}</option>)}
