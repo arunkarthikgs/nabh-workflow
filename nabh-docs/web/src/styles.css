@@ -446,8 +446,10 @@ h2 { font-size: 19px; }
 }
 .department-list { border-right: 1px solid #e9e9e7; max-height: calc(100vh - 150px); padding: 0 6px 0 0; }
 .department-list button { border-radius: 4px; color: #5f5e5b; font: 500 13px "Manrope", sans-serif; flex-wrap: wrap; gap: 6px 8px; padding: 8px 9px; }
-.department-list button span:nth-child(2) { flex: 1 1 0%; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.department-list button .count-pill-questions { flex-shrink: 0; }
+.department-list button span:nth-child(2) { flex: 1 1 50px; line-height: 1.3; min-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.department-list button .count-pill-active,
+.department-list button .count-pill-inactive,
+.department-list button .count-pill-questions,
 .department-list button .count-pill-readiness { flex-shrink: 0; }
 .department-list button:hover { background: #f1f1ef; }
 .department-list button.active { background: #e9e9e7; color: #37352f; }
