@@ -604,15 +604,58 @@ export async function readHospitals() {
 
 // Indexed single-hospital lookup (by id or code) so callers don't have to pull every hospital
 // plus every hospital's users/roles just to find one - readHospitals() scales with platform size.
-export async function readHospitalById(idOrCode) {
+// Pass withRoster: true only when the caller actually needs .users/.roles - most callers just
+// need the hospital row itself (status/details/accreditation/code), so skip those 2 extra queries by default.
+export async function readHospitalById(idOrCode, { withRoster = false } = {}) {
   const client = await connect();
   const { rows: [row] } = await client.query(`select * from hospitals where id::text = $1 or code = $1 limit 1`, [idOrCode]);
   if (!row) return null;
+  if (!withRoster) return toHospital(row, [], []);
   const [users, roles] = await Promise.all([
     client.query(`select * from hospital_users where hospital_id = $1 order by ordinal, created_at`, [row.id]),
     client.query(`select * from hospital_roles where hospital_id = $1 order by ordinal`, [row.id])
   ]);
   return toHospital(row, users.rows.map(toUser), roles.rows.map(toRole));
+}
+
+// Global uniqueness check for hospital codes without pulling every hospital.
+export async function hospitalCodeExists(code, excludeId = null) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(
+    excludeId
+      ? `select exists(select 1 from hospitals where code = $1 and id::text <> $2) as exists`
+      : `select exists(select 1 from hospitals where code = $1) as exists`,
+    excludeId ? [code, excludeId] : [code]
+  );
+  return Boolean(row.exists);
+}
+
+// Login lookup: finds the hospital + user for a login identifier (numeric userId, email, or the
+// "<code>-admin" convention) via a single indexed join, instead of scanning every hospital's roster.
+export async function findHospitalUserForLogin(identifier) {
+  const client = await connect();
+  const normalized = String(identifier || "").toLowerCase();
+  const { rows: [row] } = await client.query(
+    `select h.*,
+       u.id as u_id, u.user_id as u_user_id, u.name as u_name, u.email as u_email, u.role as u_role,
+       u.active as u_active, u.status as u_status, u.email_verified_at as u_email_verified_at,
+       u.last_login_at as u_last_login_at, u.contact_phone as u_contact_phone, u.profile as u_profile,
+       u.created_at as u_created_at, u.updated_at as u_updated_at
+     from hospital_users u
+     join hospitals h on h.id = u.hospital_id
+     where u.user_id = $1 or lower(u.email) = $2 or (u.role = 'Hospital Administrator' and lower(h.code || '-admin') = $2)
+     limit 1`,
+    [String(identifier || ""), normalized]
+  );
+  if (!row) return null;
+  const hospital = toHospital(row, [], []);
+  const user = toUser({
+    id: row.u_id, user_id: row.u_user_id, name: row.u_name, email: row.u_email, role: row.u_role,
+    active: row.u_active, status: row.u_status, email_verified_at: row.u_email_verified_at,
+    last_login_at: row.u_last_login_at, contact_phone: row.u_contact_phone, profile: row.u_profile,
+    created_at: row.u_created_at, updated_at: row.u_updated_at
+  });
+  return { hospital, user };
 }
 
 export async function readHospitalRegistry() {

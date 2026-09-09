@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "crypto";
 import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
-import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, listRegistryMetadata, listRoleMaster, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
+import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findHospitalUserForLogin, findRegistrationToken, consumeRegistrationToken, hospitalCodeExists, listRegistryMetadata, listRoleMaster, readDocumentMatches, readHospitalById, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
@@ -110,28 +110,25 @@ export async function createHospital(input) {
   const name = text(input.name);
   const code = text(input.code).toUpperCase();
   if (!name || !code) throw new Error("Hospital name and client code are required.");
-  const hospitals = await readHospitals();
-  if (hospitals.some((hospital) => hospital.code === code)) throw new Error("Client code already exists.");
+  if (await hospitalCodeExists(code)) throw new Error("Client code already exists.");
   const now = new Date().toISOString();
   const hospital = { id: randomUUID(), name, code, location: text(input.location), status: "pending", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, users: [], createdAt: now, updatedAt: now };
   return addHospital(hospital);
 }
 
 export async function updateHospital(id, input) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === id);
+  const hospital = await readHospitalById(id);
   if (!hospital) return null;
   const name = text(input.name);
   const code = text(input.code).toUpperCase();
   if (!name || !code) throw new Error("Hospital name and client code are required.");
-  if (hospitals.some((item) => item.id !== id && item.code === code)) throw new Error("Client code already exists.");
+  if (await hospitalCodeExists(code, id)) throw new Error("Client code already exists.");
   Object.assign(hospital, { name, code, location: text(input.location), status: input.status === "inactive" ? "inactive" : "active", logoDataUrl: logoDataUrl(input.logoDataUrl), repository: { url: text(input.repositoryUrl), branch: text(input.repositoryBranch) || "main" }, details: input.details && typeof input.details === "object" ? input.details : {}, updatedAt: new Date().toISOString() });
   return saveHospital(hospital);
 }
 
 export async function approveHospitalOnboarding(id) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === id);
+  const hospital = await readHospitalById(id);
   if (!hospital) return null;
   if (hospital.status !== "pending") throw new Error("Only pending hospitals can be approved.");
   hospital.status = "active";
@@ -141,8 +138,7 @@ export async function approveHospitalOnboarding(id) {
 }
 
 export async function setHospitalLogoPath(id, logoPath) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === id);
+  const hospital = await readHospitalById(id);
   if (!hospital) return null;
   hospital.logoPath = text(logoPath);
   hospital.updatedAt = new Date().toISOString();
@@ -156,8 +152,7 @@ export async function deleteHospital(id) {
 export async function addHospitalUser(hospitalId, input) {
   const name = text(input.name), email = text(input.email).toLowerCase(), role = text(input.role);
   if (!name || !email || !role) throw new Error("User name, email, and role are required.");
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return null;
   if (hospital.users.some((user) => user.email === email)) throw new Error("A user with this email already exists for this hospital.");
   const user = { id: randomUUID(), name, email, role, active: input.active !== false, dateOfBirth: text(input.dateOfBirth), gender: text(input.gender), mobileNumber: text(input.mobileNumber), address: text(input.address), employeeId: text(input.employeeId), department: text(input.department), dateOfJoining: text(input.dateOfJoining), employmentType: text(input.employmentType), createdAt: new Date().toISOString() };
@@ -165,8 +160,7 @@ export async function addHospitalUser(hospitalId, input) {
 }
 
 export async function updateHospitalUser(hospitalId, userId, input) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return undefined;
   const user = hospital.users.find((item) => item.id === userId);
   if (!user) return null;
@@ -178,8 +172,7 @@ export async function updateHospitalUser(hospitalId, userId, input) {
 }
 
 export async function deleteHospitalUser(hospitalId, userId) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return undefined;
   const users = hospital.users.filter((user) => user.id !== userId);
   if (users.length === hospital.users.length) return false;
@@ -187,7 +180,7 @@ export async function deleteHospitalUser(hospitalId, userId) {
 }
 
 export async function listHospitalRoles(hospitalId, knownHospital = null) {
-  const hospital = knownHospital || (await listHospitals()).find((item) => item.id === hospitalId);
+  const hospital = knownHospital || (await readHospitalById(hospitalId, { withRoster: true }));
   if (!hospital) return null;
   const roles = await rolesForHospital(hospital);
   if (roles.length && roles.every((role) => role.defaultAccessApplied)) return roles;
@@ -211,8 +204,7 @@ export async function listHospitalRoles(hospitalId, knownHospital = null) {
 }
 
 export async function createHospitalRole(hospitalId, input) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return null;
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
@@ -223,8 +215,7 @@ export async function createHospitalRole(hospitalId, input) {
 }
 
 export async function updateHospitalRole(hospitalId, roleId, input) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return undefined;
   const role = (await rolesForHospital(hospital)).find((item) => item.id === roleId);
   if (!role) return null;
@@ -235,8 +226,7 @@ export async function updateHospitalRole(hospitalId, roleId, input) {
 }
 
 export async function deleteHospitalRole(hospitalId, roleId) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   if (!hospital) return undefined;
   const roles = await rolesForHospital(hospital);
   const remaining = roles.filter((role) => role.id !== roleId);
@@ -328,7 +318,7 @@ export async function registerHospital(input) {
 }
 
 export async function resendRegistrationToken(hospitalId) {
-  const hospital = (await readHospitals()).find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId, { withRoster: true });
   const user = hospital?.users?.find((item) => item.role === "Hospital Administrator") || hospital?.users?.[0];
   if (!hospital || !user?.email) return null;
   const token = generateSetupToken();
@@ -414,9 +404,7 @@ export async function resetHospitalUserPassword(userId) {
 
 // Verifies a hospital administrator's password: real hash if set, otherwise the legacy demo password.
 export async function verifyHospitalAdminPassword(identifier, password) {
-  const hospitals = await readHospitals();
-  const normalized = text(identifier).toLowerCase();
-  const found = hospitals.flatMap((hospital) => (hospital.users || []).map((user) => ({ hospital, user }))).find(({ hospital, user }) => user.userId === text(identifier) || (user.email && user.email.toLowerCase() === normalized) || (user.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
+  const found = await findHospitalUserForLogin(text(identifier));
   if (!found || found.user.active === false || found.user.status === "inactive") return null;
   const { hospital, user } = found;
 
@@ -439,8 +427,7 @@ export async function verifyHospitalAdminPassword(identifier, password) {
 
 // Self-service institutional profile capture (hospital name, ownership, beds, specialties, etc.).
 export async function submitHospitalProfile(hospitalId, details, logoDataUrl) {
-  const hospitals = await readHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+  const hospital = await readHospitalById(hospitalId);
   if (!hospital) return null;
   const nextDetails = { ...hospital.details, ...(details && typeof details === "object" ? details : {}) };
   const validationErrors = validateInstitutionalProfile(nextDetails);

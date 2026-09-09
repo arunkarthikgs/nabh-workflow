@@ -29,8 +29,16 @@ export async function readHospitals() {
   return (await store()).readHospitals();
 }
 
-export async function readHospitalById(idOrCode) {
-  return (await store()).readHospitalById(idOrCode);
+export async function readHospitalById(idOrCode, options) {
+  return (await store()).readHospitalById(idOrCode, options);
+}
+
+export async function hospitalCodeExists(code, excludeId) {
+  return (await store()).hospitalCodeExists(code, excludeId);
+}
+
+export async function findHospitalUserForLogin(identifier) {
+  return (await store()).findHospitalUserForLogin(identifier);
 }
 
 export async function readHospitalSummaries() { return (await store()).readHospitalSummaries(); }

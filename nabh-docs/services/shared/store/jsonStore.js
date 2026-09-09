@@ -63,6 +63,21 @@ export async function readHospitalById(idOrCode) {
   return hospitals.find((item) => item.id === idOrCode || item.code === idOrCode) || null;
 }
 
+export async function hospitalCodeExists(code, excludeId = null) {
+  const hospitals = await readHospitals();
+  return hospitals.some((item) => item.code === code && item.id !== excludeId);
+}
+
+export async function findHospitalUserForLogin(identifier) {
+  const hospitals = await readHospitals();
+  const normalized = String(identifier || "").toLowerCase();
+  for (const hospital of hospitals) {
+    const user = (hospital.users || []).find((item) => item.userId === String(identifier || "") || (item.email && item.email.toLowerCase() === normalized) || (item.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
+    if (user) return { hospital, user };
+  }
+  return null;
+}
+
 export async function readHospitalRegistry() {
   return (await readHospitals()).map(({ users, roles, logoDataUrl, ...hospital }) => hospital);
 }

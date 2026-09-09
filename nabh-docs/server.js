@@ -193,7 +193,7 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
     const targetHospitalId = request.appSession.hospital_id || request.appSession.hospitalId;
     if (request.query.view === "summary") {
       if (request.appSession.role === "Super Admin") return response.json(await readHospitalSummaries());
-      const own = await readHospitalById(targetHospitalId);
+      const own = await readHospitalById(targetHospitalId, { withRoster: true });
       return response.json({ total: own ? 1 : 0, pending: own?.status === "pending" ? 1 : 0, active: own?.status === "active" ? 1 : 0, users: own?.users?.length || 0 });
     }
     if (request.query.view === "registry") {
@@ -201,13 +201,12 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
         const registryHospitals = await readHospitalRegistry();
         return response.json({ hospitals: await Promise.all(registryHospitals.map(hydrateHospitalAccreditation)) });
       }
-      const own = await readHospitalById(targetHospitalId);
+      const own = await readHospitalById(targetHospitalId, { withRoster: true });
       return response.json({ hospitals: own ? [own] : [] });
     }
-    const allHospitals = await listHospitals();
     const visibleRaw = request.appSession.role === "Super Admin"
-      ? allHospitals
-      : allHospitals.filter((hospital) => hospital.id === targetHospitalId);
+      ? await listHospitals()
+      : [await readHospitalById(targetHospitalId, { withRoster: true })].filter(Boolean);
     const visible = await Promise.all((await backfillHospitalLogos(visibleRaw)).map(hydrateHospitalAccreditation));
     response.json({ hospitals: visible });
   } catch (error) { if (error instanceof Error && error.validationErrors) response.status(422).json({ error: error.message, fields: error.validationErrors }); else next(error); }
@@ -294,7 +293,7 @@ app.delete("/api/admin/hospitals/:hospitalId/users/:userId", async (request, res
 
 app.get("/api/admin/hospitals/:hospitalId/users", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = await readHospitalById(request.params.hospitalId, { withRoster: true });
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const users = (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }));
     response.json({ hospital: { id: hospital.id, name: hospital.name, code: hospital.code, status: hospital.status, logoPath: hospital.logoPath || "" }, users });
@@ -305,7 +304,7 @@ app.get("/api/admin/users", async (request, response, next) => {
   try {
     const hospitals = request.appSession.role === "Super Admin"
       ? await listHospitals()
-      : [await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId)].filter(Boolean);
+      : [await readHospitalById(request.appSession.hospital_id || request.appSession.hospitalId, { withRoster: true })].filter(Boolean);
     response.json({ users: hospitals.flatMap((hospital) => (hospital.users || []).map(({ passwordSetupToken, passwordSetupExpiresAt, ...user }) => ({ ...user, hospitalId: hospital.id, hospitalName: hospital.name, hospitalCode: hospital.code }))) });
   } catch (error) { next(error); }
 });
@@ -314,7 +313,7 @@ app.get("/api/admin/me/profile", async (request, response, next) => {
   try {
     const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
     const userId = request.appSession?.user_id || request.appSession?.userId;
-    const hospital = await readHospitalById(hospitalId);
+    const hospital = await readHospitalById(hospitalId, { withRoster: true });
     const user = hospital?.users?.find((item) => item.id === userId || String(item.userId) === String(userId));
     if (!hospital || !user) return response.status(404).json({ error: "Current user profile not found." });
     const { passwordHash, passwordSalt, passwordSetupToken, passwordSetupExpiresAt, ...profile } = user;
@@ -328,7 +327,7 @@ app.get("/api/admin/me/session", async (request, response, next) => {
     if (request.appSession?.role === "Super Admin") return response.json({ role: "Super Admin", permissions: [...roleActions] });
     const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
     const userId = request.appSession?.user_id || request.appSession?.userId;
-    const hospital = await readHospitalById(hospitalId);
+    const hospital = await readHospitalById(hospitalId, { withRoster: true });
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const user = hospital.users?.find((item) => item.id === userId || String(item.userId) === String(userId));
     if (!user) return response.status(404).json({ error: "Session user not found." });
@@ -370,7 +369,7 @@ app.post("/api/admin/users/:userId/reset-password", async (request, response, ne
 
 app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async (request, response, next) => {
   try {
-    const hospital = await hydrateHospitalAccreditation(await readHospitalById(request.params.hospitalId));
+    const hospital = await hydrateHospitalAccreditation(await readHospitalById(request.params.hospitalId, { withRoster: true }));
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
     if (!hospital.users?.some((user) => user.id === request.params.userId)) return response.status(404).json({ error: "User not found for this hospital." });
@@ -383,7 +382,7 @@ app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async 
 
 app.get("/api/admin/hospitals/:hospitalId/roles", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = await readHospitalById(request.params.hospitalId, { withRoster: true });
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const roles = await listHospitalRoles(request.params.hospitalId, hospital);
     response.json({ roles, hospital: { status: hospital.status, logoPath: hospital.logoPath || "" } });
