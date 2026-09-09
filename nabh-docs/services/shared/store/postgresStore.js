@@ -489,6 +489,14 @@ export async function saveHospitalDocumentCatalog(hospitalId, programme, entries
   }
 }
 
+// Lightweight existence check so callers can skip the R2 repository-status GetObject entirely
+// once a hospital's document catalog has been cached at least once.
+export async function hospitalDocumentCatalogExists(hospitalId) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(`select exists(select 1 from nabh_hospital_document_catalog where hospital_id = $1) as exists`, [hospitalId]);
+  return Boolean(row.exists);
+}
+
 // Same idea as the hospital document catalog above, but for the global Template Library
 // (Templates/<programme>/...) so its listing doesn't need to hit R2 on every page load either.
 export async function listTemplateCatalog(programme) {

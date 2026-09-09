@@ -45,6 +45,9 @@ export async function listHospitalDocumentCatalog() {
   return [];
 }
 export async function saveHospitalDocumentCatalog() {}
+export async function hospitalDocumentCatalogExists() {
+  return false;
+}
 
 export async function listTemplateCatalog() {
   return [];

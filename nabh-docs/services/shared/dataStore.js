@@ -35,6 +35,7 @@ export async function listRegistryMetadata() { return (await store()).listRegist
 export async function listRoleMaster() { return (await store()).listRoleMaster(); }
 export async function listHospitalDocumentCatalog(hospitalId) { return (await store()).listHospitalDocumentCatalog(hospitalId); }
 export async function saveHospitalDocumentCatalog(hospitalId, programme, entries) { return (await store()).saveHospitalDocumentCatalog(hospitalId, programme, entries); }
+export async function hospitalDocumentCatalogExists(hospitalId) { return (await store()).hospitalDocumentCatalogExists(hospitalId); }
 export async function listTemplateCatalog(programme) { return (await store()).listTemplateCatalog(programme); }
 export async function saveTemplateCatalog(programme, entries) { return (await store()).saveTemplateCatalog(programme, entries); }
 

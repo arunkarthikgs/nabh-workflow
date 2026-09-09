@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -628,6 +628,13 @@ async function resolveHospitalClientFiles(hospital, programme, { forceRefresh = 
   return files;
 }
 
+// Skips the R2 client.json GetObject once the hospital's catalog is cached in Postgres,
+// since a populated catalog implies the R2 client repository was already provisioned.
+async function checkRepositoryReady(hospital) {
+  if (usesPostgresDataStore() && await hospitalDocumentCatalogExists(hospital.id)) return { exists: true, mode: "postgres-cache" };
+  return getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
+}
+
 async function loadHospitalDepartments(hospital) {
   if (!r2TemplateStorageEnabled()) return (await readDocumentMatches()) || {};
   const programme = hospital.accreditation?.programme;
@@ -720,7 +727,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
-    const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
+    const repository = await checkRepositoryReady(hospital);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
     const [hospitalStatus, departments] = await Promise.all([
       getPersistentDocumentStatus(hospital),
@@ -800,7 +807,7 @@ app.get("/api/admin/hospitals/:hospitalId/workspace-overview", async (request, r
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireCompleteHospitalProfile(hospital);
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
-    const repository = await getR2ClientRepositoryStatus(hospital.code, hospital.accreditation?.programme);
+    const repository = await checkRepositoryReady(hospital);
     if (!repository.exists) return response.status(404).json({ error: "Hospital document repository has not been initialized.", repository, job: repositorySyncJobs.get(hospital.id) || null });
     const [departments, hospitalStatus] = await Promise.all([loadHospitalDepartments(hospital), getPersistentDocumentStatus(hospital)]);
     const categories = Object.fromEntries(NABH_WORKSPACE_CATEGORIES.map((category) => [category, Object.fromEntries(DOCUMENT_STATUSES.map((status) => [status, 0]))]));
@@ -887,14 +894,17 @@ app.get("/api/admin/hospitals/:hospitalId/logo", async (request, response, next)
   try {
     const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
     if (!hospital) return response.status(404).end();
+    // Postgres already stores the full logo data URL on the hospital row once uploaded, so
+    // check it first and only fall back to an R2 GetObject if it's genuinely missing.
+    const dataUrlMatch = String(hospital.logoDataUrl || "").match(/^data:(image\/(png|jpeg|webp));base64,(.+)$/i);
+    if (usesPostgresDataStore() && dataUrlMatch) return response.type(dataUrlMatch[1]).send(Buffer.from(dataUrlMatch[3], "base64"));
     if (r2TemplateStorageEnabled()) {
       const logo = await getR2HospitalLogo(hospital.code);
       if (!logo) return response.status(404).end();
       return response.type(logo.contentType).send(logo.bytes);
     }
-    const match = String(hospital.logoDataUrl || "").match(/^data:(image\/(png|jpeg|webp));base64,(.+)$/i);
-    if (!match) return response.status(404).end();
-    response.type(match[1]).send(Buffer.from(match[2], "base64"));
+    if (!dataUrlMatch) return response.status(404).end();
+    response.type(dataUrlMatch[1]).send(Buffer.from(dataUrlMatch[3], "base64"));
   } catch (error) { next(error); }
 });
 
