@@ -1395,6 +1395,7 @@ function MasterListWorkspace({
             {NABH_WORKSPACE_CATEGORIES.map((category) => {
               const docs = categories[category] || [];
               const activeCount = docs.filter((doc) => doc.active).length;
+              const readinessFilterCount = readinessStatusFilter === "all" ? null : docs.filter((doc) => (doc.readinessStatus || "not_started") === readinessStatusFilter).length;
               return (
                 <button
                   key={category}
@@ -1413,6 +1414,11 @@ function MasterListWorkspace({
                   <span className="count-pill count-pill-questions" title="Configured questions">
                     <ClipboardList size={12} /> {docs.reduce((total, doc) => total + (doc.questionCount || 0), 0)}
                   </span>
+                  {readinessFilterCount !== null && (
+                    <span className="count-pill count-pill-readiness" title={`${READINESS_LABELS[readinessStatusFilter]} in this category`}>
+                      <Filter size={12} /> {readinessFilterCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
