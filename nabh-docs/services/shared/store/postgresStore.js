@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { configValue } from "../config.js";
 import { classifyDocument, NABH_WORKSPACE_CATEGORIES } from "../documentCategoryService.js";
+import { flatRoleMaster } from "../roleMasterCatalog.js";
 
 const outputDirectory = fileURLToPath(new URL("../../../output", import.meta.url));
 const profileFields = ["dateOfBirth", "gender", "mobileNumber", "address", "employeeId", "department", "dateOfJoining", "employmentType", "passwordHash", "passwordSalt", "passwordSet", "passwordSetupToken", "passwordSetupExpiresAt"];
@@ -275,6 +276,16 @@ const schemaStatements = [
        alter table service_bookings add constraint service_bookings_status_check check (status in ('requested', 'confirmed', 'completed', 'cancelled')) not valid;
      end if;
    end $$`,
+  `create table if not exists nabh_role_master (
+     id varchar(50) primary key,
+     name varchar(150) not null unique,
+     category varchar(100) not null,
+     reports jsonb not null default '[]'::jsonb,
+     is_enabled boolean not null default true,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create index if not exists idx_nabh_role_master_category on nabh_role_master(category)`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -327,6 +338,7 @@ async function seedFromJsonFiles() {
     if (matches && Object.keys(matches).length) await saveDocumentMatches(matches);
   }
   await ensureDocumentCatalog();
+  await ensureRoleMaster();
   if (Number(counts.audit) === 0) {
     const audit = await readJsonFile("documentAudit.json");
     if (Array.isArray(audit) && audit.length) await saveDocumentAudit(audit);
@@ -363,6 +375,24 @@ async function upsertDocumentCatalogRecord(department, document, database = pool
   const category = NABH_WORKSPACE_CATEGORIES.includes(document.category) ? document.category : classifyDocument(`${documentName} ${document.documentId || ""}`);
   const { rows: [categoryRow] } = await database.query(`select id from document_categories where name = $1`, [category]);
   await database.query(`insert into documents (id, department, category_id, document_name, document_path, active, confidence, source_document) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) on conflict (id) do update set department = excluded.department, category_id = excluded.category_id, document_name = excluded.document_name, document_path = excluded.document_path, active = excluded.active, confidence = excluded.confidence, source_document = excluded.source_document, updated_at = now()`, [id, department, categoryRow.id, documentName, document.relativeFilePath || document.matchedFilePath || "", document.active !== false, document.confidence || "high", JSON.stringify({ ...document, category })]);
+}
+
+// Built-in staff designation / role master list, grouped for the Role Management and user "Designation" dropdowns.
+async function ensureRoleMaster() {
+  const { rows: [count] } = await pool.query(`select count(*) as count from nabh_role_master`);
+  if (Number(count.count) > 0) return;
+  for (const row of flatRoleMaster()) {
+    await pool.query(
+      `insert into nabh_role_master (id, name, category, reports) values ($1, $2, $3, $4::jsonb) on conflict (id) do nothing`,
+      [row.id, row.name, row.category, JSON.stringify(row.reports)]
+    );
+  }
+}
+
+export async function listRoleMaster() {
+  const client = await connect();
+  const { rows } = await client.query(`select id, name, category, reports from nabh_role_master where is_enabled = true order by category, name`);
+  return rows.map((row) => ({ id: row.id, name: row.name, category: row.category, reports: row.reports || [] }));
 }
 
 export async function initialize() {

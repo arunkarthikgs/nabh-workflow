@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { createHash, randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
+import { flatRoleMaster } from "../roleMasterCatalog.js";
 
 const dataDirectory = fileURLToPath(new URL("../../../output", import.meta.url));
 const hospitalsPath = path.join(dataDirectory, "hospitals.json");
@@ -32,6 +33,11 @@ export function info() {
 // The registry catalog (nabh_registry_metadata) currently lives only in PostgreSQL.
 export async function listRegistryMetadata() {
   throw new Error("The NABH registry catalog requires DATA_STORE=postgres.");
+}
+
+// No DB table in json mode; the role master list is just the built-in catalog.
+export async function listRoleMaster() {
+  return flatRoleMaster();
 }
 
 export async function readHospitals() {

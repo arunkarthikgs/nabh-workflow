@@ -17,7 +17,7 @@ function groupRoles(roles, groups) { const remaining = [...roles]; const result 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
   const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
   useEffect(() => {
-    fetch("/api/admin/registry-metadata")
+    fetch("/api/admin/role-master")
       .then((response) => (response.ok ? response.json() : { groups: {} }))
       .then((result) => setRoleGroups(result.groups || {}))
       .catch(() => setRoleGroups({}));

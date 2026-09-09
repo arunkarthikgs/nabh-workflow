@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
@@ -335,6 +335,12 @@ app.get("/api/admin/me/session", async (request, response, next) => {
 // Optional ?type= filters to a single registry_type (e.g. OPTIONAL_SPECIALTY).
 app.get("/api/admin/registry-metadata", async (request, response, next) => {
   try { response.json({ groups: await listRegistryGroups(request.query.type ? String(request.query.type) : null) }); }
+  catch (error) { next(error); }
+});
+
+// Backs the "Designation / role" dropdown and Role Management grouping; source of truth is nabh_role_master.
+app.get("/api/admin/role-master", async (_request, response, next) => {
+  try { response.json({ groups: await listRoleMasterGroups() }); }
   catch (error) { next(error); }
 });
 

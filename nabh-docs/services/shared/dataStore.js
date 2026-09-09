@@ -32,6 +32,7 @@ export async function readHospitals() {
 export async function readHospitalSummaries() { return (await store()).readHospitalSummaries(); }
 export async function readHospitalRegistry() { return (await store()).readHospitalRegistry(); }
 export async function listRegistryMetadata() { return (await store()).listRegistryMetadata(); }
+export async function listRoleMaster() { return (await store()).listRoleMaster(); }
 
 export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);

@@ -52,7 +52,7 @@ export default function AdminWorkspace({
   }, [scopedHospitalId]);
 
   useEffect(() => {
-    fetch("/api/admin/registry-metadata")
+    fetch("/api/admin/role-master")
       .then((response) => (response.ok ? response.json() : { groups: {} }))
       .then((result) => setRoleGroups(result.groups || {}))
       .catch(() => setRoleGroups({}));

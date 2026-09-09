@@ -1,17 +1,13 @@
 import { randomBytes, randomUUID } from "crypto";
 import { generateSetupToken, hashPassword, verifyPassword } from "./passwordService.js";
-import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, listRegistryMetadata, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
+import { addHospital, createRegistrationToken, dataStoreDriver, deleteHospitalRecord, deleteHospitalRoleRecord, deleteHospitalUserRecord, findRegistrationToken, consumeRegistrationToken, listRegistryMetadata, listRoleMaster, readDocumentMatches, readHospitals, saveHospital, saveHospitalRole, saveHospitalUser, saveHospitals } from "../shared/dataStore.js";
 
 const seededLogos = [
   ["aarogyam_hospital.png", "Aarogyam Hospital"], ["asha_oncology_hospital.png", "Asha Oncology Hospital"], ["dhanvantari_health_clinic.png", "Dhanvantari Health Clinic"], ["kaveri_cardiac_institute.png", "Kaveri Cardiac Institute"], ["lotus_eye_care.png", "Lotus Eye Care"],
   ["maitri_mental_health.png", "Maitri Mental Health"], ["prana_mother_child_care.png", "Prana Mother Child Care"], ["surya_multispecialty.png", "Surya Multispecialty"], ["trishul_orthopedic_centre.png", "Trishul Orthopedic Centre"], ["vaidya_rural_health.png", "Vaidya Rural Health"]
 ];
-function reportsFor(name) {
-  if (name.includes("Quality") || name.includes("NABH") || name.includes("Auditor")) return ["Master List", "Compliance Summary", "Document Matches"];
-  if (name.includes("Records")) return ["Master List", "Document Matches"];
-  return ["Master List"];
-}
-// Role catalog now lives in the nabh_registry_metadata table (departments/specialties/committees).
+// Departments/specialties/committees catalog (used only for the Institution Profile's
+// "Departments / specialties offered" multiselect) lives in the nabh_registry_metadata table.
 export async function listRegistryGroups(registryType = null) {
   const rows = await listRegistryMetadata();
   const groups = {};
@@ -21,9 +17,17 @@ export async function listRegistryGroups(registryType = null) {
   }
   return groups;
 }
+// Staff designation / role master list (nabh_role_master table) backs the "Designation / role"
+// dropdown and Role Management grouping - a separate catalog from the registry above.
+export async function listRoleMasterGroups() {
+  const rows = await listRoleMaster();
+  const groups = {};
+  for (const row of rows) (groups[row.category] ||= []).push(row.name);
+  return groups;
+}
 async function defaultRoles() {
-  const rows = await listRegistryMetadata();
-  return rows.map(({ label: name }) => ({ id: randomUUID(), name, reports: reportsFor(name) }));
+  const rows = await listRoleMaster();
+  return rows.map(({ name, reports }) => ({ id: randomUUID(), name, reports }));
 }
 export const roleActions = ["view_documents", "edit_documents", "submit_documents", "approve_documents", "request_changes", "reopen_documents", "upload_evidence", "view_audit", "manage_users", "manage_roles", "manage_profile", "select_accreditation", "manage_bookings", "delete_documents"];
 const legacyPermissionMap = { view: "view_documents", edit: "edit_documents", delete: "delete_documents", destroy: "delete_documents" };
