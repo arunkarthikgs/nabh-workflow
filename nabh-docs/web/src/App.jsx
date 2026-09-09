@@ -2161,7 +2161,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
   const [loadingMoreAudit, setLoadingMoreAudit] = useState(false);
 
   async function loadAuditPage(offset = 0) {
-    const response = await fetch(hospitalId ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit?limit=250&offset=${offset}` : "/api/document-audit");
+    const response = await fetch(hospitalId ? `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/document-audit?limit=250&offset=${offset}` : `/api/document-audit?limit=250&offset=${offset}`);
     if (!response.ok) return { entries: [], hasMore: false };
     return response.json();
   }
@@ -2515,7 +2515,7 @@ function AuditLog({ entries, hospitalId, hospitalName, hospitalLogoPath }) {
           </table>
           </>
         )}
-        {hospitalId && auditHasMore && !loadingAudit && <button className="secondary-button audit-load-more" type="button" disabled={loadingMoreAudit} onClick={loadMoreAuditEntries}>{loadingMoreAudit ? "Loading more..." : "Load more audit entries"}</button>}
+        {auditHasMore && !loadingAudit && <button className="secondary-button audit-load-more" type="button" disabled={loadingMoreAudit} onClick={loadMoreAuditEntries}>{loadingMoreAudit ? "Loading more..." : "Load more audit entries"}</button>}
       </section>
     </main>
   );

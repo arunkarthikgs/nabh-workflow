@@ -1398,17 +1398,24 @@ app.use("/api/document-audit", requireApplicationSession);
 app.get("/api/document-audit", async (request, response, next) => {
   try {
     if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
+    const limit = Number(request.query.limit || 250);
+    const cappedLimit = Math.min(Number(limit) > 0 ? Number(limit) : 250, 1000);
+    const offset = Math.max(Number(request.query.offset || 0) || 0, 0);
     const hospitals = await listHospitals();
     if (!r2TemplateStorageEnabled() || usesPostgresDataStore()) {
       const byId = new Map(hospitals.map((hospital) => [hospital.id, hospital]));
       const byCode = new Map(hospitals.map((hospital) => [hospital.code, hospital]));
-      return response.json({ entries: (await readDocumentAudit()).map((entry) => {
+      const entries = (await readDocumentAudit()).map((entry) => {
         const hospital = byId.get(entry.hospitalId) || byCode.get(entry.hospitalCode);
         return hospital ? { ...entry, hospitalName: entry.hospitalName || hospital.name, hospitalCode: entry.hospitalCode || hospital.code } : entry;
-      }) });
+      }).sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
+      const page = entries.slice(offset, offset + cappedLimit + 1);
+      return response.json({ entries: page.slice(0, cappedLimit), limit: cappedLimit, offset, hasMore: page.length > cappedLimit });
     }
     const clientEntries = await Promise.all(hospitals.filter((hospital) => hospital.accreditation?.programme).map(async (hospital) => (await listR2ClientAuditEvents(hospital.code, hospital.accreditation.programme)).map((entry) => ({ ...entry, hospitalCode: hospital.code, hospitalName: hospital.name }))));
-    response.json({ entries: [...await listR2TemplateAuditEvents(), ...clientEntries.flat()].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp))) });
+    const entries = [...await listR2TemplateAuditEvents(), ...clientEntries.flat()].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
+    const page = entries.slice(offset, offset + cappedLimit + 1);
+    response.json({ entries: page.slice(0, cappedLimit), limit: cappedLimit, offset, hasMore: page.length > cappedLimit });
   } catch (error) { next(error); }
 });
 
