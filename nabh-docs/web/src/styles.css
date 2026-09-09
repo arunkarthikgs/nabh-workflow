@@ -352,6 +352,9 @@ tr.history-row td { background: #f8f9ff; padding: 12px 16px; }
 .hospital-admin-view .hospital-list, .hospital-admin-view .admin-form { display: none; }.hospital-admin-view .admin-layout { display: block; }.hospital-admin-view .users-panel { margin-top: 0; }
 .super-admin-scoped-users > .admin-main { margin: 0; padding-top: 0; width: 100%; }
 .super-admin-scoped-users .hospital-users { margin: 0; max-width: none; }
+.super-admin-user-layout { gap: 10px; grid-template-columns: 270px minmax(0, 1fr); }
+.super-admin-user-layout > .super-admin-scoped-users { min-width: 0; width: 100%; }
+.super-admin-user-layout > .super-admin-scoped-users > .admin-main { min-width: 0; width: 100%; }
 .hospital-users { margin: 0 auto; max-width: 1120px; }.hospital-picker { color: #4a4e82; display: block; font-size: 12px; font-weight: 600; margin-bottom: 20px; }.hospital-picker select { background: #fbfbff; border: 1px solid #d9dcf3; border-radius: 5px; color: #3a3f6b; display: block; font: 13px Poppins; margin-top: 6px; padding: 9px; width: min(420px, 100%); }.registration-form section { border-top: 1px solid #eceeff; margin-top: 22px; padding-top: 18px; }.registration-form h3 { color: #3547d1; font-size: 13px; margin: 0; }
 @media (max-width: 850px) { .admin-layout { grid-template-columns: 1fr; }.hospital-list { max-height: 250px; overflow: auto; }.user-form { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .workspace-switcher button { flex: 1; justify-content: center; }.admin-main { padding-top: 26px; }.admin-form, .users-panel { padding: 18px 14px; }.admin-fields, .user-grid, .user-form { grid-template-columns: 1fr; }.admin-fields .wide { grid-column: span 1; }.user-form .primary-button { width: 100%; justify-content: center; }.user-card { flex-direction: column; gap: 11px; }.user-card > div:last-child { width: 100%; }.user-card .icon-button { margin-left: auto; } }
