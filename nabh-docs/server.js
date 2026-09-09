@@ -861,7 +861,7 @@ app.post("/api/login", async (request, response, next) => {
     const { hospital, user } = authenticated;
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "login", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const hospitalWithLogo = await backfillHospitalLogos([hospital]);
-    const role = hospital.roles?.find((item) => item.name === "Hospital Administrator");
+    const role = hospital.roles?.find((item) => item.name === user.role);
     const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
     await issueApplicationSession(response, session);
     response.json({ session });

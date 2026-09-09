@@ -39,8 +39,6 @@ import TemplateLibrary from "./TemplateLibrary.jsx";
 import RoleManagement from "./RoleManagement.jsx";
 import MyProfile from "./MyProfile.jsx";
 
-const CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 };
-
 // Must match NABH_WORKSPACE_CATEGORIES in services/shared/documentCategoryService.js.
 const NABH_WORKSPACE_CATEGORIES = [
   "Manuals",
@@ -82,10 +80,6 @@ const READINESS_TRANSITIONS = {
   implemented: ["evidence_available"],
   evidence_available: [],
 };
-
-function confidenceClass(confidence) {
-  return `badge badge-${confidence}`;
-}
 
 function toFileUrl(filePath) {
   return `file://${filePath.split("/").map(encodeURIComponent).join("/")}`;
@@ -132,7 +126,6 @@ function readUrlState() {
   return {
     category: params.get("cat") || null,
     documentSearch: params.get("q") || "",
-    confidenceFilter: params.get("conf") || "all",
     readinessStatusFilter: params.get("status") || "all",
     onlyInactive: params.get("onlyInactive") === "1",
     sortColumn: params.get("sort") || null,
@@ -325,9 +318,6 @@ function MasterListWorkspace({
   const [profileIncomplete, setProfileIncomplete] = useState([]);
   const [documentSearch, setDocumentSearch] = useState(
     initialUrlState.documentSearch,
-  );
-  const [confidenceFilter, setConfidenceFilter] = useState(
-    initialUrlState.confidenceFilter,
   );
   const [readinessStatusFilter, setReadinessStatusFilter] = useState(
     initialUrlState.readinessStatusFilter,
@@ -581,7 +571,6 @@ function MasterListWorkspace({
     const params = new URLSearchParams();
     if (selected) params.set("cat", selected);
     if (documentSearch) params.set("q", documentSearch);
-    if (confidenceFilter !== "all") params.set("conf", confidenceFilter);
     if (readinessStatusFilter !== "all") params.set("status", readinessStatusFilter);
     if (onlyInactive) params.set("onlyInactive", "1");
     if (sortColumn) {
@@ -598,7 +587,6 @@ function MasterListWorkspace({
     departments,
     selected,
     documentSearch,
-    confidenceFilter,
     readinessStatusFilter,
     onlyInactive,
     sortColumn,
@@ -631,17 +619,9 @@ function MasterListWorkspace({
     [selected, categories],
   );
 
-  const confidenceCounts = useMemo(() => {
-    const counts = { all: documents.length, high: 0, medium: 0, low: 0 };
-    for (const doc of documents) counts[doc.confidence]++;
-    return counts;
-  }, [documents]);
-
   const filteredDocuments = useMemo(() => {
     const query = documentSearch.trim().toLowerCase();
     let result = documents;
-    if (confidenceFilter !== "all")
-      result = result.filter((doc) => doc.confidence === confidenceFilter);
     if (readinessStatusFilter !== "all")
       result = result.filter(
         (doc) => (doc.readinessStatus || "not_started") === readinessStatusFilter,
@@ -658,20 +638,12 @@ function MasterListWorkspace({
     }
     if (sortColumn) {
       const direction = sortDirection === "desc" ? -1 : 1;
-      result = [...result].sort((a, b) => {
-        if (sortColumn === "confidence")
-          return (
-            (CONFIDENCE_RANK[a.confidence] - CONFIDENCE_RANK[b.confidence]) *
-            direction
-          );
-        return a.documentId.localeCompare(b.documentId) * direction;
-      });
+      result = [...result].sort((a, b) => a.documentId.localeCompare(b.documentId) * direction);
     }
     return result;
   }, [
     documents,
     documentSearch,
-    confidenceFilter,
     readinessStatusFilter,
     onlyInactive,
     sortColumn,
@@ -683,16 +655,12 @@ function MasterListWorkspace({
     const counts = {
       departments: Object.keys(departments).length,
       documents: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
       active: 0,
       inactive: 0,
     };
     for (const docs of Object.values(departments)) {
       counts.documents += docs.length;
       for (const doc of docs) {
-        counts[doc.confidence]++;
         counts[doc.active ? "active" : "inactive"]++;
       }
     }
@@ -1341,8 +1309,7 @@ function MasterListWorkspace({
         {totals && (
           <p className="intro">
             {totals.departments} departments &middot; {totals.documents}{" "}
-            documents &middot; {totals.high} high-confidence &middot;{" "}
-            {totals.medium} medium &middot; {totals.low} flagged &middot;{" "}
+            documents &middot;{" "}
             <span className="active-count">{totals.active} active</span>{" "}
             &middot;{" "}
             <span className="inactive-count">{totals.inactive} inactive</span>
@@ -1470,20 +1437,6 @@ function MasterListWorkspace({
             </label>
 
             <div className="toolbar">
-              <div className="confidence-chips">
-                {["all", "high", "medium", "low"].map((level) => (
-                  <button
-                    key={level}
-                    className={`chip ${level === confidenceFilter ? "chip-active" : ""}`}
-                    onClick={() => setConfidenceFilter(level)}
-                  >
-                    {level === "all"
-                      ? "All"
-                      : level.charAt(0).toUpperCase() + level.slice(1)}{" "}
-                    ({confidenceCounts[level]})
-                  </button>
-                ))}
-              </div>
               <label className="only-inactive">
                 <input
                   type="checkbox"
