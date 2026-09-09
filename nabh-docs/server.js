@@ -303,6 +303,18 @@ app.get("/api/admin/users", async (request, response, next) => {
   } catch (error) { next(error); }
 });
 
+app.get("/api/admin/me/profile", async (request, response, next) => {
+  try {
+    const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
+    const userId = request.appSession?.user_id || request.appSession?.userId;
+    const hospital = (await listHospitals()).find((item) => item.id === hospitalId);
+    const user = hospital?.users?.find((item) => item.id === userId || String(item.userId) === String(userId));
+    if (!hospital || !user) return response.status(404).json({ error: "Current user profile not found." });
+    const { passwordHash, passwordSalt, passwordSetupToken, passwordSetupExpiresAt, ...profile } = user;
+    response.json({ user: profile, hospital: { id: hospital.id, name: hospital.name, code: hospital.code, status: hospital.status } });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/admin/smtp/verify", async (_request, response) => {
   try { response.json(await withTimeout(verifySmtp(), 12000, "SMTP verification timed out.")); }
   catch (error) { response.status(502).json({ configured: Boolean(process.env.SMTP_HOST), verified: false, error: error.message }); }

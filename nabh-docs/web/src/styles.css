@@ -352,6 +352,21 @@ tr.history-row td { background: #f8f9ff; padding: 12px 16px; }
 .hospital-admin-view .hospital-list, .hospital-admin-view .admin-form { display: none; }.hospital-admin-view .admin-layout { display: block; }.hospital-admin-view .users-panel { margin-top: 0; }
 .super-admin-scoped-users > .admin-main { margin: 0; padding-top: 0; width: 100%; }
 .hospital-accreditation-label { color: #147d78 !important; line-height: 1.3; }
+.my-profile-page { max-width: 900px; }
+.my-profile-card { max-width: 760px; }
+.my-profile-heading { align-items: center; border-bottom: 1px solid #e9e9e7; display: flex; gap: 14px; padding-bottom: 20px; }
+.my-profile-heading h2 { margin: 0; }
+.my-profile-heading p { color: #787774; margin: 4px 0 0; }
+.profile-avatar { align-items: center; background: #e7f3f8; border-radius: 50%; color: #0b6e99; display: flex; height: 58px; justify-content: center; width: 58px; }
+.profile-hospital-banner { align-items: center; background: #f7f7f5; border: 1px solid #e9e9e7; border-radius: 5px; color: #37352f; display: flex; gap: 10px; margin: 20px 0; padding: 12px 14px; }
+.profile-hospital-banner span { flex: 1; }
+.profile-hospital-banner strong, .profile-hospital-banner small { display: block; }
+.profile-hospital-banner small { color: #787774; font-size: 11px; margin-top: 3px; }
+.profile-details-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.profile-detail { background: #fbfbf9; border: 1px solid #e9e9e7; border-radius: 4px; min-width: 0; padding: 12px; }
+.profile-detail small, .profile-detail strong { display: block; overflow-wrap: anywhere; }
+.profile-detail small { color: #787774; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.profile-detail strong { color: #37352f; font-size: 13px; margin-top: 5px; }
 .read-only-field input { background: #f1f1ef; color: #5f5e5b; cursor: default; }
 .super-admin-scoped-users .hospital-users { margin: 0; max-width: none; }
 .super-admin-user-layout { gap: 10px; grid-template-columns: 270px minmax(0, 1fr); }

@@ -24,6 +24,7 @@ import {
   Filter,
   AlertCircle,
   House,
+  UserCircle,
 } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
 import AdminWorkspace from "./AdminWorkspace.jsx";
@@ -36,6 +37,7 @@ import SuperAdminUserManagement from "./SuperAdminUserManagement.jsx";
 import SuperAdminHome from "./SuperAdminHome.jsx";
 import TemplateLibrary from "./TemplateLibrary.jsx";
 import RoleManagement from "./RoleManagement.jsx";
+import MyProfile from "./MyProfile.jsx";
 
 const CONFIDENCE_RANK = { low: 0, medium: 1, high: 2 };
 
@@ -2606,6 +2608,7 @@ function App() {
         ) : (
           <>
             <button className={view === "home" ? "active" : ""} title="Open home" onClick={() => setView("home")}><House size={16} /> Home</button>
+            <button className={view === "profile" ? "active" : ""} title="Open my profile" onClick={() => setView("profile")}><UserCircle size={16} /> My Profile</button>
             <button
               className={view === "platform" ? "active" : ""}
               title="Open readiness platform"
@@ -2692,6 +2695,8 @@ function App() {
             setView("master-list");
           }}
         />
+      ) : view === "profile" ? (
+        <MyProfile hospitalName={session.hospitalName} />
       ) : canViewDocuments ? (
         <MasterListWorkspace
           hospitalId={session.hospitalId}
