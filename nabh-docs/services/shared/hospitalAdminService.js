@@ -9,17 +9,22 @@ const seededLogos = [
 const defaultRoles = [
   "Hospital Administrator", "Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator", "Medical Records Officer (MRD)", "Front Office Executive", "Billing Executive", "Consultant Doctors", "Resident Medical Officer (RMO)", "Nurses", "Anesthesiologist", "Surgeon", "Physiotherapist", "Dietician", "Emergency Medical Officer", "Trauma Nurse", "Intensivist", "Critical Care Nurse", "Lab Technician", "Pathologist", "Radiologist", "Radiology Technician", "Pharmacist", "Pharmacy Store Manager", "Clinical Pharmacist", "Infection Control Nurse (ICN)", "Patient Safety Officer", "Safety Officer", "Biomedical Engineer"
 ].map((name) => ({ id: randomUUID(), name, reports: name.includes("Quality") || name.includes("NABH") || name.includes("Auditor") ? ["Master List", "Compliance Summary", "Document Matches"] : name.includes("Records") ? ["Master List", "Document Matches"] : ["Master List"] }));
-const roleActions = ["view", "edit", "delete", "destroy"];
+const roleActions = ["view_documents", "edit_documents", "submit_documents", "approve_documents", "request_changes", "reopen_documents", "upload_evidence", "view_audit", "manage_users", "manage_roles", "manage_profile", "select_accreditation", "manage_bookings", "delete_documents"];
+const legacyPermissionMap = { view: "view_documents", edit: "edit_documents", delete: "delete_documents", destroy: "delete_documents" };
 const privilegedRoles = new Set(["Hospital Administrator", "IT Administrator"]);
 
 function defaultPermissions(roleName) {
-  if (privilegedRoles.has(roleName)) return roleActions;
-  if (roleName.includes("Quality") || roleName.includes("NABH") || roleName.includes("Auditor")) return ["view", "edit"];
-  return ["view"];
+  if (privilegedRoles.has(roleName)) return [...roleActions];
+  if (roleName.includes("Quality") || roleName.includes("NABH") || roleName.includes("Auditor")) return ["view_documents", "edit_documents", "submit_documents", "request_changes", "upload_evidence", "view_audit"];
+  return ["view_documents"];
 }
 
 function rolesForHospital(hospital) {
-  if (!Array.isArray(hospital.roles)) hospital.roles = defaultRoles.map((role) => ({ ...role, id: randomUUID(), documentAccess: {}, permissions: defaultPermissions(role.name) }));
+  if (!Array.isArray(hospital.roles)) hospital.roles = defaultRoles.map((role) => ({ ...role, id: randomUUID(), documentAccess: {}, scopeMode: privilegedRoles.has(role.name) ? "all_documents" : "selected_documents", permissions: defaultPermissions(role.name) }));
+  hospital.roles.forEach((role) => {
+    role.permissions = permissions(role.permissions, role.name);
+    role.scopeMode = ["all_documents", "assigned_departments", "selected_documents", "own_submissions"].includes(role.scopeMode) ? role.scopeMode : "selected_documents";
+  });
   return hospital.roles;
 }
 
@@ -30,8 +35,8 @@ function documentAccess(value) {
 
 function permissions(value, roleName) {
   if (!Array.isArray(value)) return defaultPermissions(roleName);
-  const selected = roleActions.filter((action) => value.includes(action));
-  return selected.some((action) => action !== "view") && !selected.includes("view") ? ["view", ...selected] : selected;
+  const selected = [...new Set(value.map((action) => legacyPermissionMap[action] || action).filter((action) => roleActions.includes(action)))];
+  return selected.some((action) => action !== "view_documents") && !selected.includes("view_documents") ? ["view_documents", ...selected] : selected;
 }
 
 const allDocumentRoles = new Set(["Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator"]);
@@ -160,9 +165,8 @@ export async function deleteHospitalUser(hospitalId, userId) {
   return deleteHospitalUserRecord(hospital.id, userId);
 }
 
-export async function listHospitalRoles(hospitalId) {
-  const hospitals = await listHospitals();
-  const hospital = hospitals.find((item) => item.id === hospitalId);
+export async function listHospitalRoles(hospitalId, knownHospital = null) {
+  const hospital = knownHospital || (await listHospitals()).find((item) => item.id === hospitalId);
   if (!hospital) return null;
   const roles = rolesForHospital(hospital);
   if (roles.length && roles.every((role) => role.defaultAccessApplied)) return roles;
@@ -193,7 +197,7 @@ export async function createHospitalRole(hospitalId, input) {
   if (!name) throw new Error("Role name is required.");
   const roles = rolesForHospital(hospital);
   if (roles.some((role) => role.name.toLowerCase() === name.toLowerCase())) throw new Error("This role already exists.");
-  const role = { id: randomUUID(), name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), permissions: permissions(input.permissions, name) };
+  const role = { id: randomUUID(), name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), scopeMode: ["all_documents", "assigned_departments", "selected_documents", "own_submissions"].includes(input.scopeMode) ? input.scopeMode : "selected_documents", permissions: permissions(input.permissions, name) };
   return saveHospitalRole(hospital.id, role);
 }
 
@@ -205,7 +209,7 @@ export async function updateHospitalRole(hospitalId, roleId, input) {
   if (!role) return null;
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
-  Object.assign(role, { name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), permissions: permissions(input.permissions, name) });
+  Object.assign(role, { name, reports: Array.isArray(input.reports) ? input.reports.filter((report) => typeof report === "string") : [], documentAccess: documentAccess(input.documentAccess), scopeMode: ["all_documents", "assigned_departments", "selected_documents", "own_submissions"].includes(input.scopeMode) ? input.scopeMode : "selected_documents", permissions: permissions(input.permissions, name) });
   return saveHospitalRole(hospital.id, role);
 }
 

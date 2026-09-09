@@ -1782,7 +1782,10 @@ function MasterListWorkspace({
                 <textarea rows={3} value={evidenceDescription} onChange={(event) => setEvidenceDescription(event.target.value)} placeholder="Describe what this file proves and the period it covers." />
               </label>
               {evidenceError && <p className="status error">{evidenceError}</p>}
-              <button className="primary-button" type="submit" disabled={uploadingEvidence}>{uploadingEvidence ? "Uploading evidence..." : "Upload evidence"}</button>
+              <div className="evidence-dialog-actions">
+                <button className="secondary-button" type="button" onClick={() => setEvidenceDocument(null)}>Close</button>
+                <button className="primary-button" type="submit" disabled={uploadingEvidence}>{uploadingEvidence ? "Uploading evidence..." : "Upload evidence"}</button>
+              </div>
               <div className="evidence-list">
                 <h3>Uploaded evidence</h3>
                 {evidenceEntries.length ? evidenceEntries.map((entry) => (

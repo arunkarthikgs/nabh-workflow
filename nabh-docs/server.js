@@ -309,7 +309,12 @@ app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async 
 });
 
 app.get("/api/admin/hospitals/:hospitalId/roles", async (request, response, next) => {
-  try { const roles = await listHospitalRoles(request.params.hospitalId); if (!roles) return response.status(404).json({ error: "Hospital not found." }); response.json({ roles }); } catch (error) { next(error); }
+  try {
+    const hospital = (await listHospitals()).find((item) => item.id === request.params.hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const roles = await listHospitalRoles(request.params.hospitalId, hospital);
+    response.json({ roles, hospital: { status: hospital.status, logoPath: hospital.logoPath || "" } });
+  } catch (error) { next(error); }
 });
 
 app.post("/api/admin/hospitals/:hospitalId/roles", async (request, response, next) => {
