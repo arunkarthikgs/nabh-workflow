@@ -376,7 +376,7 @@ function MasterListWorkspace({
   const [reopenDocument, setReopenDocument] = useState(null);
   const [reopenNote, setReopenNote] = useState("");
   const [reopenError, setReopenError] = useState("");
-  const canEdit = permissions.includes("edit");
+  const canEdit = permissions.includes("edit") || permissions.includes("edit_documents");
 
   async function openQuestionnaire(doc) {
     setQuestionError("");
@@ -2551,7 +2551,7 @@ function App() {
     );
   }
   const isSuperAdmin = session.role === "Super Admin";
-  const canViewDocuments = session.permissions?.includes("view");
+  const canViewDocuments = session.permissions?.includes("view") || session.permissions?.includes("view_documents");
   return (
     <>
       <div className="workspace-switcher">
