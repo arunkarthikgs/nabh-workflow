@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState, Fragment } from "react";
 import {
   Building2,
   FileSearch,
+  FileSpreadsheet,
+  FileText,
   FolderOpen,
+  Presentation,
   Search,
   ArrowUp,
   ArrowDown,
@@ -91,6 +94,14 @@ function docKey(doc) {
 
 function isAacPolicy(doc) {
   return doc.documentId === "JPH/NABH/D-14A/Rev 00";
+}
+
+const fileTypeIcons = { DOCX: FileText, XLSX: FileSpreadsheet, PPTX: Presentation };
+
+function fileTypeOf(doc) {
+  const path = doc.relativeFilePath || doc.matchedFilePath || "";
+  const extension = path.split(".").pop();
+  return path.includes(".") && extension ? extension.toUpperCase() : "";
 }
 
 function isApprovedDocument(doc) {
@@ -1502,6 +1513,7 @@ function MasterListWorkspace({
                   </th>
                   <th>Active</th>
                   <th>Document Name</th>
+                  <th>Type</th>
                   <th>Readiness</th>
                   <th className="hospital-actions-column">Actions</th>
                 </tr>
@@ -1559,6 +1571,12 @@ function MasterListWorkspace({
                           )}
                         </td>
                         <td>
+                          {fileTypeOf(doc) && (() => {
+                            const TypeIcon = fileTypeIcons[fileTypeOf(doc)] || FileText;
+                            return <span className="template-type"><TypeIcon size={15} /> {fileTypeOf(doc)}</span>;
+                          })()}
+                        </td>
+                        <td>
                           <select
                             className={`readiness-select readiness-${doc.readinessStatus || "not_started"}`}
                             value={doc.readinessStatus || "not_started"}
@@ -1601,7 +1619,7 @@ function MasterListWorkspace({
                       </tr>
                       {expandedHistoryId === doc.id && (
                         <tr className="history-row">
-                          <td colSpan={5}>
+                          <td colSpan={6}>
                             {!isApprovedDocument(doc) ? (
                               <p className="empty">No version history available yet for this document.</p>
                             ) : (
@@ -1680,7 +1698,7 @@ function MasterListWorkspace({
                 })}
                 {filteredDocuments.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="empty">
+                    <td colSpan={6} className="empty">
                       No documents match your filters.
                     </td>
                   </tr>
