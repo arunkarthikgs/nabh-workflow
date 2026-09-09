@@ -17,7 +17,7 @@ h2 { color: #34375f; font-size: 20px; font-weight: 600; margin: 0; }
 
 .status.error { background: #fff0f0; border-left: 3px solid #e0507a; border-radius: 4px; color: #a13a56; padding: 12px 16px; }
 
-.layout { display: grid; gap: 24px; grid-template-columns: 360px 1fr; align-items: start; }
+.layout { display: grid; gap: 24px; grid-template-columns: 400px 1fr; align-items: start; }
 
 .department-list { background: #ffffff; border-radius: 14px; box-shadow: 0 18px 38px rgba(84, 92, 176, 0.14); display: flex; flex-direction: column; max-height: 75vh; overflow-y: auto; padding: 10px; }
 .department-list button { align-items: center; background: transparent; border: 0; border-radius: 10px; color: #4a4e82; cursor: pointer; display: flex; font: 500 14px Poppins; gap: 6px; padding: 12px 14px; text-align: left; }
@@ -438,7 +438,7 @@ h2 { font-size: 19px; }
 .workspace-switcher > span { color: #37352f; font-family: "Libre Baskerville", Georgia, serif; font-size: 15px; line-height: 1.35; margin: 4px 8px 18px; }
 .workspace-switcher > span::after { background: #dededb; content: ""; display: block; height: 1px; margin-top: 16px; width: 100%; }
 
-.layout { gap: var(--workspace-gutter); grid-template-columns: 360px minmax(0, 1fr); min-width: 0; }
+.layout { gap: var(--workspace-gutter); grid-template-columns: 400px minmax(0, 1fr); min-width: 0; }
 .department-list, .document-panel, .hospital-list, .admin-form, .users-panel {
   background: transparent;
   border-radius: 0;
@@ -446,7 +446,7 @@ h2 { font-size: 19px; }
 }
 .department-list { border-right: 1px solid #e9e9e7; max-height: calc(100vh - 150px); padding: 0 6px 0 0; }
 .department-list button { border-radius: 4px; color: #5f5e5b; font: 500 13px "Manrope", sans-serif; flex-wrap: wrap; gap: 6px 8px; padding: 8px 9px; }
-.department-list button span:nth-child(2) { flex: 1 1 auto; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.department-list button span:nth-child(2) { flex: 1 1 0%; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .department-list button .count-pill-questions { flex-shrink: 0; }
 .department-list button .count-pill-readiness { flex-shrink: 0; }
 .department-list button:hover { background: #f1f1ef; }
