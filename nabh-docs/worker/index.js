@@ -64,7 +64,18 @@ export default {
     if (!isCallback && !await authorized(request, env)) {
       return new Response("Unauthorized", { status: 401, headers: { "WWW-Authenticate": 'Basic realm="NABH Docs", charset="UTF-8"' } });
     }
-    // Single instance: DATA_STORE=json keeps state on the container filesystem.
-    return getContainer(env.NABH_APP, "nabh-docs").fetch(request);
+    const container = getContainer(env.NABH_APP, "nabh-docs");
+    try {
+      return await container.fetch(request);
+    } catch (error) {
+      // Container provisioning can briefly race the first request after deploy.
+      console.error("Container request failed; retrying once:", error);
+      try {
+        return await container.fetch(request);
+      } catch (retryError) {
+        console.error("Container retry failed:", retryError);
+        return new Response("The application container is starting. Please retry in a moment.", { status: 503, headers: { "Retry-After": "10", "Content-Type": "text/plain; charset=utf-8" } });
+      }
+    }
   }
 };
