@@ -43,6 +43,7 @@ export default function TemplateLibrary() {
   const [approvalNote, setApprovalNote] = useState("");
   const [approvalMessage, setApprovalMessage] = useState("");
   const [history, setHistory] = useState(null);
+  const [historyLoadingPath, setHistoryLoadingPath] = useState("");
   const [questionnaireReport, setQuestionnaireReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
@@ -85,10 +86,15 @@ export default function TemplateLibrary() {
   }
 
   async function showHistory(template) {
-    const response = await fetch(`/api/admin/template-library/versions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
-    const result = await response.json();
-    if (!response.ok) { setError(result.error || "Unable to load template history."); return; }
-    setHistory({ template, document: result.document });
+    setHistoryLoadingPath(template.templatePath);
+    try {
+      const response = await fetch(`/api/admin/template-library/versions?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`);
+      const result = await response.json();
+      if (!response.ok) { setError(result.error || "Unable to load template history."); return; }
+      setHistory({ template, document: result.document });
+    } finally {
+      setHistoryLoadingPath("");
+    }
   }
 
   async function showQuestionnaireReport() {
@@ -216,7 +222,7 @@ export default function TemplateLibrary() {
                             <a className="icon-button" href={`/api/admin/template-library/download?programme=${encodeURIComponent(programme)}&path=${encodeURIComponent(template.templatePath)}`} title={`Download ${template.fileName}`}><Download size={17} /></a>
                             <button className="icon-button questionnaire-document-action" title={`Upload and approve a new version of ${template.fileName}`} onClick={() => { setApproval(template); setApprovalMessage(""); }}><Upload size={17} /></button>
                             <button className="questionnaire-action questionnaire-document-action" title={`Configure questions for ${template.fileName}`} onClick={() => configureQuestions(template)}><ClipboardList size={17} /><span>{template.questionCount || 0}</span></button>
-                            <button className="version-badge" title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}><History size={13} /></button>
+                            <button className="version-badge" disabled={historyLoadingPath === template.templatePath} title={`View version history for ${template.fileName}`} onClick={() => showHistory(template)}>{historyLoadingPath === template.templatePath ? <RefreshCw size={13} className="spin-icon" /> : <History size={13} />}</button>
                           </span>
                         )}</td>
                       </tr>

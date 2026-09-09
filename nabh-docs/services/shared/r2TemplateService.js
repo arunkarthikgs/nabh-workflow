@@ -32,9 +32,19 @@ function config() {
   };
 }
 
+let cachedClient = null;
+let cachedClientKey = "";
+
+// Reuse one S3Client (and its HTTP keep-alive connections) instead of paying a fresh
+// TLS handshake on every call, which was making version/history lookups feel slow.
 function client() {
   const settings = config();
-  return new S3Client({ region: "auto", endpoint: settings.endpoint, credentials: settings.credentials });
+  const key = `${settings.endpoint}|${settings.credentials.accessKeyId}`;
+  if (!cachedClient || cachedClientKey !== key) {
+    cachedClient = new S3Client({ region: "auto", endpoint: settings.endpoint, credentials: settings.credentials });
+    cachedClientKey = key;
+  }
+  return cachedClient;
 }
 
 export function r2TemplateStorageEnabled() {

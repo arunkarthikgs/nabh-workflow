@@ -333,6 +333,7 @@ function MasterListWorkspace({
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [historyLoadingId, setHistoryLoadingId] = useState(null);
   const [previewAacPolicy, setPreviewAacPolicy] = useState(false);
   const [previewDocument, setPreviewDocument] = useState(null);
   const [openDocument, setOpenDocument] = useState(null);
@@ -1000,13 +1001,18 @@ function MasterListWorkspace({
 
   async function toggleHistory(doc) {
     if (expandedHistoryId === doc.id) { setExpandedHistoryId(null); return; }
-    const documentKey = doc.relativeFilePath || doc.matchedFilePath || doc.id;
-    const params = new URLSearchParams({ documentKey, documentId: doc.documentId || "", documentName: doc.documentName || "" });
-    const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version-manifest?${params.toString()}`);
-    const result = await response.json();
-    if (!response.ok) return setError(result.error || "Unable to load version history.");
-    setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === doc.id ? { ...item, history: result.manifest?.history || [], version: result.manifest?.currentVersion || null, approved: Boolean(result.manifest?.history?.length) } : item)])) : current);
-    setExpandedHistoryId(doc.id);
+    setHistoryLoadingId(doc.id);
+    try {
+      const documentKey = doc.relativeFilePath || doc.matchedFilePath || doc.id;
+      const params = new URLSearchParams({ documentKey, documentId: doc.documentId || "", documentName: doc.documentName || "" });
+      const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/version-manifest?${params.toString()}`);
+      const result = await response.json();
+      if (!response.ok) return setError(result.error || "Unable to load version history.");
+      setDepartments((current) => current ? Object.fromEntries(Object.entries(current).map(([category, documents]) => [category, documents.map((item) => item.id === doc.id ? { ...item, history: result.manifest?.history || [], version: result.manifest?.currentVersion || null, approved: Boolean(result.manifest?.history?.length) } : item)])) : current);
+      setExpandedHistoryId(doc.id);
+    } finally {
+      setHistoryLoadingId(null);
+    }
   }
 
   function startDocumentEdit(doc) {
@@ -1583,7 +1589,7 @@ function MasterListWorkspace({
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
                             {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
-                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" title="View history" onClick={() => toggleHistory(doc)}><History size={12} />{doc.version ? `v${doc.version}` : ""}</button>}
+                            {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" disabled={historyLoadingId === doc.id} title="View history" onClick={() => toggleHistory(doc)}>{historyLoadingId === doc.id ? <RefreshCw size={12} className="spin-icon" /> : <History size={12} />}{doc.version ? `v${doc.version}` : ""}</button>}
                           </span>
                         </td>
                       </tr>
@@ -2497,6 +2503,31 @@ function App() {
   const setupToken = new URLSearchParams(window.location.search).get(
     "setPasswordToken",
   );
+
+  // Role/permission edits happen live in the admin console, so re-fetch them here instead
+  // of relying solely on the snapshot captured at login time.
+  useEffect(() => {
+    if (!session || session.role === "Super Admin") return;
+    let cancelled = false;
+    const refreshPermissions = () => {
+      fetch("/api/admin/me/session")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((fresh) => {
+          if (!fresh || cancelled) return;
+          setSession((current) =>
+            current ? { ...current, role: fresh.role, permissions: fresh.permissions } : current,
+          );
+        })
+        .catch(() => {});
+    };
+    refreshPermissions();
+    window.addEventListener("focus", refreshPermissions);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshPermissions);
+    };
+  }, [session?.hospitalId, session?.role]);
+
   if (!session) {
     if (setupToken) {
       return (

@@ -9,7 +9,7 @@ const seededLogos = [
 const defaultRoles = [
   "Hospital Administrator", "Quality Manager", "NABH Coordinator", "Internal Auditor", "HR Manager", "IT Administrator", "Medical Records Officer (MRD)", "Front Office Executive", "Billing Executive", "Consultant Doctors", "Resident Medical Officer (RMO)", "Nurses", "Anesthesiologist", "Surgeon", "Physiotherapist", "Dietician", "Emergency Medical Officer", "Trauma Nurse", "Intensivist", "Critical Care Nurse", "Lab Technician", "Pathologist", "Radiologist", "Radiology Technician", "Pharmacist", "Pharmacy Store Manager", "Clinical Pharmacist", "Infection Control Nurse (ICN)", "Patient Safety Officer", "Safety Officer", "Biomedical Engineer"
 ].map((name) => ({ id: randomUUID(), name, reports: name.includes("Quality") || name.includes("NABH") || name.includes("Auditor") ? ["Master List", "Compliance Summary", "Document Matches"] : name.includes("Records") ? ["Master List", "Document Matches"] : ["Master List"] }));
-const roleActions = ["view_documents", "edit_documents", "submit_documents", "approve_documents", "request_changes", "reopen_documents", "upload_evidence", "view_audit", "manage_users", "manage_roles", "manage_profile", "select_accreditation", "manage_bookings", "delete_documents"];
+export const roleActions = ["view_documents", "edit_documents", "submit_documents", "approve_documents", "request_changes", "reopen_documents", "upload_evidence", "view_audit", "manage_users", "manage_roles", "manage_profile", "select_accreditation", "manage_bookings", "delete_documents"];
 const legacyPermissionMap = { view: "view_documents", edit: "edit_documents", delete: "delete_documents", destroy: "delete_documents" };
 const privilegedRoles = new Set(["Hospital Administrator", "IT Administrator"]);
 

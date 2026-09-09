@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
@@ -312,6 +312,22 @@ app.get("/api/admin/me/profile", async (request, response, next) => {
     if (!hospital || !user) return response.status(404).json({ error: "Current user profile not found." });
     const { passwordHash, passwordSalt, passwordSetupToken, passwordSetupExpiresAt, ...profile } = user;
     response.json({ user: profile, hospital: { id: hospital.id, name: hospital.name, code: hospital.code, status: hospital.status } });
+  } catch (error) { next(error); }
+});
+
+// Re-resolves the current user's role/permissions live so role edits take effect without a full re-login.
+app.get("/api/admin/me/session", async (request, response, next) => {
+  try {
+    if (request.appSession?.role === "Super Admin") return response.json({ role: "Super Admin", permissions: [...roleActions] });
+    const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
+    const userId = request.appSession?.user_id || request.appSession?.userId;
+    const hospital = (await listHospitals()).find((item) => item.id === hospitalId);
+    if (!hospital) return response.status(404).json({ error: "Hospital not found." });
+    const user = hospital.users?.find((item) => item.id === userId || String(item.userId) === String(userId));
+    if (!user) return response.status(404).json({ error: "Session user not found." });
+    const roles = await listHospitalRoles(hospital.id, hospital);
+    const role = roles.find((item) => item.name === user.role);
+    response.json({ role: user.role, permissions: role?.permissions || ["view_documents"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath });
   } catch (error) { next(error); }
 });
 
