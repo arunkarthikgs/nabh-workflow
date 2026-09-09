@@ -69,7 +69,7 @@ export function buildOnboardingApprovalEmail(hospital, user, approvedBy) {
   return {
     to: user.email,
     bcc: approvedBy ? [approvedBy] : undefined,
-    subject: `Hospital onboarding approved: ${hospital.name}`,
-    text: `Hi ${user.name},\n\nYour hospital registration for ${hospital.name} has been approved by the NABH Readiness Platform administrator. You can now complete your hospital registration and activate your account using the setup link from your registration email.\n\n- NABH Readiness Platform`
+    subject: `Onboarding approved: ${hospital.name}`,
+    text: `Hi ${user.name},\n\nYour onboarding request for ${hospital.name} has been approved by the NABH Readiness Platform administrator.\n\nYou can now sign in and complete your hospital's institutional details. After completing the institutional profile, proceed to select and confirm the NABH accreditation programme your hospital intends to pursue.\n\nRegards,\nNABH Readiness Platform`
   };
 }
