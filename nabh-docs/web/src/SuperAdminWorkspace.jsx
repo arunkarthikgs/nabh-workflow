@@ -242,10 +242,10 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
                 </select>
               </label>
               {selected && (
-                <label className="read-only-field">
-                  NABH accreditation programme
-                  <input value={selected.accreditation?.programme || "Accreditation not selected"} readOnly />
-                </label>
+                <div className="read-only-field">
+                  <span className="read-only-field-label">NABH accreditation programme</span>
+                  <span className="read-only-field-value">{selected.accreditation?.programme || "Accreditation not selected"}</span>
+                </div>
               )}
               <label>
                 Hospital logo
