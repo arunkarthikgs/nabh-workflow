@@ -399,7 +399,7 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
         <button className={tab === "services" ? "active" : ""} title="Open training and consulting" onClick={() => setTab("services")}><GraduationCap size={14} /> Training &amp; consulting</button>
       </div>}
       {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
-      {hospital?.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
+      {hospital && hospital.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
       {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status !== "active"} />}
       {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status !== "active"} />}
       {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
