@@ -9,8 +9,8 @@ import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
-import { buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
-import { loadConfig } from "./services/shared/config.js";
+import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
+import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
@@ -251,7 +251,16 @@ app.post("/api/admin/hospitals/:hospitalId/approve-onboarding", async (request, 
     if (request.appSession?.role !== "Super Admin") return response.status(403).json({ error: "Super Admin access required." });
     const hospital = await approveHospitalOnboarding(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
-    response.json({ hospital });
+    const creator = (hospital.users || []).find((user) => user.role === "Hospital Administrator") || hospital.users?.[0];
+    if (creator?.email) {
+      const approver = (await listHospitals()).flatMap((item) => item.users || []).find((user) => user.id === request.appSession.user_id);
+      const configuredRecipient = configValue("ONBOARDING_APPROVAL_EMAIL_TO");
+      const approverEmail = approver?.email || configValue("PLATFORM_ADMIN_EMAIL");
+      const email = buildOnboardingApprovalEmail(hospital, creator, approverEmail);
+      if (configuredRecipient && configuredRecipient.toLowerCase() !== creator.email.toLowerCase()) email.to = `${creator.email}, ${configuredRecipient}`;
+      void withTimeout(sendEmail(email), 12000, "Onboarding approval email timed out.").catch((error) => console.error("Onboarding approval email failed:", error.message));
+    }
+    response.json({ hospital, email: { queued: Boolean(creator?.email) } });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 

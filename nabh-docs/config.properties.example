@@ -24,3 +24,5 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # SMTP_USER=your-smtp-username
 # SMTP_PASS=your-smtp-password
 # SMTP_FROM=NABH Readiness Platform <no-reply@your-domain.test>
+# Optional additional recipient for hospital onboarding approval notifications.
+# ONBOARDING_APPROVAL_EMAIL_TO=operations@example.com

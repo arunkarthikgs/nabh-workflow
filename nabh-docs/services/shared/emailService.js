@@ -25,6 +25,10 @@ async function smtpTransport() {
 }
 
 async function sendViaSmtp(message) {
+  const host = configValue("SMTP_HOST");
+  let nodemailer;
+  try { ({ default: nodemailer } = await import("nodemailer")); }
+  catch { throw new Error("The nodemailer package is not installed."); }
   const transporter = await smtpTransport();
   if (!transporter) return false;
   const info = await transporter.sendMail({ from: configValue("SMTP_FROM", "no-reply@nabh-docs.local"), ...message });
@@ -58,5 +62,14 @@ export function buildWelcomeEmail(hospital, user, setupLink) {
     to: user.email,
     subject: `Welcome to the NABH Readiness Platform, ${hospital.name}`,
     text: `Hi ${user.name},\n\nYour account for ${hospital.name} (client code ${hospital.code}) has been created on the NABH Readiness Platform.\n\nSet your password to activate your account and get started:\n${setupLink}\n\nThis link expires in 48 hours.\n\n- NABH Readiness Platform`
+  };
+}
+
+export function buildOnboardingApprovalEmail(hospital, user, approvedBy) {
+  return {
+    to: user.email,
+    bcc: approvedBy ? [approvedBy] : undefined,
+    subject: `Hospital onboarding approved: ${hospital.name}`,
+    text: `Hi ${user.name},\n\nYour hospital registration for ${hospital.name} has been approved by the NABH Readiness Platform administrator. You can now complete your hospital registration and activate your account using the setup link from your registration email.\n\n- NABH Readiness Platform`
   };
 }
