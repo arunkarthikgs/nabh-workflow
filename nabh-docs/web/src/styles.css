@@ -523,7 +523,7 @@ h2 { font-size: 19px; }
 .document-panel > table th:nth-child(1) { width: 48px; }
 .document-panel > table th:nth-child(2) { width: 92px; }
 .document-panel > table th:nth-child(3) { width: 28%; }
-.document-panel > table th:nth-child(4) { width: 260px; }
+.document-panel > table th:nth-child(4) { width: 1%; white-space: nowrap; }
 .document-panel > table th:nth-child(5) { width: 300px; }
 .panel-heading { border-bottom: 1px solid #e9e9e7; color: #5f5e5b; gap: 9px; margin-bottom: 12px; padding-bottom: 13px; }
 .panel-heading .count { margin-left: auto; }
