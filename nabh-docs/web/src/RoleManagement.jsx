@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { BookOpenCheck, Building2, ChevronDown, Pencil, Plus, Save, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { BookOpenCheck, Building2, ChevronDown, Pencil, Plus, RefreshCw, Save, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 
 const defaultHospitalLogo = "/logos/no-logo.png";
 
@@ -17,8 +17,12 @@ function classifyDocument(documentName) { for (const [category, pattern] of CATE
 function groupRoles(roles, groups) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
-  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [roleEditorOpen, setRoleEditorOpen] = useState(false), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
+  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [roleEditorOpen, setRoleEditorOpen] = useState(false), [rolesLoading, setRolesLoading] = useState(true), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
   const isReadOnly = hospitalStatus !== "active";
+  useEffect(() => {
+    window.document.body.classList.toggle("roles-loading", rolesLoading);
+    return () => window.document.body.classList.remove("roles-loading");
+  }, [rolesLoading]);
   useEffect(() => {
     window.document.body.classList.toggle("role-editor-open", roleEditorOpen);
     return () => window.document.body.classList.remove("role-editor-open");
@@ -30,7 +34,7 @@ export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoP
     addRoleButton.addEventListener("click", openEditor);
     return () => addRoleButton.removeEventListener("click", openEditor);
   }, [tab, roles]);
-  async function load() { const roleResponse = await fetch(`/api/admin/hospitals/${hospitalId}/roles`); if (!roleResponse.ok) throw new Error("Unable to load role access data."); const result = await roleResponse.json(), loadedRoles = result.roles || [], hospital = result.hospital || {}; setRoles(loadedRoles); setRoleGroups(result.roleGroups || {}); setSelectedId((current) => current && loadedRoles.some((role) => role.id === current) ? current : ""); setLogoPath(hospital.logoPath || hospitalLogoPath || defaultHospitalLogo); setHospitalStatus(hospital.status || "pending"); }
+  async function load() { setRolesLoading(true); try { const roleResponse = await fetch(`/api/admin/hospitals/${hospitalId}/roles`); if (!roleResponse.ok) throw new Error("Unable to load role access data."); const result = await roleResponse.json(), loadedRoles = result.roles || [], hospital = result.hospital || {}; setRoles(loadedRoles); setRoleGroups(result.roleGroups || {}); setSelectedId((current) => current && loadedRoles.some((role) => role.id === current) ? current : ""); setLogoPath(hospital.logoPath || hospitalLogoPath || defaultHospitalLogo); setHospitalStatus(hospital.status || "pending"); } finally { setRolesLoading(false); } }
   useEffect(() => { load().catch((error) => setMessage(error.message)); }, [hospitalId]);
   useEffect(() => {
     if (tab !== "scope" || Object.keys(departments).length) return undefined;
