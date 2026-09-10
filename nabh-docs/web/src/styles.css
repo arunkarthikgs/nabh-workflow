@@ -709,7 +709,7 @@ tr.history-row td { background: #f7f7f5; }
 .context-search { background: #f7f7f5; border: 1px solid transparent; border-radius: 4px; color: #37352f; font: 12px "Manrope", sans-serif; margin: 0 0 12px; outline: none; padding: 8px 10px; width: 100%; }
 .context-search:focus { background: #ffffff; border-color: #2383e2; box-shadow: 0 0 0 1px #2383e2; }
 .context-search::placeholder { color: #9b9a97; }
-.role-layout > .users-panel:first-child .panel-heading .icon-button { align-items: center; background: transparent; border: 0; color: #6c6fb0; cursor: pointer; display: flex; font: 600 13px Poppins; gap: 7px; margin-left: auto; padding: 9px 11px; }
+.role-layout > .users-panel:first-child .panel-heading .icon-button { align-items: center; background: transparent; border: 0; color: #6c6fb0; cursor: pointer; display: flex; font: 600 13px Poppins; gap: 7px; margin-left: 4px; padding: 9px 11px; }
 .role-layout > .users-panel:first-child .panel-heading .icon-button:hover { background: #eef0ff; color: #3547d1; }
 .role-layout > .users-panel:first-child .panel-heading .icon-button svg { height: 16px; width: 16px; }
 .role-layout > .users-panel:first-child .panel-heading .icon-button::after { content: "Add role"; }
