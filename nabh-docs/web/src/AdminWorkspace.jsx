@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+const defaultHospitalLogo = "/logos/no-logo.png";
 import {
   Building2,
   KeyRound,
@@ -140,15 +141,11 @@ export default function AdminWorkspace({
     <main className="admin-main">
       <header>
         <div className="brand">
-          {hospital?.logoPath ? (
-            <img
-              className="hospital-brand-logo"
-              src={hospital.logoPath}
-              alt={hospitalName || hospital?.name}
-            />
-          ) : (
-            <Building2 size={96} />
-          )}
+          <img
+            className="hospital-brand-logo"
+            src={hospital?.logoPath || defaultHospitalLogo}
+            alt={hospitalName || hospital?.name || "Hospital"}
+          />
           <div>
             <p className="eyebrow">Hospital workspace</p>
             <h1>User management</h1>

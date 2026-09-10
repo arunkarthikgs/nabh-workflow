@@ -2584,13 +2584,11 @@ function App() {
           src={hospitalLogo}
           alt="NABH Readiness System"
         />
-        {session.hospitalLogoPath && (
-          <img
-            className="navigation-logo"
-            src={session.hospitalLogoPath}
-            alt={session.hospitalName}
-          />
-        )}
+        <img
+          className="navigation-logo"
+          src={session.hospitalLogoPath || "/logos/no-logo.png"}
+          alt={session.hospitalName || "Hospital"}
+        />
         <span>{session.hospitalName || session.role}</span>
         {isSuperAdmin ? (
           <>

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Building2, RefreshCw, Search, Users } from "lucide-react";
 import AdminWorkspace from "./AdminWorkspace.jsx";
 
+const defaultHospitalLogo = "/logos/no-logo.png";
+
 export default function SuperAdminUserManagement() {
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState("");
@@ -67,7 +69,7 @@ export default function SuperAdminUserManagement() {
               key={item.id}
               onClick={() => setSelectedHospitalId(item.id)}
             >
-              {item.logoPath && <img className="hospital-mini-logo" src={item.logoPath} alt="" />}
+              <img className="hospital-mini-logo" src={item.logoPath || defaultHospitalLogo} alt="" />
               <span>
                 <strong>{item.name}</strong>
                 <small>{item.code}</small>

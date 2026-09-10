@@ -5,6 +5,8 @@ import {
   hospitalRegistrationSections,
 } from "./hospitalFormFields.js";
 
+const defaultHospitalLogo = "/logos/no-logo.png";
+
 const empty = () => ({
   name: "",
   code: "",
@@ -130,13 +132,11 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
     <main className="admin-main">
       <header>
         <div className="brand">
-          {selected?.logoPath && (
-            <img
-              className="hospital-brand-logo"
-              src={selected.logoPath}
-              alt=""
-            />
-          )}
+          <img
+            className="hospital-brand-logo"
+            src={selected?.logoPath || defaultHospitalLogo}
+            alt={selected?.name || "Hospital"}
+          />
           <Building2 size={46} />
           <div>
             <p className="eyebrow">Product hosting</p>
@@ -178,13 +178,7 @@ export default function SuperAdminWorkspace({ initialStatusFilter = "all" }) {
               key={item.id}
               onClick={() => setId(item.id)}
             >
-              {item.logoPath && (
-                <img
-                  className="hospital-mini-logo"
-                  src={item.logoPath}
-                  alt=""
-                />
-              )}
+              <img className="hospital-mini-logo" src={item.logoPath || defaultHospitalLogo} alt="" />
               <span>
                 <strong>{item.name}</strong>
                 <small>{item.code}</small>
