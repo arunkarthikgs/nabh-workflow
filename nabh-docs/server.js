@@ -383,10 +383,13 @@ app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async 
 
 app.get("/api/admin/hospitals/:hospitalId/roles", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId, { withRoles: true });
+    const [hospital, roleGroups] = await Promise.all([
+      readHospitalById(request.params.hospitalId, { withRoles: true }),
+      listRoleMasterGroups()
+    ]);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const roles = await listHospitalRoles(request.params.hospitalId, hospital);
-    response.json({ roles, hospital: { status: hospital.status, logoPath: hospital.logoPath || "" } });
+    response.json({ roles, roleGroups, hospital: { status: hospital.status, logoPath: hospital.logoPath || "" } });
   } catch (error) { next(error); }
 });
 
