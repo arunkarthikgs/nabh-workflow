@@ -30,15 +30,6 @@ export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoP
     return undefined;
   }, [tab, departments]);
   useEffect(() => {
-    const button = window.document.createElement("button");
-    button.className = "new-role-button";
-    button.type = "button";
-    button.textContent = "New role";
-    button.addEventListener("click", () => { if (isReadOnly) return; setSelectedId(""); setDraft(blankRole); setTab("roles"); });
-    window.document.body.appendChild(button);
-    return () => button.remove();
-  }, [isReadOnly]);
-  useEffect(() => {
     if (tab !== "scope") return undefined;
     const addSearch = (panel, placeholder, onQuery) => {
       if (!panel) return () => {};
