@@ -91,6 +91,7 @@ async function requireCompleteProfileMiddleware(request, response, next) {
     const hospital = await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireCompleteHospitalProfile(hospital);
+    request.hospital = hospital;
     next();
   } catch (error) {
     if (error?.reason === "profile_incomplete") return response.status(error.status).json({ error: error.message, reason: error.reason, missingProfileFields: error.missingProfileFields });
@@ -724,7 +725,7 @@ app.use("/api/admin/hospitals/:hospitalId/documents", requireCompleteProfileMidd
 
 app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = request.hospital || await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     if (!hasAcceptedAccreditation(hospital)) return response.status(400).json({ error: "Select and accept an NABH accreditation programme before the document workspace is available.", reason: "accreditation_required" });
     const repository = await checkRepositoryReady(hospital);
@@ -739,7 +740,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents", async (request, response, 
 
 app.get("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = request.hospital || await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     const evidence = await listDocumentEvidence(hospital.id, request.params.documentId);
     response.json({ evidence });
@@ -748,7 +749,7 @@ app.get("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", async
 
 app.post("/api/admin/hospitals/:hospitalId/documents/:documentId/evidence", async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = request.hospital || await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
     const departments = await loadHospitalDepartments(hospital);
@@ -964,7 +965,7 @@ app.post("/api/logout", async (request, response, next) => {
 app.post("/api/admin/hospitals/:hospitalId/documents/action", async (request, response, next) => {
   try {
     const { documentId, action, updatedBy, note } = request.body || {};
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = request.hospital || await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
     if (action === "approve") {
@@ -1125,7 +1126,7 @@ app.post("/api/admin/bookings/:bookingId/recording", async (request, response, n
 
 app.post("/api/admin/hospitals/:hospitalId/documents/approve", express.raw({ type: "application/octet-stream", limit: "50mb" }), async (request, response, next) => {
   try {
-    const hospital = await readHospitalById(request.params.hospitalId);
+    const hospital = request.hospital || await readHospitalById(request.params.hospitalId);
     if (!hospital) return response.status(404).json({ error: "Hospital not found." });
     requireActiveHospital(hospital);
     if (!String(request.get("X-Approved-By") || "").trim()) return response.status(400).json({ error: "Enter the user name before approving this document version." });
@@ -1181,7 +1182,7 @@ async function findHospital(request) {
     error.status = 400;
     throw error;
   }
-  const hospital = await readHospitalById(requestedId);
+  const hospital = request.hospital || await readHospitalById(requestedId);
   if (!hospital) {
     const error = new Error("Hospital not found.");
     error.status = 404;
