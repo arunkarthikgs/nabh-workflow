@@ -314,6 +314,7 @@ function MasterListWorkspace({
   hospitalId,
   hospitalName,
   hospitalLogoPath,
+  currentUserName,
   permissions,
   onCheckIn,
   onGoToAccreditation,
@@ -356,7 +357,7 @@ function MasterListWorkspace({
   const [repositoryStatus, setRepositoryStatus] = useState(null);
   const [approvalDocument, setApprovalDocument] = useState(null);
   const [approvalFile, setApprovalFile] = useState(null);
-  const [approvalBy, setApprovalBy] = useState("");
+  const [approvalBy, setApprovalBy] = useState(currentUserName || "");
   const [approvalNote, setApprovalNote] = useState("");
   const [approvalError, setApprovalError] = useState("");
   const [approving, setApproving] = useState(false);
@@ -370,11 +371,11 @@ function MasterListWorkspace({
   const [evidenceFiles, setEvidenceFiles] = useState([]);
   const [evidenceType, setEvidenceType] = useState("implementation evidence");
   const [evidenceDescription, setEvidenceDescription] = useState("");
-  const [evidenceUploadedBy, setEvidenceUploadedBy] = useState("");
+  const [evidenceUploadedBy, setEvidenceUploadedBy] = useState(currentUserName || "");
   const [evidenceError, setEvidenceError] = useState("");
   const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [auditAction, setAuditAction] = useState(null);
-  const [auditUserName, setAuditUserName] = useState("");
+  const [auditUserName, setAuditUserName] = useState(currentUserName || "");
   const [auditNote, setAuditNote] = useState("");
   const [auditError, setAuditError] = useState("");
   const [reopenDocument, setReopenDocument] = useState(null);
@@ -422,7 +423,7 @@ function MasterListWorkspace({
     setEvidenceFiles([]);
     setEvidenceType("implementation evidence");
     setEvidenceDescription("");
-    setEvidenceUploadedBy("");
+    setEvidenceUploadedBy(currentUserName || "");
     setEvidenceError("");
     const response = await fetch(`/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/${encodeURIComponent(doc.id)}/evidence`);
     const data = await response.json();
@@ -737,7 +738,7 @@ function MasterListWorkspace({
 
   function openAuditedAction(doc, action) {
     setAuditAction({ doc, action });
-    setAuditUserName("");
+    setAuditUserName(currentUserName || "");
     setAuditNote("");
     setAuditError("");
   }
@@ -1611,7 +1612,7 @@ function MasterListWorkspace({
                             {isEditing && <span className="edit-actions"><button className="icon-button check" title="Check in" onClick={() => checkInEdit(doc)}><Check size={14} /></button><button className="icon-button cancel" title="Cancel" onClick={cancelEdit}><X size={14} /></button></span>}
                             {!isEditing && !(doc.relativeFilePath || doc.matchedFilePath) && <span className="unapproved-tag" title="Not yet approved">Not approved</span>}
                             {(doc.relativeFilePath || doc.matchedFilePath) && <><button className="icon-button" title="Preview document as PDF" onClick={() => setPreviewDocument(doc)}><Eye size={16} /></button><a className="icon-button" href={isAacPolicy(doc) ? "/api/documents/aac-policy/download" : `/api/admin/hospitals/${encodeURIComponent(hospitalId)}/documents/download?path=${encodeURIComponent(doc.relativeFilePath || doc.matchedFilePath)}`} title="Download document"><Download size={16} /></a></>}
-                            {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
+                            {canEdit && doc.relativeFilePath && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title="Upload and approve new version" onClick={() => { setApprovalDocument(doc); setApprovalFile(null); setApprovalBy(currentUserName || ""); setApprovalNote(""); setApprovalError(""); }}><Upload size={16} /></button>}
                             {canEdit && !isEditing && !["approved", "implemented", "evidence_available"].includes(doc.readinessStatus) && <button className="icon-button questionnaire-document-action" title={`Answer hospital questions (${doc.questionCount || 0} configured)`} onClick={() => openQuestionnaire(doc)}><ClipboardList size={16} /><span>{doc.questionCount || 0}</span></button>}
                             {!isEditing && (doc.relativeFilePath || doc.matchedFilePath) && <button className="version-badge" disabled={historyLoadingId === doc.id} title="View history" onClick={() => toggleHistory(doc)}>{historyLoadingId === doc.id ? <RefreshCw size={12} className="spin-icon" /> : <History size={12} />}{doc.version ? `v${doc.version}` : ""}</button>}
                           </span>
@@ -2686,7 +2687,7 @@ function App() {
           <SuperAdminWorkspace initialStatusFilter={hospitalStatusFilter} />
         )
       ) : view === "home" ? (
-        <PlatformWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} homeOnly onNavigateToDocuments={(category, status) => { const params = new URLSearchParams({ cat: category, status }); window.history.replaceState(null, "", `?${params.toString()}`); setView("master-list"); }} />
+        <PlatformWorkspace hospitalId={session.hospitalId} hospitalName={session.hospitalName} currentUserName={session.userName} homeOnly onNavigateToDocuments={(category, status) => { const params = new URLSearchParams({ cat: category, status }); window.history.replaceState(null, "", `?${params.toString()}`); setView("master-list"); }} />
       ) : view === "admin" ? (
         <AdminWorkspace
           hospitalId={session.hospitalId}
@@ -2709,6 +2710,7 @@ function App() {
         <PlatformWorkspace
           hospitalId={session.hospitalId}
           hospitalName={session.hospitalName}
+          currentUserName={session.userName}
           onNavigateToDocuments={(category, status) => {
             const params = new URLSearchParams({ cat: category, status });
             window.history.replaceState(null, "", `?${params.toString()}`);
@@ -2722,6 +2724,7 @@ function App() {
           hospitalId={session.hospitalId}
           hospitalName={session.hospitalName}
           hospitalLogoPath={session.hospitalLogoPath}
+          currentUserName={session.userName}
           permissions={session.permissions || []}
           onCheckIn={(entry) =>
             setAuditEntries((current) => [entry, ...current])

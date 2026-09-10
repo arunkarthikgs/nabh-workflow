@@ -139,9 +139,9 @@ function ProfileTab({ hospitalId, details, onSaved, disabled }) {
   );
 }
 
-function AccreditationTab({ hospitalId, profileComplete, disabled }) {
+function AccreditationTab({ hospitalId, profileComplete, disabled, currentUserName }) {
   const [state, setState] = useState(null);
-  const [decidedBy, setDecidedBy] = useState("");
+  const [decidedBy, setDecidedBy] = useState(currentUserName || "");
   const [decisionNotes, setDecisionNotes] = useState("");
   const [message, setMessage] = useState("");
   const [pendingProgramme, setPendingProgramme] = useState("");
@@ -179,12 +179,12 @@ function AccreditationTab({ hospitalId, profileComplete, disabled }) {
         {state.recommendation.requirements?.length > 0 && <div className="recommendation-details"><strong>Additional information or evidence required</strong><ul>{state.recommendation.requirements.map((requirement) => <li key={requirement}>{requirement}</li>)}</ul></div>}
         {!profileComplete && <p className="access-message">Complete the institutional profile for a more accurate recommendation.</p>}
         <p className="accreditation-disclaimer">This is an eligibility recommendation based on recorded information. Confirm the final programme and documentary evidence with NABH before applying.</p>
-        <button className="primary-button" disabled={disabled || Boolean(state.selection) || !state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => setPendingProgramme(state.recommendation.programme)}>Use recommended programme</button>
+        <button className="primary-button" disabled={disabled || Boolean(state.selection) || !state.recommendation.programme || state.recommendation.status === "ineligible"} onClick={() => { setDecidedBy(currentUserName || ""); setPendingProgramme(state.recommendation.programme); }}>Use recommended programme</button>
       </section>
       <section className="accreditation-section desired-programme-section">
         <div className="accreditation-section-heading"><div><p className="eyebrow">Programme selection</p><h2>Select the Desired accreditation programme type</h2></div></div>
         <p className="accreditation-intro">Choose the programme your hospital intends to pursue. Your selection will be confirmed before the document workspace is prepared.</p>
-        <label className="programme-select-field">Desired accreditation programme<select value={state.selection?.programme || ""} disabled={disabled || Boolean(state.selection)} onChange={(event) => event.target.value && setPendingProgramme(event.target.value)}><option value="">Select a programme type</option>{state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}</select></label>
+        <label className="programme-select-field">Desired accreditation programme<select value={state.selection?.programme || ""} disabled={disabled || Boolean(state.selection)} onChange={(event) => { if (event.target.value) { setDecidedBy(currentUserName || ""); setPendingProgramme(event.target.value); } }}><option value="">Select a programme type</option>{state.programmes.map((programme) => <option key={programme} value={programme}>{programme}</option>)}</select></label>
         {state.selection && <div className="current-programme"><span>Programme locked after confirmation</span><strong>{state.selection.programme}</strong><small>Confirmed by {state.selection.decidedBy} on {formatDate(state.selection.decidedAt)}. Contact a Super Admin if a reset is required.</small></div>}
         {message && <p className="access-message">{message}</p>}
       </section>
@@ -366,7 +366,7 @@ function ServicesTab({ hospitalId, disabled }) {
   );
 }
 
-export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigateToDocuments, homeOnly = false }) {
+export default function PlatformWorkspace({ hospitalId, hospitalName, currentUserName, onNavigateToDocuments, homeOnly = false }) {
   const [tab, setTab] = useState(homeOnly ? "overview" : "profile");
   const [hospital, setHospital] = useState(null);
 
@@ -401,7 +401,7 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
       {!homeOnly && !profileComplete && tab !== "profile" && <p className="access-message">Complete your institutional profile before finalizing AI-generated documents.</p>}
       {hospital && hospital.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
       {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status !== "active"} />}
-      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status !== "active"} />}
+      {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status !== "active"} currentUserName={currentUserName} />}
       {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || ""} onNavigateToDocuments={onNavigateToDocuments} />}
       {tab === "services" && <ServicesTab hospitalId={hospitalId} disabled={hospital?.status !== "active"} />}
     </main>

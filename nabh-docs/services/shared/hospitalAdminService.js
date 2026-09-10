@@ -424,6 +424,24 @@ export async function verifyHospitalAdminPassword(identifier, password) {
   return { hospital, user };
 }
 
+export async function changeHospitalUserPassword(hospitalId, userId, currentPassword, newPassword) {
+  const hospital = await readHospitalById(hospitalId, { withUsers: true });
+  const user = hospital?.users?.find((item) => item.id === userId);
+  if (!hospital || !user) throw new Error("Current password is incorrect.");
+  const currentValid = user.passwordHash
+    ? verifyPassword(currentPassword, user.passwordSalt, user.passwordHash)
+    : currentPassword === "Hospital@123";
+  if (!currentValid) throw new Error("Current password is incorrect.");
+  if (typeof newPassword !== "string" || newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+  const { salt, hash } = hashPassword(newPassword);
+  user.passwordSalt = salt;
+  user.passwordHash = hash;
+  user.passwordSet = true;
+  user.updatedAt = new Date().toISOString();
+  await saveHospitalUser(hospital.id, user);
+  return user;
+}
+
 
 // Self-service institutional profile capture (hospital name, ownership, beds, specialties, etc.).
 export async function submitHospitalProfile(hospitalId, details, logoDataUrl) {

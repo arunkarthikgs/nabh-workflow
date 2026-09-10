@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
@@ -320,6 +320,16 @@ app.get("/api/admin/me/profile", async (request, response, next) => {
     const { passwordHash, passwordSalt, passwordSetupToken, passwordSetupExpiresAt, ...profile } = user;
     response.json({ user: profile, hospital: { id: hospital.id, name: hospital.name, code: hospital.code, status: hospital.status } });
   } catch (error) { next(error); }
+});
+
+app.post("/api/admin/me/password", async (request, response, next) => {
+  try {
+    const userId = request.appSession?.user_id || request.appSession?.userId;
+    const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
+    if (!userId || !hospitalId) return response.status(400).json({ error: "Password changes are only available for hospital users." });
+    await changeHospitalUserPassword(hospitalId, userId, String(request.body?.currentPassword || ""), String(request.body?.newPassword || ""));
+    response.json({ message: "Password updated successfully." });
+  } catch (error) { response.status(400).json({ error: error.message }); }
 });
 
 // Re-resolves the current user's role/permissions live so role edits take effect without a full re-login.
@@ -929,7 +939,7 @@ app.post("/api/set-password", async (request, response, next) => {
     const { hospital, user } = await completePasswordSetup(request.body?.token, request.body?.password, { code: request.body?.hospitalCode, addressLine1: request.body?.addressLine1, city: request.body?.city, contactPhone: request.body?.contactPhone });
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "registration_completed", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const role = hospital.roles?.find((item) => item.name === user.role);
-    const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath };
+    const session = { role: user.role, userName: user.name, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospital.logoPath };
     await issueApplicationSession(response, session);
     response.json({ session });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
@@ -940,7 +950,7 @@ app.post("/api/login", async (request, response, next) => {
     const userId = String(request.body?.userId || request.body?.email || "").trim();
     const password = String(request.body?.password || "");
     if (userId.toLowerCase() === "superadmin" && password === "Admin@123") {
-      const session = { role: "Super Admin" };
+      const session = { role: "Super Admin", userName: "Super Admin" };
       await issueApplicationSession(response, session);
       return response.json({ session });
     }
@@ -950,7 +960,7 @@ app.post("/api/login", async (request, response, next) => {
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "login", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const hospitalWithLogo = await backfillHospitalLogos([hospital]);
     const role = hospital.roles?.find((item) => item.name === user.role);
-    const session = { role: user.role, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
+    const session = { role: user.role, userName: user.name, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
     await issueApplicationSession(response, session);
     response.json({ session });
   } catch (error) { if (error?.reason === "registration_incomplete") response.status(error.status || 403).json({ error: error.message, reason: error.reason }); else next(error); }
