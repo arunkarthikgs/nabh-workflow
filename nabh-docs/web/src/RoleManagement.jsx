@@ -15,9 +15,20 @@ function classifyDocument(documentName) { for (const [category, pattern] of CATE
 function groupRoles(roles, groups) { const remaining = [...roles]; const result = Object.entries(groups).map(([name, names]) => { const members = remaining.filter((role) => names.includes(role.name)); members.forEach((member) => remaining.splice(remaining.indexOf(member), 1)); return [name, members]; }).filter(([, members]) => members.length); if (remaining.length) result.push(["Custom roles", remaining]); return result; }
 
 export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoPath }) {
-  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
+  const [roles, setRoles] = useState([]), [departments, setDepartments] = useState({}), [department, setDepartment] = useState(""), [selectedId, setSelectedId] = useState(""), [draft, setDraft] = useState(blankRole), [roleEditorOpen, setRoleEditorOpen] = useState(false), [tab, setTab] = useState("roles"), [openGroups, setOpenGroups] = useState({}), [rolesQuery, setRolesQuery] = useState(""), [message, setMessage] = useState(""), [logoPath, setLogoPath] = useState(hospitalLogoPath || ""), [hospitalStatus, setHospitalStatus] = useState("pending"), [roleGroups, setRoleGroups] = useState({});
   const isReadOnly = hospitalStatus !== "active";
-  async function load() { const roleResponse = await fetch(`/api/admin/hospitals/${hospitalId}/roles`); if (!roleResponse.ok) throw new Error("Unable to load role access data."); const result = await roleResponse.json(), loadedRoles = result.roles || [], hospital = result.hospital || {}; setRoles(loadedRoles); setRoleGroups(result.roleGroups || {}); setSelectedId((current) => loadedRoles.some((role) => role.id === current) ? current : loadedRoles[0]?.id || ""); setLogoPath(hospital.logoPath || hospitalLogoPath || ""); setHospitalStatus(hospital.status || "pending"); }
+  useEffect(() => {
+    window.document.body.classList.toggle("role-editor-open", roleEditorOpen);
+    return () => window.document.body.classList.remove("role-editor-open");
+  }, [roleEditorOpen]);
+  useEffect(() => {
+    const addRoleButton = window.document.querySelector(".role-layout > .users-panel:first-child .panel-heading .icon-button");
+    if (!addRoleButton) return undefined;
+    const openEditor = () => setRoleEditorOpen(true);
+    addRoleButton.addEventListener("click", openEditor);
+    return () => addRoleButton.removeEventListener("click", openEditor);
+  }, [tab, roles]);
+  async function load() { const roleResponse = await fetch(`/api/admin/hospitals/${hospitalId}/roles`); if (!roleResponse.ok) throw new Error("Unable to load role access data."); const result = await roleResponse.json(), loadedRoles = result.roles || [], hospital = result.hospital || {}; setRoles(loadedRoles); setRoleGroups(result.roleGroups || {}); setSelectedId((current) => current && loadedRoles.some((role) => role.id === current) ? current : ""); setLogoPath(hospital.logoPath || hospitalLogoPath || ""); setHospitalStatus(hospital.status || "pending"); }
   useEffect(() => { load().catch((error) => setMessage(error.message)); }, [hospitalId]);
   useEffect(() => {
     if (tab !== "scope" || Object.keys(departments).length) return undefined;
@@ -96,7 +107,7 @@ export default function RoleManagement({ hospitalId, hospitalName, hospitalLogoP
   const visibleRoleGroups = rolesQuery ? grouped.map(([group, members]) => [group, members.filter((role) => group.toLowerCase().includes(rolesQuery) || role.name.toLowerCase().includes(rolesQuery))]).filter(([, members]) => members.length) : grouped;
   const count = (role) => Object.values(role.documentAccess || {}).flat().length;
   const complete = (name) => departments[name]?.length > 0 && (draft.documentAccess[name] || []).length === departments[name].length;
-  function choose(role) { setSelectedId(role.id); setDraft({ name: role.name, documentAccess: role.documentAccess || {}, scopeMode: role.scopeMode || "selected_documents", permissions: role.permissions || ["view_documents"] }); }
+  function choose(role) { setSelectedId(role.id); setDraft({ name: role.name, documentAccess: role.documentAccess || {}, scopeMode: role.scopeMode || "selected_documents", permissions: role.permissions || ["view_documents"] }); setRoleEditorOpen(true); }
   function toggleAction(action) { setDraft((current) => { const permissions = current.permissions.includes(action) ? current.permissions.filter((item) => item !== action) : [...current.permissions, action]; return { ...current, permissions: permissions.some((item) => item !== "view_documents") && !permissions.includes("view_documents") ? ["view_documents", ...permissions] : permissions }; }); }
   function toggleDocument(id) { setDraft((current) => { const ids = current.documentAccess[department] || []; return { ...current, documentAccess: { ...current.documentAccess, [department]: ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id] } }; }); }
   function toggleDepartment(name) { setDraft((current) => ({ ...current, documentAccess: { ...current.documentAccess, [name]: complete(name) ? [] : departments[name].map((document) => document.id) } })); }
