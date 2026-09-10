@@ -1513,7 +1513,7 @@ function MasterListWorkspace({
                   </th>
                   <th>Active</th>
                   <th>Document Name</th>
-                  <th>Type</th>
+                  <th className="hospital-type-column">Type</th>
                   <th>Readiness</th>
                   <th className="hospital-actions-column">Actions</th>
                 </tr>
@@ -1570,7 +1570,7 @@ function MasterListWorkspace({
                             </>
                           )}
                         </td>
-                        <td>
+                        <td className="hospital-type-column">
                           {fileTypeOf(doc) && (() => {
                             const TypeIcon = fileTypeIcons[fileTypeOf(doc)] || FileText;
                             return <span className="template-type"><TypeIcon size={15} /> {fileTypeOf(doc)}</span>;
