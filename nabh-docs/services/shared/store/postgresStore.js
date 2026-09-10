@@ -604,16 +604,16 @@ export async function readHospitals() {
 
 // Indexed single-hospital lookup (by id or code) so callers don't have to pull every hospital
 // plus every hospital's users/roles just to find one - readHospitals() scales with platform size.
-// Pass withRoster: true only when the caller actually needs .users/.roles - most callers just
-// need the hospital row itself (status/details/accreditation/code), so skip those 2 extra queries by default.
-export async function readHospitalById(idOrCode, { withRoster = false } = {}) {
+// Pass withUsers/withRoles (or withRoster as shorthand for both) only when the caller actually
+// needs that data - most callers just need the hospital row itself, so skip those extra queries.
+export async function readHospitalById(idOrCode, { withRoster = false, withUsers = withRoster, withRoles = withRoster } = {}) {
   const client = await connect();
   const { rows: [row] } = await client.query(`select * from hospitals where id::text = $1 or code = $1 limit 1`, [idOrCode]);
   if (!row) return null;
-  if (!withRoster) return toHospital(row, [], []);
+  if (!withUsers && !withRoles) return toHospital(row, [], []);
   const [users, roles] = await Promise.all([
-    client.query(`select * from hospital_users where hospital_id = $1 order by ordinal, created_at`, [row.id]),
-    client.query(`select * from hospital_roles where hospital_id = $1 order by ordinal`, [row.id])
+    withUsers ? client.query(`select * from hospital_users where hospital_id = $1 order by ordinal, created_at`, [row.id]) : Promise.resolve({ rows: [] }),
+    withRoles ? client.query(`select * from hospital_roles where hospital_id = $1 order by ordinal`, [row.id]) : Promise.resolve({ rows: [] })
   ]);
   return toHospital(row, users.rows.map(toUser), roles.rows.map(toRole));
 }

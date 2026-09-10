@@ -152,7 +152,7 @@ export async function deleteHospital(id) {
 export async function addHospitalUser(hospitalId, input) {
   const name = text(input.name), email = text(input.email).toLowerCase(), role = text(input.role);
   if (!name || !email || !role) throw new Error("User name, email, and role are required.");
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withUsers: true });
   if (!hospital) return null;
   if (hospital.users.some((user) => user.email === email)) throw new Error("A user with this email already exists for this hospital.");
   const user = { id: randomUUID(), name, email, role, active: input.active !== false, dateOfBirth: text(input.dateOfBirth), gender: text(input.gender), mobileNumber: text(input.mobileNumber), address: text(input.address), employeeId: text(input.employeeId), department: text(input.department), dateOfJoining: text(input.dateOfJoining), employmentType: text(input.employmentType), createdAt: new Date().toISOString() };
@@ -160,7 +160,7 @@ export async function addHospitalUser(hospitalId, input) {
 }
 
 export async function updateHospitalUser(hospitalId, userId, input) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withUsers: true });
   if (!hospital) return undefined;
   const user = hospital.users.find((item) => item.id === userId);
   if (!user) return null;
@@ -172,7 +172,7 @@ export async function updateHospitalUser(hospitalId, userId, input) {
 }
 
 export async function deleteHospitalUser(hospitalId, userId) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withUsers: true });
   if (!hospital) return undefined;
   const users = hospital.users.filter((user) => user.id !== userId);
   if (users.length === hospital.users.length) return false;
@@ -180,7 +180,7 @@ export async function deleteHospitalUser(hospitalId, userId) {
 }
 
 export async function listHospitalRoles(hospitalId, knownHospital = null) {
-  const hospital = knownHospital || (await readHospitalById(hospitalId, { withRoster: true }));
+  const hospital = knownHospital || (await readHospitalById(hospitalId, { withRoles: true }));
   if (!hospital) return null;
   const roles = await rolesForHospital(hospital);
   if (roles.length && roles.every((role) => role.defaultAccessApplied)) return roles;
@@ -204,7 +204,7 @@ export async function listHospitalRoles(hospitalId, knownHospital = null) {
 }
 
 export async function createHospitalRole(hospitalId, input) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withRoles: true });
   if (!hospital) return null;
   const name = text(input.name);
   if (!name) throw new Error("Role name is required.");
@@ -215,7 +215,7 @@ export async function createHospitalRole(hospitalId, input) {
 }
 
 export async function updateHospitalRole(hospitalId, roleId, input) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withRoles: true });
   if (!hospital) return undefined;
   const role = (await rolesForHospital(hospital)).find((item) => item.id === roleId);
   if (!role) return null;
@@ -226,7 +226,7 @@ export async function updateHospitalRole(hospitalId, roleId, input) {
 }
 
 export async function deleteHospitalRole(hospitalId, roleId) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withRoles: true });
   if (!hospital) return undefined;
   const roles = await rolesForHospital(hospital);
   const remaining = roles.filter((role) => role.id !== roleId);
@@ -318,7 +318,7 @@ export async function registerHospital(input) {
 }
 
 export async function resendRegistrationToken(hospitalId) {
-  const hospital = await readHospitalById(hospitalId, { withRoster: true });
+  const hospital = await readHospitalById(hospitalId, { withUsers: true });
   const user = hospital?.users?.find((item) => item.role === "Hospital Administrator") || hospital?.users?.[0];
   if (!hospital || !user?.email) return null;
   const token = generateSetupToken();
