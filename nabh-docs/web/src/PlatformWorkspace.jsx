@@ -402,7 +402,7 @@ export default function PlatformWorkspace({ hospitalId, hospitalName, onNavigate
       {hospital && hospital.status !== "active" && !homeOnly && <p className="access-message">Hospital is not yet onboarded. Changes are disabled until a Super Admin approves onboarding.</p>}
       {tab === "profile" && <ProfileTab hospitalId={hospitalId} details={details} onSaved={loadHospital} disabled={hospital?.status !== "active"} />}
       {tab === "accreditation" && <AccreditationTab hospitalId={hospitalId} profileComplete={profileComplete} disabled={hospital?.status !== "active"} />}
-      {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || "pending"} onNavigateToDocuments={onNavigateToDocuments} />}
+      {tab === "overview" && <WorkspaceOverviewTab hospitalId={hospitalId} hospitalStatus={hospital?.status || ""} onNavigateToDocuments={onNavigateToDocuments} />}
       {tab === "services" && <ServicesTab hospitalId={hospitalId} disabled={hospital?.status !== "active"} />}
     </main>
   );

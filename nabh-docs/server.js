@@ -207,7 +207,7 @@ app.get("/api/admin/hospitals", async (request, response, next) => {
     }
     const visibleRaw = request.appSession.role === "Super Admin"
       ? await listHospitals()
-      : [await readHospitalById(targetHospitalId, { withRoster: true })].filter(Boolean);
+      : [await readHospitalById(targetHospitalId)].filter(Boolean);
     const visible = await Promise.all((await backfillHospitalLogos(visibleRaw)).map(hydrateHospitalAccreditation));
     response.json({ hospitals: visible });
   } catch (error) { if (error instanceof Error && error.validationErrors) response.status(422).json({ error: error.message, fields: error.validationErrors }); else next(error); }
