@@ -1,8 +1,8 @@
-// Polls nabh_template_jobs for queued rows and runs them one at a time: Claude generates the
-// structured template, we render it to .docx, upload it to R2 under api/<department>/, and record
-// the resulting object key back on the job row (or the error, if anything failed).
+// Polls nabh_template_jobs for queued rows and runs them one at a time: the AI provider generates
+// the structured template, we render it to .docx, upload it to R2 under api/<department>/, and
+// record the resulting object key back on the job row (or the error, if anything failed).
 import { claimNextQueuedTemplateJob, completeTemplateJob, dataStoreDriver, failTemplateJob } from "./dataStore.js";
-import { generateClaudeDocx } from "./claudeTemplateService.js";
+import { generateTemplateDocx } from "./templateGenerationService.js";
 import { saveR2GeneratedTemplate } from "./r2TemplateService.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -12,7 +12,7 @@ async function processNextJob() {
   const job = await claimNextQueuedTemplateJob();
   if (!job) return;
   try {
-    const { buffer } = await generateClaudeDocx(job.documentPrompt);
+    const { buffer } = await generateTemplateDocx(job.documentPrompt);
     const fileName = `${(job.documentName || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
     const objectKey = await saveR2GeneratedTemplate(job.department, fileName, buffer);
     await completeTemplateJob(job.id, objectKey);

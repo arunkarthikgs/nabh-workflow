@@ -449,7 +449,7 @@ export async function getR2ProgrammeTemplateFile(programme, relativePath) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
-// Template Studio's Claude-generated documents live under a flat "api/<Department>/" prefix,
+// Template Studio's AI-generated documents live under a flat "api/<Department>/" prefix,
 // independent of the Templates/<programme> tree above - the object key is what gets stored on
 // the nabh_template_jobs row, so the download endpoint can fetch straight from R2 by key.
 export function generatedTemplateObjectKey(department, fileName) {

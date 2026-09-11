@@ -359,8 +359,8 @@ const schemaStatements = [
      alter table nabh_prompt_history add constraint nabh_prompt_history_field_check
        check (field in ('meta_prompt', 'document_prompt', 'name', 'standard_ref', 'expected_content', 'basis'));
    end $$`,
-  // Async Claude-generation queue: the frontend enqueues a row, a background worker in this
-  // process claims it, calls Claude, uploads the rendered .docx to R2, and stores its object key.
+  // Async AI-generation queue: the frontend enqueues a row, a background worker in this
+  // process claims it, calls the AI provider, uploads the rendered .docx to R2, and stores its object key.
   `create table if not exists nabh_template_jobs (
      id uuid primary key,
      document_id integer references nabh_documents (id) on delete set null,
@@ -603,7 +603,7 @@ export async function listNabhPromptHistory(entityType, entityId) {
   return rows.map((row) => ({ id: row.id, field: row.field, previousValue: row.previous_value, newValue: row.new_value, changedBy: row.changed_by || "", changedAt: isoDate(row.changed_at) }));
 }
 
-// Queues a Claude template-generation request; a background worker (see claudeTemplateService.js)
+// Queues an AI template-generation request; a background worker (see templateGenerationService.js)
 // polls for 'queued' rows, uploads the result to R2 under api/<department>/, and stores its key.
 export async function enqueueTemplateJob({ documentId, categoryId, department, documentName, documentPrompt, requestedBy }) {
   const client = await connect();

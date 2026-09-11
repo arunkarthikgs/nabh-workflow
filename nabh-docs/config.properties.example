@@ -27,11 +27,11 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # Optional additional recipient for hospital onboarding approval notifications.
 # ONBOARDING_APPROVAL_EMAIL_TO=operations@example.com
 
-# Template Studio ("Generate Template" job queue -> Claude API -> .docx uploaded to R2 under
-# api/<department>/). Requires an Anthropic API key.
-# ANTHROPIC_API_KEY=your-anthropic-api-key
-# ANTHROPIC_MODEL=claude-sonnet-5
-# Optional. Point at a compatible proxy instead of the default Anthropic endpoint.
-# ANTHROPIC_BASE_URL=https://api.anthropic.com
+# Template Studio ("Generate Template" job queue -> AI provider -> .docx uploaded to R2 under
+# api/<department>/). Requires an AI provider API key.
+# AI_PROVIDER_API_KEY=your-ai-provider-api-key
+# AI_PROVIDER_MODEL=claude-sonnet-5
+# Optional. Point at a compatible proxy instead of the default endpoint.
+# AI_PROVIDER_BASE_URL=https://api.anthropic.com
 # Optional. Raise this if generation fails with "response was truncated" for long/complex documents.
-# ANTHROPIC_MAX_TOKENS=8192
+# AI_PROVIDER_MAX_TOKENS=8192

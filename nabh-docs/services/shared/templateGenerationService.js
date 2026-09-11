@@ -1,13 +1,12 @@
 // NABH Template Studio's async generation pipeline: pulls a document_prompt off the
-// nabh_template_jobs queue, calls the Claude API for STRUCTURED JSON (not raw prose), and renders
-// that JSON into a formatted .docx with the `docx` package. Mirrors the reference Python pipeline
-// (anthropic + python-docx) but runs in-process here since this app is a long-running Node server.
+// nabh_template_jobs queue, calls the configured AI provider for STRUCTURED JSON (not raw prose),
+// and renders that JSON into a formatted .docx with the `docx` package.
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
 import { configValue } from "./config.js";
 
 const DEFAULT_BASE_URL = "https://api.anthropic.com";
 const DEFAULT_MODEL = "claude-sonnet-5";
-const ANTHROPIC_VERSION = "2023-06-01";
+const API_VERSION_HEADER = "2023-06-01";
 
 const SYSTEM_PROMPT = `You are a NABH quality and accreditation documentation specialist.
 You are producing a reusable MASTER TEMPLATE, not a document for a specific hospital.
@@ -45,36 +44,35 @@ Rules for the JSON:
 - Every section from the prompt's requested structure must appear, in order`;
 
 function apiKey() {
-  return configValue("ANTHROPIC_API_KEY");
+  return configValue("AI_PROVIDER_API_KEY");
 }
 
 function baseUrl() {
-  return configValue("ANTHROPIC_BASE_URL", DEFAULT_BASE_URL);
+  return configValue("AI_PROVIDER_BASE_URL", DEFAULT_BASE_URL);
 }
 
 function model() {
-  return configValue("ANTHROPIC_MODEL", DEFAULT_MODEL);
+  return configValue("AI_PROVIDER_MODEL", DEFAULT_MODEL);
 }
 
 function maxTokens() {
-  return Number(configValue("ANTHROPIC_MAX_TOKENS", "8192")) || 8192;
+  return Number(configValue("AI_PROVIDER_MAX_TOKENS", "8192")) || 8192;
 }
 
 function extractJson(rawText) {
   const text = String(rawText || "").trim();
-  if (!text) throw new Error("Claude returned an empty response.");
+  if (!text) throw new Error("The AI provider returned an empty response.");
   const fenced = text.startsWith("```") ? text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim() : text;
   try { return JSON.parse(fenced); }
-  catch (error) { throw new Error(`Claude did not return valid JSON (its response may have been cut off - try again or increase ANTHROPIC_MAX_TOKENS): ${error.message}`); }
+  catch (error) { throw new Error(`The AI provider did not return valid JSON (its response may have been cut off - try again or increase AI_PROVIDER_MAX_TOKENS): ${error.message}`); }
 }
 
-// Calls the Claude Messages API with the document_prompt as the sole user message, per the
-// reference pipeline - no free-text story layering here, just the stored prompt.
-export async function callClaude(documentPrompt) {
-  if (!apiKey()) throw new Error("Template generation is not configured. Set ANTHROPIC_API_KEY in config.properties.");
+// Calls the AI provider's Messages API with the document_prompt as the sole user message.
+export async function callAiProvider(documentPrompt) {
+  if (!apiKey()) throw new Error("Template generation is not configured. Set AI_PROVIDER_API_KEY in config.properties.");
   const response = await fetch(`${baseUrl()}/v1/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": ANTHROPIC_VERSION },
+    headers: { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": API_VERSION_HEADER },
     body: JSON.stringify({
       model: model(),
       max_tokens: maxTokens(),
@@ -83,8 +81,8 @@ export async function callClaude(documentPrompt) {
     })
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || "The Claude API request failed.");
-  if (data?.stop_reason === "max_tokens") throw new Error(`Claude's response was truncated at ${maxTokens()} tokens before finishing the JSON. Increase ANTHROPIC_MAX_TOKENS in config.properties or shorten the document prompt.`);
+  if (!response.ok) throw new Error(data?.error?.message || "The AI provider request failed.");
+  if (data?.stop_reason === "max_tokens") throw new Error(`The AI provider's response was truncated at ${maxTokens()} tokens before finishing the JSON. Increase AI_PROVIDER_MAX_TOKENS in config.properties or shorten the document prompt.`);
   return extractJson(data?.content?.[0]?.text);
 }
 
@@ -108,10 +106,9 @@ function sectionTable(table) {
   ];
 }
 
-// Renders Claude's structured JSON into a .docx buffer - the JS equivalent of build_docx() in the
-// reference Python pipeline (title, document-number line, then per-section heading/paragraphs/
-// numbered list/table).
-export function buildDocxFromClaudeTemplate(template) {
+// Renders the AI provider's structured JSON into a .docx buffer (title, document-number line,
+// then per-section heading/paragraphs/numbered list/table).
+export function buildDocxFromTemplateJson(template) {
   const children = [
     new Paragraph({ text: template?.title || "Untitled Document", heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
     new Paragraph({
@@ -132,9 +129,9 @@ export function buildDocxFromClaudeTemplate(template) {
   return Packer.toBuffer(document);
 }
 
-// End-to-end: document_prompt -> Claude JSON -> rendered .docx buffer.
-export async function generateClaudeDocx(documentPrompt) {
-  const template = await callClaude(documentPrompt);
-  const buffer = await buildDocxFromClaudeTemplate(template);
+// End-to-end: document_prompt -> AI provider JSON -> rendered .docx buffer.
+export async function generateTemplateDocx(documentPrompt) {
+  const template = await callAiProvider(documentPrompt);
+  const buffer = await buildDocxFromTemplateJson(template);
   return { template, buffer };
 }
