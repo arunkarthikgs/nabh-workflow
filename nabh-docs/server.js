@@ -18,6 +18,7 @@ import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccredita
 import { NABH_WORKSPACE_CATEGORIES, classifyDocument } from "./services/shared/documentCategoryService.js";
 import { generateDocumentDraft, getDocumentDraft, performDocumentAction, prepareDocumentDraft } from "./services/shared/draftGenerationService.js";
 import { getDocumentQuestions, validateDocumentAnswers, validateQuestionnaireDefinition } from "./services/shared/documentQuestionnaireService.js";
+import { generateTemplateStructure, renderTemplateDocx } from "./services/shared/aiTemplateService.js";
 import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
@@ -170,6 +171,7 @@ function requireSuperAdmin(request, response, next) {
 
 app.use("/api/admin", requireApplicationSession);
 app.use("/api/admin/template-library", requireSuperAdmin);
+app.use("/api/admin/template-studio", requireSuperAdmin);
 app.use("/api/admin/smtp", requireSuperAdmin);
 app.use("/api/admin/hospitals/:hospitalId", requireHospitalAccess);
 
@@ -590,6 +592,21 @@ app.get("/api/admin/template-library/questionnaire-report.pdf", async (request, 
     }
     const pdf = await createTemplateQuestionnaireReportPdf({ documents });
     response.type("application/pdf").attachment("template-questionnaire-report.pdf").send(pdf);
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/template-studio/structure", async (request, response, next) => {
+  try { response.json({ structure: await generateTemplateStructure(request.body?.story) }); }
+  catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/template-studio/render", async (request, response, next) => {
+  try {
+    const structure = request.body?.structure;
+    if (!structure || typeof structure !== "object") return response.status(400).json({ error: "A template structure is required." });
+    const docx = await renderTemplateDocx(structure);
+    const fileName = `${(structure.title || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
+    response.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document").attachment(fileName).send(docx);
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 

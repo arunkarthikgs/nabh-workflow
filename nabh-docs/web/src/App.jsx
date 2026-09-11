@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Presentation,
   Search,
+  Sparkles,
   ArrowUp,
   ArrowDown,
   Pencil,
@@ -39,6 +40,7 @@ import SuperAdminWorkspace from "./SuperAdminWorkspace.jsx";
 import SuperAdminUserManagement from "./SuperAdminUserManagement.jsx";
 import SuperAdminHome from "./SuperAdminHome.jsx";
 import TemplateLibrary from "./TemplateLibrary.jsx";
+import TemplateStudio from "./TemplateStudio.jsx";
 import RoleManagement from "./RoleManagement.jsx";
 import MyProfile from "./MyProfile.jsx";
 
@@ -2612,6 +2614,13 @@ function App() {
               <FolderOpen size={16} /> Template library
             </button>
             <button
+              className={view === "template-studio" ? "active" : ""}
+              title="Open template studio"
+              onClick={() => setView("template-studio")}
+            >
+              <Sparkles size={16} /> Template studio
+            </button>
+            <button
               className={view === "users" ? "active" : ""}
               title="Open user management"
               onClick={() => setView("users")}
@@ -2679,6 +2688,8 @@ function App() {
           }} onOpenUsers={() => setView("users")} />
         ) : view === "templates" ? (
           <TemplateLibrary />
+        ) : view === "template-studio" ? (
+          <TemplateStudio />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
         ) : view === "audit" ? (

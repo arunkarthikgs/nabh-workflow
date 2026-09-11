@@ -26,3 +26,9 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # SMTP_FROM=NABH Readiness Platform <no-reply@your-domain.test>
 # Optional additional recipient for hospital onboarding approval notifications.
 # ONBOARDING_APPROVAL_EMAIL_TO=operations@example.com
+
+# Template Studio ("story" -> DOCX template generation). Requires an OpenAI-compatible API key.
+# AI_TEMPLATE_API_KEY=your-openai-api-key
+# AI_TEMPLATE_MODEL=gpt-4o-mini
+# Optional. Point at an Azure OpenAI or self-hosted OpenAI-compatible endpoint instead.
+# AI_TEMPLATE_BASE_URL=https://api.openai.com/v1
