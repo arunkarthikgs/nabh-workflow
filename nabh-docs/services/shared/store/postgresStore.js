@@ -338,6 +338,18 @@ const schemaStatements = [
    )`,
   `create index if not exists idx_nabh_documents_category on nabh_documents (category_id)`,
   `create index if not exists idx_nabh_documents_standard_ref on nabh_documents (standard_ref)`,
+  // Audit trail for meta-prompt/document-prompt edits in Template Studio.
+  `create table if not exists nabh_prompt_history (
+     id uuid primary key,
+     entity_type text not null check (entity_type in ('category', 'document')),
+     entity_id integer not null,
+     field text not null check (field in ('meta_prompt', 'document_prompt')),
+     previous_value text not null,
+     new_value text not null,
+     changed_by text not null default '',
+     changed_at timestamptz not null default now()
+   )`,
+  `create index if not exists idx_nabh_prompt_history_entity on nabh_prompt_history (entity_type, entity_id, changed_at desc)`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -474,6 +486,44 @@ export async function getNabhDocument(documentId) {
   );
   if (!row) return null;
   return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt, categoryName: row.category_name, metaPrompt: row.meta_prompt };
+}
+
+// Updates a category's meta-prompt and records the prior value in nabh_prompt_history for audit.
+export async function updateNabhCategoryMetaPrompt(categoryId, metaPrompt, changedBy) {
+  const client = await connect();
+  const { rows: [existing] } = await client.query(`select meta_prompt from nabh_categories where id = $1`, [categoryId]);
+  if (!existing) return null;
+  if (existing.meta_prompt === metaPrompt) return { id: categoryId, metaPrompt };
+  await client.query(
+    `insert into nabh_prompt_history (id, entity_type, entity_id, field, previous_value, new_value, changed_by) values ($1, 'category', $2, 'meta_prompt', $3, $4, $5)`,
+    [randomUUID(), categoryId, existing.meta_prompt, metaPrompt, changedBy || ""]
+  );
+  await client.query(`update nabh_categories set meta_prompt = $2 where id = $1`, [categoryId, metaPrompt]);
+  return { id: categoryId, metaPrompt };
+}
+
+// Updates a seed document's prompt and records the prior value in nabh_prompt_history for audit.
+export async function updateNabhDocumentPrompt(documentId, documentPrompt, changedBy) {
+  const client = await connect();
+  const { rows: [existing] } = await client.query(`select document_prompt from nabh_documents where id = $1`, [documentId]);
+  if (!existing) return null;
+  if (existing.document_prompt === documentPrompt) return { id: documentId, documentPrompt };
+  await client.query(
+    `insert into nabh_prompt_history (id, entity_type, entity_id, field, previous_value, new_value, changed_by) values ($1, 'document', $2, 'document_prompt', $3, $4, $5)`,
+    [randomUUID(), documentId, existing.document_prompt, documentPrompt, changedBy || ""]
+  );
+  await client.query(`update nabh_documents set document_prompt = $2 where id = $1`, [documentId, documentPrompt]);
+  return { id: documentId, documentPrompt };
+}
+
+// Audit trail of prompt edits for a category or document, most recent first.
+export async function listNabhPromptHistory(entityType, entityId) {
+  const client = await connect();
+  const { rows } = await client.query(
+    `select id, field, previous_value, new_value, changed_by, changed_at from nabh_prompt_history where entity_type = $1 and entity_id = $2 order by changed_at desc`,
+    [entityType, entityId]
+  );
+  return rows.map((row) => ({ id: row.id, field: row.field, previousValue: row.previous_value, newValue: row.new_value, changedBy: row.changed_by || "", changedAt: isoDate(row.changed_at) }));
 }
 
 export async function initialize() {

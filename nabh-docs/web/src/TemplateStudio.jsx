@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, RefreshCw, Download, Plus, Trash2, FolderOpen, FileSearch, Search } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Plus, Trash2, FolderOpen, FileSearch, History, Pencil, Save, X, Search } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -44,6 +44,16 @@ export default function TemplateStudio() {
   const [generating, setGenerating] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState("");
+  const [editingCategoryPrompt, setEditingCategoryPrompt] = useState(false);
+  const [categoryPromptDraft, setCategoryPromptDraft] = useState("");
+  const [savingCategoryPrompt, setSavingCategoryPrompt] = useState(false);
+  const [categoryHistoryOpen, setCategoryHistoryOpen] = useState(false);
+  const [categoryHistory, setCategoryHistory] = useState(null);
+  const [editingDocumentPrompt, setEditingDocumentPrompt] = useState(false);
+  const [documentPromptDraft, setDocumentPromptDraft] = useState("");
+  const [savingDocumentPrompt, setSavingDocumentPrompt] = useState(false);
+  const [documentHistoryOpen, setDocumentHistoryOpen] = useState(false);
+  const [documentHistory, setDocumentHistory] = useState(null);
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -73,12 +83,96 @@ export default function TemplateStudio() {
     setStory("");
     setStructure(null);
     setError("");
+    setEditingCategoryPrompt(false);
+    setCategoryHistoryOpen(false);
+    setCategoryHistory(null);
+    setEditingDocumentPrompt(false);
+    setDocumentHistoryOpen(false);
+    setDocumentHistory(null);
     setDocumentsLoading(true);
     fetch(`/api/admin/template-studio/categories/${nextCategory.id}/documents`)
       .then((response) => (response.ok ? response.json() : { documents: [] }))
       .then((result) => setDocuments(result.documents || []))
       .catch(() => setDocuments([]))
       .finally(() => setDocumentsLoading(false));
+  }
+
+  function chooseDocument(documentId) {
+    setSelectedDocumentId(documentId);
+    setEditingDocumentPrompt(false);
+    setDocumentHistoryOpen(false);
+    setDocumentHistory(null);
+  }
+
+  async function saveCategoryPrompt() {
+    if (!category) return;
+    setSavingCategoryPrompt(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/template-studio/categories/${category.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ metaPrompt: categoryPromptDraft })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to save the meta-prompt.");
+      setCategory((current) => ({ ...current, metaPrompt: result.category.metaPrompt }));
+      setCategories((current) => current.map((item) => item.id === category.id ? { ...item, metaPrompt: result.category.metaPrompt } : item));
+      setEditingCategoryPrompt(false);
+      if (categoryHistoryOpen) loadCategoryHistory(category.id);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSavingCategoryPrompt(false);
+    }
+  }
+
+  function loadCategoryHistory(categoryId) {
+    fetch(`/api/admin/template-studio/categories/${categoryId}/history`)
+      .then((response) => (response.ok ? response.json() : { history: [] }))
+      .then((result) => setCategoryHistory(result.history || []))
+      .catch(() => setCategoryHistory([]));
+  }
+
+  function toggleCategoryHistory() {
+    const opening = !categoryHistoryOpen;
+    setCategoryHistoryOpen(opening);
+    if (opening && category) loadCategoryHistory(category.id);
+  }
+
+  async function saveDocumentPrompt() {
+    if (!selectedDocument) return;
+    setSavingDocumentPrompt(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/template-studio/documents/${selectedDocument.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentPrompt: documentPromptDraft })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to save the document prompt.");
+      setDocuments((current) => current.map((doc) => doc.id === selectedDocument.id ? { ...doc, documentPrompt: result.document.documentPrompt } : doc));
+      setEditingDocumentPrompt(false);
+      if (documentHistoryOpen) loadDocumentHistory(selectedDocument.id);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSavingDocumentPrompt(false);
+    }
+  }
+
+  function loadDocumentHistory(documentId) {
+    fetch(`/api/admin/template-studio/documents/${documentId}/history`)
+      .then((response) => (response.ok ? response.json() : { history: [] }))
+      .then((result) => setDocumentHistory(result.history || []))
+      .catch(() => setDocumentHistory([]));
+  }
+
+  function toggleDocumentHistory() {
+    const opening = !documentHistoryOpen;
+    setDocumentHistoryOpen(opening);
+    if (opening && selectedDocument) loadDocumentHistory(selectedDocument.id);
   }
 
   async function generateStructure(event) {
@@ -220,10 +314,37 @@ export default function TemplateStudio() {
                   <h2>{category.name}</h2>
                 </div>
 
-                {category.metaPrompt && (
+                {category.metaPrompt !== undefined && (
                   <div className="template-studio-prompt-preview">
-                    <small>Category meta-prompt</small>
-                    <p>{category.metaPrompt}</p>
+                    <div className="template-studio-prompt-preview-heading">
+                      <small>Category meta-prompt</small>
+                      <div className="template-studio-prompt-actions">
+                        {!editingCategoryPrompt && <button className="icon-button" type="button" title="Edit meta-prompt" onClick={() => { setCategoryPromptDraft(category.metaPrompt); setEditingCategoryPrompt(true); }}><Pencil size={14} /></button>}
+                        <button className="icon-button" type="button" title="View edit history" onClick={toggleCategoryHistory}><History size={14} /></button>
+                      </div>
+                    </div>
+                    {editingCategoryPrompt ? (
+                      <>
+                        <textarea rows={5} value={categoryPromptDraft} onChange={(event) => setCategoryPromptDraft(event.target.value)} />
+                        <div className="template-studio-prompt-edit-actions">
+                          <button className="secondary-button" type="button" onClick={() => setEditingCategoryPrompt(false)}><X size={14} /> Cancel</button>
+                          <button className="primary-button" type="button" disabled={savingCategoryPrompt} onClick={saveCategoryPrompt}><Save size={14} /> {savingCategoryPrompt ? "Saving..." : "Save"}</button>
+                        </div>
+                      </>
+                    ) : <p>{category.metaPrompt}</p>}
+                    {categoryHistoryOpen && (
+                      <div className="template-studio-prompt-history">
+                        {categoryHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
+                        {categoryHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
+                        {categoryHistory?.map((entry) => (
+                          <div className="template-studio-prompt-history-entry" key={entry.id}>
+                            <small>{entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
+                            <p><strong>Before:</strong> {entry.previousValue}</p>
+                            <p><strong>After:</strong> {entry.newValue}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -232,7 +353,7 @@ export default function TemplateStudio() {
                   {!documentsLoading && documents.length > 0 && (
                     <label className="role-name">
                       Start from a seed document (optional)
-                      <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)}>
+                      <select value={selectedDocumentId} onChange={(event) => chooseDocument(event.target.value)}>
                         <option value="">None - describe the form from scratch</option>
                         {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
                       </select>
@@ -244,7 +365,35 @@ export default function TemplateStudio() {
                     <div className="template-studio-prompt-preview">
                       {selectedDocument.standardRef && <p><small>Standard reference</small><strong>{selectedDocument.standardRef}</strong></p>}
                       {selectedDocument.expectedContent && <p><small>Expected content</small>{selectedDocument.expectedContent}</p>}
-                      <p><small>Document prompt</small>{selectedDocument.documentPrompt}</p>
+                      <div className="template-studio-prompt-preview-heading">
+                        <small>Document prompt</small>
+                        <div className="template-studio-prompt-actions">
+                          {!editingDocumentPrompt && <button className="icon-button" type="button" title="Edit document prompt" onClick={() => { setDocumentPromptDraft(selectedDocument.documentPrompt); setEditingDocumentPrompt(true); }}><Pencil size={14} /></button>}
+                          <button className="icon-button" type="button" title="View edit history" onClick={toggleDocumentHistory}><History size={14} /></button>
+                        </div>
+                      </div>
+                      {editingDocumentPrompt ? (
+                        <>
+                          <textarea rows={5} value={documentPromptDraft} onChange={(event) => setDocumentPromptDraft(event.target.value)} />
+                          <div className="template-studio-prompt-edit-actions">
+                            <button className="secondary-button" type="button" onClick={() => setEditingDocumentPrompt(false)}><X size={14} /> Cancel</button>
+                            <button className="primary-button" type="button" disabled={savingDocumentPrompt} onClick={saveDocumentPrompt}><Save size={14} /> {savingDocumentPrompt ? "Saving..." : "Save"}</button>
+                          </div>
+                        </>
+                      ) : <p>{selectedDocument.documentPrompt}</p>}
+                      {documentHistoryOpen && (
+                        <div className="template-studio-prompt-history">
+                          {documentHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
+                          {documentHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
+                          {documentHistory?.map((entry) => (
+                            <div className="template-studio-prompt-history-entry" key={entry.id}>
+                              <small>{entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
+                              <p><strong>Before:</strong> {entry.previousValue}</p>
+                              <p><strong>After:</strong> {entry.newValue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 

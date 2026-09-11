@@ -45,6 +45,15 @@ export async function listNabhDocuments() {
 export async function getNabhDocument() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
 }
+export async function updateNabhCategoryMetaPrompt() {
+  throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
+export async function updateNabhDocumentPrompt() {
+  throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
+export async function listNabhPromptHistory() {
+  throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
 
 // No DB table in json mode; the role master list is just the built-in catalog.
 export async function listRoleMaster() {

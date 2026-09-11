@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, getNabhDocument, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, getNabhDocument, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocumentPrompt } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -602,6 +602,36 @@ app.get("/api/admin/template-studio/categories", async (_request, response, next
 
 app.get("/api/admin/template-studio/categories/:categoryId/documents", async (request, response, next) => {
   try { response.json({ documents: await listNabhDocuments(Number(request.params.categoryId)) }); }
+  catch (error) { next(error); }
+});
+
+app.patch("/api/admin/template-studio/categories/:categoryId", async (request, response, next) => {
+  try {
+    const metaPrompt = String(request.body?.metaPrompt ?? "").trim();
+    if (!metaPrompt) return response.status(400).json({ error: "Meta-prompt cannot be empty." });
+    const updated = await updateNabhCategoryMetaPrompt(Number(request.params.categoryId), metaPrompt, "Super Admin");
+    if (!updated) return response.status(404).json({ error: "Category not found." });
+    response.json({ category: updated });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/template-studio/categories/:categoryId/history", async (request, response, next) => {
+  try { response.json({ history: await listNabhPromptHistory("category", Number(request.params.categoryId)) }); }
+  catch (error) { next(error); }
+});
+
+app.patch("/api/admin/template-studio/documents/:documentId", async (request, response, next) => {
+  try {
+    const documentPrompt = String(request.body?.documentPrompt ?? "").trim();
+    if (!documentPrompt) return response.status(400).json({ error: "Document prompt cannot be empty." });
+    const updated = await updateNabhDocumentPrompt(Number(request.params.documentId), documentPrompt, "Super Admin");
+    if (!updated) return response.status(404).json({ error: "Document not found." });
+    response.json({ document: updated });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.get("/api/admin/template-studio/documents/:documentId/history", async (request, response, next) => {
+  try { response.json({ history: await listNabhPromptHistory("document", Number(request.params.documentId)) }); }
   catch (error) { next(error); }
 });
 
