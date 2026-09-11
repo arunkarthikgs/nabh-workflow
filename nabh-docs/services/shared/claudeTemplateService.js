@@ -56,14 +56,16 @@ function model() {
   return configValue("ANTHROPIC_MODEL", DEFAULT_MODEL);
 }
 
+function maxTokens() {
+  return Number(configValue("ANTHROPIC_MAX_TOKENS", "8192")) || 8192;
+}
+
 function extractJson(rawText) {
-  let text = String(rawText || "").trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```/, "").replace(/```$/, "").trim();
-    if (/^json/i.test(text)) text = text.slice(4).trim();
-  }
-  try { return JSON.parse(text); }
-  catch (error) { throw new Error(`Claude did not return valid JSON: ${error.message}`); }
+  const text = String(rawText || "").trim();
+  if (!text) throw new Error("Claude returned an empty response.");
+  const fenced = text.startsWith("```") ? text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim() : text;
+  try { return JSON.parse(fenced); }
+  catch (error) { throw new Error(`Claude did not return valid JSON (its response may have been cut off - try again or increase ANTHROPIC_MAX_TOKENS): ${error.message}`); }
 }
 
 // Calls the Claude Messages API with the document_prompt as the sole user message, per the
@@ -75,13 +77,14 @@ export async function callClaude(documentPrompt) {
     headers: { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": ANTHROPIC_VERSION },
     body: JSON.stringify({
       model: model(),
-      max_tokens: 4096,
+      max_tokens: maxTokens(),
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: documentPrompt }]
     })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message || "The Claude API request failed.");
+  if (data?.stop_reason === "max_tokens") throw new Error(`Claude's response was truncated at ${maxTokens()} tokens before finishing the JSON. Increase ANTHROPIC_MAX_TOKENS in config.properties or shorten the document prompt.`);
   return extractJson(data?.content?.[0]?.text);
 }
 

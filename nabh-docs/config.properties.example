@@ -33,3 +33,5 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # ANTHROPIC_MODEL=claude-sonnet-5
 # Optional. Point at a compatible proxy instead of the default Anthropic endpoint.
 # ANTHROPIC_BASE_URL=https://api.anthropic.com
+# Optional. Raise this if generation fails with "response was truncated" for long/complex documents.
+# ANTHROPIC_MAX_TOKENS=8192

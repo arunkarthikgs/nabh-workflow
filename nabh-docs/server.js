@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -644,6 +644,11 @@ app.post("/api/admin/template-studio/documents/:documentId/clone", async (reques
 
 app.get("/api/admin/template-studio/documents/:documentId/history", async (request, response, next) => {
   try { response.json({ history: await listNabhPromptHistory("document", Number(request.params.documentId)) }); }
+  catch (error) { next(error); }
+});
+
+app.get("/api/admin/template-studio/jobs", async (request, response, next) => {
+  try { response.json({ jobs: await listTemplateJobs(Number(request.query.limit) || 50) }); }
   catch (error) { next(error); }
 });
 

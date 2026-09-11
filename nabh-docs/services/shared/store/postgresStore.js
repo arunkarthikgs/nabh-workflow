@@ -615,6 +615,26 @@ export async function enqueueTemplateJob({ documentId, categoryId, department, d
   return { id, status: "queued" };
 }
 
+// Recent jobs across all departments, most recent first - for an admin-visible job history list.
+export async function listTemplateJobs(limit = 50) {
+  const client = await connect();
+  const { rows } = await client.query(
+    `select id, department, document_name, status, error, requested_by, created_at, started_at, completed_at from nabh_template_jobs order by created_at desc limit $1`,
+    [Math.min(Number(limit) || 50, 200)]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    department: row.department || "",
+    documentName: row.document_name,
+    status: row.status,
+    error: row.error || "",
+    requestedBy: row.requested_by || "",
+    createdAt: isoDate(row.created_at),
+    startedAt: row.started_at ? isoDate(row.started_at) : null,
+    completedAt: row.completed_at ? isoDate(row.completed_at) : null
+  }));
+}
+
 // Status/metadata for the frontend to poll - never returns the R2 object key directly.
 export async function getTemplateJob(jobId) {
   const client = await connect();

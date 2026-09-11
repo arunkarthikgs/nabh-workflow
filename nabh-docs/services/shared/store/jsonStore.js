@@ -60,6 +60,9 @@ export async function listNabhPromptHistory() {
 export async function enqueueTemplateJob() {
   throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
 }
+export async function listTemplateJobs() {
+  return [];
+}
 export async function getTemplateJob() {
   throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
 }

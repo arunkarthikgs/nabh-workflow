@@ -23,7 +23,8 @@ const forwardedKeys = [
   "SMTP_FROM",
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_MODEL",
-  "ANTHROPIC_BASE_URL"
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_MAX_TOKENS"
 ];
 
 export class NabhApp extends Container {

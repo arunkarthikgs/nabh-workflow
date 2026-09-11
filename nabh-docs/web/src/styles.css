@@ -417,6 +417,19 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-prompt-history-entry:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
 .template-studio-prompt-history-entry small { color: #8a8dc7; display: block; font-size: 10px; margin-bottom: 4px; text-transform: none; }
 .template-studio-prompt-history-entry p { margin: 0 0 4px; }
+.template-studio-job-history { margin-bottom: 20px; }
+.template-studio-job-history-toggle { align-items: center; background: transparent; border: 0; color: #3a3f6b; cursor: pointer; display: flex; font: 600 13px Poppins; gap: 8px; padding: 0; width: 100%; }
+.template-studio-job-history-toggle svg:last-child { margin-left: auto; transition: transform 0.15s ease; }
+.template-studio-job-history-toggle svg.template-studio-chevron-open { transform: rotate(180deg); }
+.template-studio-job-history-body { margin-top: 14px; }
+.template-studio-job-history-table { border-collapse: collapse; font-size: 12px; width: 100%; }
+.template-studio-job-history-table th { color: #8a8dc7; font-size: 10px; padding: 6px 8px; text-align: left; text-transform: uppercase; }
+.template-studio-job-history-table td { border-top: 1px solid #eceeff; color: #3a3f6b; padding: 8px; }
+.template-studio-job-status { border-radius: 999px; font-size: 10px; font-weight: 700; padding: 3px 8px; text-transform: capitalize; }
+.template-studio-job-status-queued { background: #f1f2fc; color: #8a8dc7; }
+.template-studio-job-status-processing { background: #eef0ff; color: #3547d1; }
+.template-studio-job-status-completed { background: #e4f7ec; color: #1e9e5c; }
+.template-studio-job-status-failed { background: #fff0f0; color: #c23a56; }
 .template-studio-actions { margin-top: 18px; }.document-picker { border: 1px solid #e2e4fb; border-radius: 5px; display: grid; gap: 8px; margin: 0 0 18px; max-height: 390px; overflow: auto; padding: 12px; }.document-picker legend { align-items: center; color: #4a4e82; display: flex; font-size: 12px; font-weight: 600; gap: 6px; }.document-picker label { align-items: flex-start; border-top: 1px solid #eef0ff; color: #4a4e82; display: flex; font-size: 12px; gap: 8px; padding: 9px 0 0; }.document-picker label:first-of-type { border-top: 0; }.document-picker input { accent-color: #3547d1; margin-top: 3px; }.document-picker strong, .document-picker small { display: block; }.document-picker small { color: #8a8dc7; font-size: 10px; margin-top: 2px; }
 .complete-access { align-items: center; background: #eef0ff; border: 1px solid #d9dcf3; border-radius: 5px; color: #3547d1; display: flex; font-size: 12px; font-weight: 600; gap: 8px; margin-bottom: 18px; padding: 10px; }.complete-access input { accent-color: #3547d1; }
 @media (max-width: 760px) { .role-layout { grid-template-columns: 1fr; } }

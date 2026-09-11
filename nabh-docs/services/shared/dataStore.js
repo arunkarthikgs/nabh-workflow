@@ -60,6 +60,7 @@ export async function updateNabhDocument(documentId, fields, changedBy) { return
 export async function cloneNabhDocument(documentId) { return (await store()).cloneNabhDocument(documentId); }
 export async function listNabhPromptHistory(entityType, entityId) { return (await store()).listNabhPromptHistory(entityType, entityId); }
 export async function enqueueTemplateJob(job) { return (await store()).enqueueTemplateJob(job); }
+export async function listTemplateJobs(limit) { return (await store()).listTemplateJobs(limit); }
 export async function getTemplateJob(jobId) { return (await store()).getTemplateJob(jobId); }
 export async function getTemplateJobFile(jobId) { return (await store()).getTemplateJobFile(jobId); }
 export async function claimNextQueuedTemplateJob() { return (await store()).claimNextQueuedTemplateJob(); }

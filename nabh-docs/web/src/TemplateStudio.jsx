@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, ChevronDown } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -54,6 +54,25 @@ export default function TemplateStudio() {
   const [job, setJob] = useState(null);
   const [submittingJob, setSubmittingJob] = useState(false);
   const pollRef = useRef(null);
+
+  const [jobHistoryOpen, setJobHistoryOpen] = useState(false);
+  const [jobHistory, setJobHistory] = useState(null);
+  const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+
+  function loadJobHistory() {
+    setJobHistoryLoading(true);
+    fetch("/api/admin/template-studio/jobs")
+      .then((response) => (response.ok ? response.json() : { jobs: [] }))
+      .then((result) => setJobHistory(result.jobs || []))
+      .catch(() => setJobHistory([]))
+      .finally(() => setJobHistoryLoading(false));
+  }
+
+  function toggleJobHistory() {
+    const opening = !jobHistoryOpen;
+    setJobHistoryOpen(opening);
+    if (opening) loadJobHistory();
+  }
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -274,6 +293,39 @@ export default function TemplateStudio() {
           {!programme && <span>Choose an accreditation type to pick a department.</span>}
         </div>
       </header>
+
+      <section className="users-panel template-studio-job-history">
+        <button className="template-studio-job-history-toggle" type="button" onClick={toggleJobHistory}>
+          <ListChecks size={16} /> Recent generation jobs
+          <ChevronDown size={15} className={jobHistoryOpen ? "template-studio-chevron-open" : ""} />
+        </button>
+        {jobHistoryOpen && (
+          <div className="template-studio-job-history-body">
+            <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
+            {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
+            {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
+            {!jobHistoryLoading && jobHistory?.length > 0 && (
+              <table className="template-studio-job-history-table">
+                <thead>
+                  <tr><th>Document</th><th>Department</th><th>Status</th><th>Requested</th><th>Completed</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {jobHistory.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.documentName}</td>
+                      <td>{entry.department || "-"}</td>
+                      <td><span className={`template-studio-job-status template-studio-job-status-${entry.status}`}>{entry.status}</span></td>
+                      <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                      <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
+                      <td>{entry.status === "completed" && <a className="icon-button" title="Download" href={`/api/admin/template-studio/jobs/${entry.id}/download`}><Download size={14} /></a>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </section>
 
       {!programme && <p className="empty">Select an NABH accreditation type to continue.</p>}
 
