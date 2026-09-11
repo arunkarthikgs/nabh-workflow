@@ -451,7 +451,7 @@ export default function TemplateStudio() {
 
                   <form onSubmit={generateTemplate}>
                     <label>
-                      Other notes {selectedDocumentId ? "(optional)" : ""}
+                      Specific Notes {selectedDocumentId ? "(optional)" : ""}
                       <textarea rows={6} value={story} onChange={(event) => setStory(event.target.value)} placeholder="Example: We need a Patient Consent form for surgical procedures. It should capture patient identification, the procedure details, risks explained, consent statement, and signatures from the patient and the consenting doctor." />
                     </label>
                     {error && <p className="status error">{error}</p>}
