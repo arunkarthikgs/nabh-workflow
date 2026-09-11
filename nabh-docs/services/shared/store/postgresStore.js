@@ -350,6 +350,37 @@ const schemaStatements = [
      changed_at timestamptz not null default now()
    )`,
   `create index if not exists idx_nabh_prompt_history_entity on nabh_prompt_history (entity_type, entity_id, changed_at desc)`,
+  // Widen the original meta_prompt/document_prompt-only constraint so cloning/editing a document's
+  // name, standard_ref, expected_content, or basis is also recorded in the same audit trail.
+  `do $$ begin
+     if exists (select 1 from pg_constraint where conname = 'nabh_prompt_history_field_check') then
+       alter table nabh_prompt_history drop constraint nabh_prompt_history_field_check;
+     end if;
+     alter table nabh_prompt_history add constraint nabh_prompt_history_field_check
+       check (field in ('meta_prompt', 'document_prompt', 'name', 'standard_ref', 'expected_content', 'basis'));
+   end $$`,
+  // Async Claude-generation queue: the frontend enqueues a row, a background worker in this
+  // process claims it, calls Claude, uploads the rendered .docx to R2, and stores its object key.
+  `create table if not exists nabh_template_jobs (
+     id uuid primary key,
+     document_id integer references nabh_documents (id) on delete set null,
+     category_id integer references nabh_categories (id) on delete set null,
+     department text not null default '',
+     document_name text not null,
+     document_prompt text not null,
+     status text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'failed')),
+     result_object_key text,
+     error text,
+     requested_by text not null default '',
+     created_at timestamptz not null default now(),
+     started_at timestamptz,
+     completed_at timestamptz
+   )`,
+  // Upgrades an already-created table from an earlier bytea-based draft of this feature.
+  `alter table nabh_template_jobs add column if not exists department text not null default ''`,
+  `alter table nabh_template_jobs add column if not exists result_object_key text`,
+  `alter table nabh_template_jobs drop column if exists result_file`,
+  `create index if not exists idx_nabh_template_jobs_status on nabh_template_jobs (status, created_at)`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -502,21 +533,67 @@ export async function updateNabhCategoryMetaPrompt(categoryId, metaPrompt, chang
   return { id: categoryId, metaPrompt };
 }
 
-// Updates a seed document's prompt and records the prior value in nabh_prompt_history for audit.
-export async function updateNabhDocumentPrompt(documentId, documentPrompt, changedBy) {
+// Updates any subset of a seed document's editable fields, recording each changed field in
+// nabh_prompt_history individually for audit.
+export async function updateNabhDocument(documentId, fields, changedBy) {
   const client = await connect();
-  const { rows: [existing] } = await client.query(`select document_prompt from nabh_documents where id = $1`, [documentId]);
-  if (!existing) return null;
-  if (existing.document_prompt === documentPrompt) return { id: documentId, documentPrompt };
-  await client.query(
-    `insert into nabh_prompt_history (id, entity_type, entity_id, field, previous_value, new_value, changed_by) values ($1, 'document', $2, 'document_prompt', $3, $4, $5)`,
-    [randomUUID(), documentId, existing.document_prompt, documentPrompt, changedBy || ""]
+  const { rows: [existing] } = await client.query(
+    `select name, standard_ref, expected_content, basis, document_prompt from nabh_documents where id = $1`,
+    [documentId]
   );
-  await client.query(`update nabh_documents set document_prompt = $2 where id = $1`, [documentId, documentPrompt]);
-  return { id: documentId, documentPrompt };
+  if (!existing) return null;
+  const editable = { name: existing.name, standardRef: existing.standard_ref, expectedContent: existing.expected_content, basis: existing.basis, documentPrompt: existing.document_prompt };
+  const columnByKey = { name: "name", standardRef: "standard_ref", expectedContent: "expected_content", basis: "basis", documentPrompt: "document_prompt" };
+  const historyFieldByKey = { name: "name", standardRef: "standard_ref", expectedContent: "expected_content", basis: "basis", documentPrompt: "document_prompt" };
+  const updates = [];
+  for (const key of Object.keys(columnByKey)) {
+    if (!(key in fields)) continue;
+    const nextValue = fields[key];
+    if (nextValue === editable[key]) continue;
+    updates.push({ key, column: columnByKey[key], previous: editable[key] || "", next: nextValue || "" });
+  }
+  if (!updates.length) return { id: documentId, ...editable };
+  for (const update of updates) {
+    await client.query(
+      `insert into nabh_prompt_history (id, entity_type, entity_id, field, previous_value, new_value, changed_by) values ($1, 'document', $2, $3, $4, $5, $6)`,
+      [randomUUID(), documentId, historyFieldByKey[update.key], update.previous, update.next, changedBy || ""]
+    );
+    await client.query(`update nabh_documents set ${update.column} = $2 where id = $1`, [documentId, update.next]);
+  }
+  const { rows: [row] } = await client.query(
+    `select id, category_id, name, standard_ref, expected_content, basis, document_prompt from nabh_documents where id = $1`,
+    [documentId]
+  );
+  return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt };
 }
 
-// Audit trail of prompt edits for a category or document, most recent first.
+// Clones a seed document into the same category with a "CLONE - " name prefix (de-duplicated if
+// that name is already taken), so the admin can edit a copy without touching the original seed row.
+export async function cloneNabhDocument(documentId) {
+  const client = await connect();
+  const { rows: [original] } = await client.query(
+    `select category_id, name, standard_ref, expected_content, basis, document_prompt from nabh_documents where id = $1`,
+    [documentId]
+  );
+  if (!original) return null;
+  const baseName = original.name.replace(/^CLONE( \d+)? - /, "");
+  let cloneName = `CLONE - ${baseName}`;
+  let suffix = 2;
+  while (true) {
+    const { rows: [existing] } = await client.query(`select 1 from nabh_documents where category_id = $1 and name = $2`, [original.category_id, cloneName]);
+    if (!existing) break;
+    cloneName = `CLONE ${suffix} - ${baseName}`;
+    suffix += 1;
+  }
+  const { rows: [row] } = await client.query(
+    `insert into nabh_documents (category_id, name, standard_ref, expected_content, basis, document_prompt) values ($1, $2, $3, $4, $5, $6)
+     returning id, category_id, name, standard_ref, expected_content, basis, document_prompt`,
+    [original.category_id, cloneName, original.standard_ref, original.expected_content, original.basis, original.document_prompt]
+  );
+  return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt };
+}
+
+// Audit trail of prompt/field edits for a category or document, most recent first.
 export async function listNabhPromptHistory(entityType, entityId) {
   const client = await connect();
   const { rows } = await client.query(
@@ -524,6 +601,68 @@ export async function listNabhPromptHistory(entityType, entityId) {
     [entityType, entityId]
   );
   return rows.map((row) => ({ id: row.id, field: row.field, previousValue: row.previous_value, newValue: row.new_value, changedBy: row.changed_by || "", changedAt: isoDate(row.changed_at) }));
+}
+
+// Queues a Claude template-generation request; a background worker (see claudeTemplateService.js)
+// polls for 'queued' rows, uploads the result to R2 under api/<department>/, and stores its key.
+export async function enqueueTemplateJob({ documentId, categoryId, department, documentName, documentPrompt, requestedBy }) {
+  const client = await connect();
+  const id = randomUUID();
+  await client.query(
+    `insert into nabh_template_jobs (id, document_id, category_id, department, document_name, document_prompt, requested_by) values ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, documentId || null, categoryId || null, department || "", documentName, documentPrompt, requestedBy || ""]
+  );
+  return { id, status: "queued" };
+}
+
+// Status/metadata for the frontend to poll - never returns the R2 object key directly.
+export async function getTemplateJob(jobId) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(
+    `select id, document_name, status, error, created_at, started_at, completed_at from nabh_template_jobs where id = $1`,
+    [jobId]
+  );
+  if (!row) return null;
+  return { id: row.id, documentName: row.document_name, status: row.status, error: row.error || "", createdAt: isoDate(row.created_at), startedAt: row.started_at ? isoDate(row.started_at) : null, completedAt: row.completed_at ? isoDate(row.completed_at) : null };
+}
+
+// The R2 object key for a completed job's generated .docx, for the download endpoint to fetch from R2.
+export async function getTemplateJobFile(jobId) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(`select document_name, status, result_object_key from nabh_template_jobs where id = $1`, [jobId]);
+  if (!row || row.status !== "completed" || !row.result_object_key) return null;
+  return { documentName: row.document_name, objectKey: row.result_object_key };
+}
+
+// Atomically claims the oldest queued job so only one worker process ever processes a given row.
+export async function claimNextQueuedTemplateJob() {
+  const client = await connect();
+  const dbClient = await client.connect();
+  try {
+    await dbClient.query("begin");
+    const { rows: [row] } = await dbClient.query(
+      `select id, document_prompt, document_name, department from nabh_template_jobs where status = 'queued' order by created_at limit 1 for update skip locked`
+    );
+    if (!row) { await dbClient.query("commit"); return null; }
+    await dbClient.query(`update nabh_template_jobs set status = 'processing', started_at = now() where id = $1`, [row.id]);
+    await dbClient.query("commit");
+    return { id: row.id, documentPrompt: row.document_prompt, documentName: row.document_name, department: row.department || "" };
+  } catch (error) {
+    await dbClient.query("rollback");
+    throw error;
+  } finally {
+    dbClient.release();
+  }
+}
+
+export async function completeTemplateJob(jobId, objectKey) {
+  const client = await connect();
+  await client.query(`update nabh_template_jobs set status = 'completed', result_object_key = $2, completed_at = now() where id = $1`, [jobId, objectKey]);
+}
+
+export async function failTemplateJob(jobId, errorMessage) {
+  const client = await connect();
+  await client.query(`update nabh_template_jobs set status = 'failed', error = $2, completed_at = now() where id = $1`, [jobId, String(errorMessage || "Unknown error").slice(0, 2000)]);
 }
 
 export async function initialize() {

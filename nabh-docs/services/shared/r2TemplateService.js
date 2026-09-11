@@ -449,6 +449,28 @@ export async function getR2ProgrammeTemplateFile(programme, relativePath) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
+// Template Studio's Claude-generated documents live under a flat "api/<Department>/" prefix,
+// independent of the Templates/<programme> tree above - the object key is what gets stored on
+// the nabh_template_jobs row, so the download endpoint can fetch straight from R2 by key.
+export function generatedTemplateObjectKey(department, fileName) {
+  const slug = String(department || "General").trim().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || "General";
+  return `api/${slug}/${fileName}`;
+}
+
+export async function saveR2GeneratedTemplate(department, fileName, buffer) {
+  if (!isEnabled()) throw new Error("R2 storage (R2_ENABLED=true) is required to save Template Studio's generated documents.");
+  const settings = config();
+  const key = generatedTemplateObjectKey(department, fileName);
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: key, Body: buffer, ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
+  return key;
+}
+
+export async function getR2GeneratedTemplate(objectKey) {
+  const settings = config();
+  const result = await client().send(new GetObjectCommand({ Bucket: settings.bucket, Key: objectKey }));
+  return Buffer.from(await result.Body.transformToByteArray());
+}
+
 // Creates an empty placeholder object per NABH accreditation programme (S3/R2 has no real folders,
 // so a zero-byte key ending in "/" is what makes the "folder" show up in bucket browsers).
 export async function ensureProgrammeTemplateFolders() {

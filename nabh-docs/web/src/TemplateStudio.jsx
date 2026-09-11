@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Sparkles, RefreshCw, Download, Plus, Trash2, FolderOpen, FileSearch, History, Pencil, Save, X, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -20,14 +20,10 @@ const NABH_ACCREDITATION_PROGRAMMES = [
   "Wellness Centres"
 ];
 
-const fieldTypes = ["text", "date", "number", "checkbox", "signature", "table"];
+const JOB_POLL_INTERVAL_MS = 3000;
 
-function blankField() {
-  return { label: "", type: "text" };
-}
-
-function blankSection() {
-  return { heading: "", description: "", fields: [blankField()] };
+function blankDocumentDraft() {
+  return { name: "", standardRef: "", expectedContent: "", documentPrompt: "" };
 }
 
 export default function TemplateStudio() {
@@ -40,20 +36,24 @@ export default function TemplateStudio() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [story, setStory] = useState("");
-  const [structure, setStructure] = useState(null);
-  const [generating, setGenerating] = useState(false);
-  const [rendering, setRendering] = useState(false);
   const [error, setError] = useState("");
+
   const [editingCategoryPrompt, setEditingCategoryPrompt] = useState(false);
   const [categoryPromptDraft, setCategoryPromptDraft] = useState("");
   const [savingCategoryPrompt, setSavingCategoryPrompt] = useState(false);
   const [categoryHistoryOpen, setCategoryHistoryOpen] = useState(false);
   const [categoryHistory, setCategoryHistory] = useState(null);
-  const [editingDocumentPrompt, setEditingDocumentPrompt] = useState(false);
-  const [documentPromptDraft, setDocumentPromptDraft] = useState("");
-  const [savingDocumentPrompt, setSavingDocumentPrompt] = useState(false);
+
+  const [editingDocument, setEditingDocument] = useState(false);
+  const [documentDraft, setDocumentDraft] = useState(blankDocumentDraft());
+  const [savingDocument, setSavingDocument] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const [documentHistoryOpen, setDocumentHistoryOpen] = useState(false);
   const [documentHistory, setDocumentHistory] = useState(null);
+
+  const [job, setJob] = useState(null);
+  const [submittingJob, setSubmittingJob] = useState(false);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -63,8 +63,15 @@ export default function TemplateStudio() {
       .finally(() => setCategoriesLoading(false));
   }, []);
 
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
   const filteredCategories = categories.filter((item) => item.name.toLowerCase().includes(departmentFilter.trim().toLowerCase()));
   const selectedDocument = documents.find((doc) => String(doc.id) === String(selectedDocumentId)) || null;
+
+  function resetJob() {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    setJob(null);
+  }
 
   function chooseProgramme(nextProgramme) {
     setProgramme(nextProgramme);
@@ -72,8 +79,8 @@ export default function TemplateStudio() {
     setDocuments([]);
     setSelectedDocumentId("");
     setStory("");
-    setStructure(null);
     setError("");
+    resetJob();
   }
 
   // Documents for a department are loaded by category_id as soon as it's selected.
@@ -81,12 +88,12 @@ export default function TemplateStudio() {
     setCategory(nextCategory);
     setSelectedDocumentId("");
     setStory("");
-    setStructure(null);
     setError("");
+    resetJob();
     setEditingCategoryPrompt(false);
     setCategoryHistoryOpen(false);
     setCategoryHistory(null);
-    setEditingDocumentPrompt(false);
+    setEditingDocument(false);
     setDocumentHistoryOpen(false);
     setDocumentHistory(null);
     setDocumentsLoading(true);
@@ -99,9 +106,10 @@ export default function TemplateStudio() {
 
   function chooseDocument(documentId) {
     setSelectedDocumentId(documentId);
-    setEditingDocumentPrompt(false);
+    setEditingDocument(false);
     setDocumentHistoryOpen(false);
     setDocumentHistory(null);
+    resetJob();
   }
 
   async function saveCategoryPrompt() {
@@ -140,25 +148,52 @@ export default function TemplateStudio() {
     if (opening && category) loadCategoryHistory(category.id);
   }
 
-  async function saveDocumentPrompt() {
+  function startEditingDocument() {
     if (!selectedDocument) return;
-    setSavingDocumentPrompt(true);
+    setDocumentDraft({ name: selectedDocument.name, standardRef: selectedDocument.standardRef, expectedContent: selectedDocument.expectedContent, documentPrompt: selectedDocument.documentPrompt });
+    setEditingDocument(true);
+  }
+
+  async function saveDocument() {
+    if (!selectedDocument) return;
+    setSavingDocument(true);
     setError("");
     try {
       const response = await fetch(`/api/admin/template-studio/documents/${selectedDocument.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentPrompt: documentPromptDraft })
+        body: JSON.stringify(documentDraft)
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to save the document prompt.");
-      setDocuments((current) => current.map((doc) => doc.id === selectedDocument.id ? { ...doc, documentPrompt: result.document.documentPrompt } : doc));
-      setEditingDocumentPrompt(false);
+      if (!response.ok) throw new Error(result.error || "Unable to save the document.");
+      setDocuments((current) => current.map((doc) => doc.id === selectedDocument.id ? { ...doc, ...result.document } : doc));
+      setEditingDocument(false);
       if (documentHistoryOpen) loadDocumentHistory(selectedDocument.id);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
-      setSavingDocumentPrompt(false);
+      setSavingDocument(false);
+    }
+  }
+
+  // Clones the selected seed document (server prefixes the name with "CLONE - "), then selects
+  // and opens the clone for editing so the admin can adjust it without touching the original.
+  async function cloneSelectedDocument() {
+    if (!selectedDocument) return;
+    setCloning(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/template-studio/documents/${selectedDocument.id}/clone`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to clone the document.");
+      setDocuments((current) => [...current, result.document]);
+      setSelectedDocumentId(String(result.document.id));
+      setDocumentDraft({ name: result.document.name, standardRef: result.document.standardRef, expectedContent: result.document.expectedContent, documentPrompt: result.document.documentPrompt });
+      setEditingDocument(true);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setCloning(false);
     }
   }
 
@@ -175,95 +210,48 @@ export default function TemplateStudio() {
     if (opening && selectedDocument) loadDocumentHistory(selectedDocument.id);
   }
 
-  async function generateStructure(event) {
+  function pollJob(jobId) {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => {
+      fetch(`/api/admin/template-studio/jobs/${jobId}`)
+        .then((response) => response.json())
+        .then((result) => {
+          if (!result.job) return;
+          setJob(result.job);
+          if (result.job.status === "completed" || result.job.status === "failed") clearInterval(pollRef.current);
+        })
+        .catch(() => {});
+    }, JOB_POLL_INTERVAL_MS);
+  }
+
+  // Submits the request to the backend queue - a worker process picks it up, calls Claude, and
+  // uploads the rendered .docx to R2. The frontend just polls job status until it's done.
+  async function generateTemplate(event) {
     event.preventDefault();
-    if (!story.trim() && !selectedDocumentId) return setError("Describe the form, or pick a seed document, before generating a structure.");
-    setGenerating(true);
+    if (!story.trim() && !selectedDocumentId) return setError("Describe the form, or pick a seed document, before generating a template.");
+    setSubmittingJob(true);
     setError("");
+    resetJob();
     try {
-      const response = await fetch("/api/admin/template-studio/structure", {
+      const response = await fetch("/api/admin/template-studio/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          story: `Accreditation programme: ${programme}\nDepartment: ${category.name}\n${story}`,
-          documentId: selectedDocumentId || undefined
+          documentId: selectedDocumentId || undefined,
+          documentName: selectedDocument?.name || `${category.name} template`,
+          department: category.name,
+          story
         })
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Unable to generate a template structure.");
-      setStructure({ ...result.structure, programme, department: category.name });
+      if (!response.ok) throw new Error(result.error || "Unable to queue template generation.");
+      setJob(result.job);
+      pollJob(result.job.id);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
-      setGenerating(false);
+      setSubmittingJob(false);
     }
-  }
-
-  async function downloadDocx() {
-    if (!structure) return;
-    setRendering(true);
-    setError("");
-    try {
-      const response = await fetch("/api/admin/template-studio/render", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ structure })
-      });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || "Unable to render the template.");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${(structure.title || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setRendering(false);
-    }
-  }
-
-  function updateField(sectionIndex, fieldIndex, key, value) {
-    setStructure((current) => ({
-      ...current,
-      sections: current.sections.map((section, index) => index !== sectionIndex ? section : {
-        ...section,
-        fields: section.fields.map((field, fIndex) => fIndex !== fieldIndex ? field : { ...field, [key]: value })
-      })
-    }));
-  }
-
-  function updateSection(sectionIndex, key, value) {
-    setStructure((current) => ({
-      ...current,
-      sections: current.sections.map((section, index) => index !== sectionIndex ? section : { ...section, [key]: value })
-    }));
-  }
-
-  function addField(sectionIndex) {
-    setStructure((current) => ({
-      ...current,
-      sections: current.sections.map((section, index) => index !== sectionIndex ? section : { ...section, fields: [...section.fields, blankField()] })
-    }));
-  }
-
-  function removeField(sectionIndex, fieldIndex) {
-    setStructure((current) => ({
-      ...current,
-      sections: current.sections.map((section, index) => index !== sectionIndex ? section : { ...section, fields: section.fields.filter((_, fIndex) => fIndex !== fieldIndex) })
-    }));
-  }
-
-  function addSection() {
-    setStructure((current) => ({ ...current, sections: [...current.sections, blankSection()] }));
-  }
-
-  function removeSection(sectionIndex) {
-    setStructure((current) => ({ ...current, sections: current.sections.filter((_, index) => index !== sectionIndex) }));
   }
 
   return (
@@ -276,7 +264,7 @@ export default function TemplateStudio() {
             <h1>Template studio</h1>
           </div>
         </div>
-        <p className="intro">Describe a form in plain language and generate a clean, editable NABH document template.</p>
+        <p className="intro">Describe a form in plain language and generate a clean NABH document template.</p>
         <div className="template-library-selector">
           <label htmlFor="template-studio-programme">Accreditation type</label>
           <select id="template-studio-programme" value={programme} onChange={(event) => chooseProgramme(event.target.value)}>
@@ -363,31 +351,42 @@ export default function TemplateStudio() {
 
                   {selectedDocument && (
                     <div className="template-studio-prompt-preview">
-                      {selectedDocument.standardRef && <p><small>Standard reference</small><strong>{selectedDocument.standardRef}</strong></p>}
-                      {selectedDocument.expectedContent && <p><small>Expected content</small>{selectedDocument.expectedContent}</p>}
                       <div className="template-studio-prompt-preview-heading">
-                        <small>Document prompt</small>
+                        <small>Seed document</small>
                         <div className="template-studio-prompt-actions">
-                          {!editingDocumentPrompt && <button className="icon-button" type="button" title="Edit document prompt" onClick={() => { setDocumentPromptDraft(selectedDocument.documentPrompt); setEditingDocumentPrompt(true); }}><Pencil size={14} /></button>}
+                          <button className="icon-button" type="button" title="Clone this document" disabled={cloning} onClick={cloneSelectedDocument}><Copy size={14} /></button>
+                          {!editingDocument && <button className="icon-button" type="button" title="Edit document" onClick={startEditingDocument}><Pencil size={14} /></button>}
                           <button className="icon-button" type="button" title="View edit history" onClick={toggleDocumentHistory}><History size={14} /></button>
                         </div>
                       </div>
-                      {editingDocumentPrompt ? (
+
+                      {editingDocument ? (
                         <>
-                          <textarea rows={5} value={documentPromptDraft} onChange={(event) => setDocumentPromptDraft(event.target.value)} />
+                          <label className="role-name">Name<input value={documentDraft.name} onChange={(event) => setDocumentDraft((current) => ({ ...current, name: event.target.value }))} /></label>
+                          <label className="role-name">Standard reference<input value={documentDraft.standardRef} onChange={(event) => setDocumentDraft((current) => ({ ...current, standardRef: event.target.value }))} /></label>
+                          <label className="role-name">Expected content<textarea rows={3} value={documentDraft.expectedContent} onChange={(event) => setDocumentDraft((current) => ({ ...current, expectedContent: event.target.value }))} /></label>
+                          <label className="role-name">Document prompt<textarea rows={6} value={documentDraft.documentPrompt} onChange={(event) => setDocumentDraft((current) => ({ ...current, documentPrompt: event.target.value }))} /></label>
                           <div className="template-studio-prompt-edit-actions">
-                            <button className="secondary-button" type="button" onClick={() => setEditingDocumentPrompt(false)}><X size={14} /> Cancel</button>
-                            <button className="primary-button" type="button" disabled={savingDocumentPrompt} onClick={saveDocumentPrompt}><Save size={14} /> {savingDocumentPrompt ? "Saving..." : "Save"}</button>
+                            <button className="secondary-button" type="button" onClick={() => setEditingDocument(false)}><X size={14} /> Cancel</button>
+                            <button className="primary-button" type="button" disabled={savingDocument} onClick={saveDocument}><Save size={14} /> {savingDocument ? "Saving..." : "Save"}</button>
                           </div>
                         </>
-                      ) : <p>{selectedDocument.documentPrompt}</p>}
+                      ) : (
+                        <>
+                          <p><strong>{selectedDocument.name}</strong></p>
+                          {selectedDocument.standardRef && <p><small>Standard reference</small><strong>{selectedDocument.standardRef}</strong></p>}
+                          {selectedDocument.expectedContent && <p><small>Expected content</small>{selectedDocument.expectedContent}</p>}
+                          <p><small>Document prompt</small>{selectedDocument.documentPrompt}</p>
+                        </>
+                      )}
+
                       {documentHistoryOpen && (
                         <div className="template-studio-prompt-history">
                           {documentHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
                           {documentHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
                           {documentHistory?.map((entry) => (
                             <div className="template-studio-prompt-history-entry" key={entry.id}>
-                              <small>{entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
+                              <small>{entry.field} - {entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
                               <p><strong>Before:</strong> {entry.previousValue}</p>
                               <p><strong>After:</strong> {entry.newValue}</p>
                             </div>
@@ -397,53 +396,33 @@ export default function TemplateStudio() {
                     </div>
                   )}
 
-                  <form onSubmit={generateStructure}>
+                  <form onSubmit={generateTemplate}>
                     <label>
                       Hospital-specific notes {selectedDocumentId ? "(optional)" : ""}
                       <textarea rows={6} value={story} onChange={(event) => setStory(event.target.value)} placeholder="Example: We need a Patient Consent form for surgical procedures. It should capture patient identification, the procedure details, risks explained, consent statement, and signatures from the patient and the consenting doctor." />
                     </label>
                     {error && <p className="status error">{error}</p>}
-                    <button className="primary-button" type="submit" disabled={generating}>
-                      {generating ? <><RefreshCw size={16} className="spin-icon" /> Generating...</> : <><Sparkles size={16} /> Generate structure</>}
+                    <button className="primary-button" type="submit" disabled={submittingJob || (job && job.status !== "completed" && job.status !== "failed")}>
+                      {submittingJob ? <><RefreshCw size={16} className="spin-icon" /> Queuing...</> : <><Sparkles size={16} /> Generate Template</>}
                     </button>
                   </form>
                 </section>
 
-                {structure && (
-                  <section className="users-panel template-studio-structure">
+                {job && (
+                  <section className="users-panel template-studio-job">
                     <div className="panel-heading">
                       <Sparkles size={18} />
-                      <h2>Review and refine</h2>
+                      <h2>Template generation</h2>
                     </div>
-                    <label className="role-name">Document title<input value={structure.title} onChange={(event) => setStructure((current) => ({ ...current, title: event.target.value }))} /></label>
-                    <label className="role-name">Purpose<textarea rows={2} value={structure.purpose || ""} onChange={(event) => setStructure((current) => ({ ...current, purpose: event.target.value }))} /></label>
-
-                    {structure.sections.map((section, sectionIndex) => (
-                      <section className="template-studio-section" key={sectionIndex}>
-                        <div className="template-studio-section-heading">
-                          <input value={section.heading} onChange={(event) => updateSection(sectionIndex, "heading", event.target.value)} placeholder="Section heading" />
-                          <button className="icon-button" type="button" title="Remove section" onClick={() => removeSection(sectionIndex)}><Trash2 size={15} /></button>
-                        </div>
-                        <input value={section.description} onChange={(event) => updateSection(sectionIndex, "description", event.target.value)} placeholder="Section description (optional)" />
-                        {section.fields.map((field, fieldIndex) => (
-                          <div className="template-studio-field" key={fieldIndex}>
-                            <input value={field.label} onChange={(event) => updateField(sectionIndex, fieldIndex, "label", event.target.value)} placeholder="Field label" />
-                            <select value={field.type} onChange={(event) => updateField(sectionIndex, fieldIndex, "type", event.target.value)}>
-                              {fieldTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-                            </select>
-                            <button className="icon-button" type="button" title="Remove field" onClick={() => removeField(sectionIndex, fieldIndex)}><Trash2 size={15} /></button>
-                          </div>
-                        ))}
-                        <button className="secondary-button" type="button" onClick={() => addField(sectionIndex)}><Plus size={15} /> Add field</button>
-                      </section>
-                    ))}
-                    <button className="secondary-button" type="button" onClick={addSection}><Plus size={16} /> Add section</button>
-
-                    <div className="template-studio-actions">
-                      <button className="primary-button" type="button" disabled={rendering} onClick={downloadDocx}>
-                        {rendering ? <><RefreshCw size={16} className="spin-icon" /> Rendering...</> : <><Download size={16} /> Generate DOCX</>}
-                      </button>
-                    </div>
+                    {(job.status === "queued" || job.status === "processing") && (
+                      <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> {job.status === "queued" ? "Queued - waiting for the next worker cycle..." : "Generating with Claude..."}</p>
+                    )}
+                    {job.status === "failed" && <p className="status error">{job.error || "Template generation failed."}</p>}
+                    {job.status === "completed" && (
+                      <a className="primary-button" href={`/api/admin/template-studio/jobs/${job.id}/download`}>
+                        <Download size={16} /> Download {job.documentName}.docx
+                      </a>
+                    )}
                   </section>
                 )}
               </>

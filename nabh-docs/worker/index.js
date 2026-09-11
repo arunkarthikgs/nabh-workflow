@@ -20,7 +20,10 @@ const forwardedKeys = [
   "SMTP_SECURE",
   "SMTP_USER",
   "SMTP_PASS",
-  "SMTP_FROM"
+  "SMTP_FROM",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_MODEL",
+  "ANTHROPIC_BASE_URL"
 ];
 
 export class NabhApp extends Container {

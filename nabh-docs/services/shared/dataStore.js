@@ -56,8 +56,15 @@ export async function listNabhCategories() { return (await store()).listNabhCate
 export async function listNabhDocuments(categoryId) { return (await store()).listNabhDocuments(categoryId); }
 export async function getNabhDocument(documentId) { return (await store()).getNabhDocument(documentId); }
 export async function updateNabhCategoryMetaPrompt(categoryId, metaPrompt, changedBy) { return (await store()).updateNabhCategoryMetaPrompt(categoryId, metaPrompt, changedBy); }
-export async function updateNabhDocumentPrompt(documentId, documentPrompt, changedBy) { return (await store()).updateNabhDocumentPrompt(documentId, documentPrompt, changedBy); }
+export async function updateNabhDocument(documentId, fields, changedBy) { return (await store()).updateNabhDocument(documentId, fields, changedBy); }
+export async function cloneNabhDocument(documentId) { return (await store()).cloneNabhDocument(documentId); }
 export async function listNabhPromptHistory(entityType, entityId) { return (await store()).listNabhPromptHistory(entityType, entityId); }
+export async function enqueueTemplateJob(job) { return (await store()).enqueueTemplateJob(job); }
+export async function getTemplateJob(jobId) { return (await store()).getTemplateJob(jobId); }
+export async function getTemplateJobFile(jobId) { return (await store()).getTemplateJobFile(jobId); }
+export async function claimNextQueuedTemplateJob() { return (await store()).claimNextQueuedTemplateJob(); }
+export async function completeTemplateJob(jobId, objectKey) { return (await store()).completeTemplateJob(jobId, objectKey); }
+export async function failTemplateJob(jobId, errorMessage) { return (await store()).failTemplateJob(jobId, errorMessage); }
 
 export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);

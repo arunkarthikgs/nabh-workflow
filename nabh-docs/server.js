@@ -11,14 +11,13 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, getNabhDocument, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocumentPrompt } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
 import { NABH_WORKSPACE_CATEGORIES, classifyDocument } from "./services/shared/documentCategoryService.js";
 import { generateDocumentDraft, getDocumentDraft, performDocumentAction, prepareDocumentDraft } from "./services/shared/draftGenerationService.js";
 import { getDocumentQuestions, validateDocumentAnswers, validateQuestionnaireDefinition } from "./services/shared/documentQuestionnaireService.js";
-import { generateTemplateStructure, renderTemplateDocx } from "./services/shared/aiTemplateService.js";
 import { TRAINING_TOPICS, generateTrainingPack } from "./services/shared/trainingContentService.js";
 import { CONSULTING_CATALOG, TRAINING_CATALOG, attachBookingRecording, createBooking, generateTrainingMaterial, listBookings, updateBookingStatus } from "./services/shared/servicesMarketplace.js";
 import { getDepartmentBoost } from "./services/shared/departmentAliases.js";
@@ -26,7 +25,8 @@ import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReport
 import { createEvidence, getEvidenceFile, listDocumentEvidence } from "./services/shared/evidenceService.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientObjectKey, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateObjectKey, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientObjectKey, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2GeneratedTemplate, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateObjectKey, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { startTemplateJobWorker } from "./services/shared/templateJobWorker.js";
 
 const app = express();
 const webBuildDir = fileURLToPath(new URL("./web/dist", import.meta.url));
@@ -622,11 +622,23 @@ app.get("/api/admin/template-studio/categories/:categoryId/history", async (requ
 
 app.patch("/api/admin/template-studio/documents/:documentId", async (request, response, next) => {
   try {
-    const documentPrompt = String(request.body?.documentPrompt ?? "").trim();
-    if (!documentPrompt) return response.status(400).json({ error: "Document prompt cannot be empty." });
-    const updated = await updateNabhDocumentPrompt(Number(request.params.documentId), documentPrompt, "Super Admin");
+    const fields = {};
+    for (const key of ["name", "standardRef", "expectedContent", "basis", "documentPrompt"]) {
+      if (request.body?.[key] !== undefined) fields[key] = String(request.body[key]).trim();
+    }
+    if (fields.name === "") return response.status(400).json({ error: "Document name cannot be empty." });
+    if (fields.documentPrompt === "") return response.status(400).json({ error: "Document prompt cannot be empty." });
+    const updated = await updateNabhDocument(Number(request.params.documentId), fields, "Super Admin");
     if (!updated) return response.status(404).json({ error: "Document not found." });
     response.json({ document: updated });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/template-studio/documents/:documentId/clone", async (request, response, next) => {
+  try {
+    const cloned = await cloneNabhDocument(Number(request.params.documentId));
+    if (!cloned) return response.status(404).json({ error: "Document not found." });
+    response.status(201).json({ document: cloned });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -635,22 +647,43 @@ app.get("/api/admin/template-studio/documents/:documentId/history", async (reque
   catch (error) { next(error); }
 });
 
-app.post("/api/admin/template-studio/structure", async (request, response, next) => {
+app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
   try {
     const documentId = request.body?.documentId;
-    const seed = documentId ? await getNabhDocument(Number(documentId)) : null;
-    response.json({ structure: await generateTemplateStructure(request.body?.story, seed) });
-  }
-  catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+    const story = String(request.body?.story || "").trim();
+    let documentPrompt = story;
+    let documentName = String(request.body?.documentName || "Template").trim();
+    let categoryId = null;
+    let department = String(request.body?.department || "").trim();
+    if (documentId) {
+      const seed = await getNabhDocument(Number(documentId));
+      if (!seed) return response.status(404).json({ error: "Document not found." });
+      documentPrompt = story ? `${seed.documentPrompt}\n\nAdditional hospital-specific notes:\n${story}` : seed.documentPrompt;
+      documentName = seed.name;
+      categoryId = seed.categoryId;
+      department = seed.categoryName;
+    }
+    if (!documentPrompt.trim()) return response.status(400).json({ error: "Describe the form, or pick a seed document, before generating a template." });
+    const job = await enqueueTemplateJob({ documentId: documentId ? Number(documentId) : null, categoryId, department, documentName, documentPrompt, requestedBy: "Super Admin" });
+    response.status(202).json({ job });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
-app.post("/api/admin/template-studio/render", async (request, response, next) => {
+app.get("/api/admin/template-studio/jobs/:jobId", async (request, response, next) => {
   try {
-    const structure = request.body?.structure;
-    if (!structure || typeof structure !== "object") return response.status(400).json({ error: "A template structure is required." });
-    const docx = await renderTemplateDocx(structure);
-    const fileName = `${(structure.title || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
-    response.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document").attachment(fileName).send(docx);
+    const job = await getTemplateJob(request.params.jobId);
+    if (!job) return response.status(404).json({ error: "Job not found." });
+    response.json({ job });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/admin/template-studio/jobs/:jobId/download", async (request, response, next) => {
+  try {
+    const file = await getTemplateJobFile(request.params.jobId);
+    if (!file) return response.status(404).json({ error: "This template is not ready for download yet." });
+    const buffer = await getR2GeneratedTemplate(file.objectKey);
+    const fileName = `${(file.documentName || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
+    response.type("application/vnd.openxmlformats-officedocument.wordprocessingml.document").attachment(fileName).send(buffer);
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -1744,4 +1777,5 @@ app.listen(port, host, async () => {
   } catch (error) {
     console.error(`Data store (${dataStoreDriver()}) is unavailable: ${error.message}`);
   }
+  startTemplateJobWorker();
 });

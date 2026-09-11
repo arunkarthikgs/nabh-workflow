@@ -48,11 +48,32 @@ export async function getNabhDocument() {
 export async function updateNabhCategoryMetaPrompt() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
 }
-export async function updateNabhDocumentPrompt() {
+export async function updateNabhDocument() {
+  throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
+export async function cloneNabhDocument() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
 }
 export async function listNabhPromptHistory() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
+export async function enqueueTemplateJob() {
+  throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
+}
+export async function getTemplateJob() {
+  throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
+}
+export async function getTemplateJobFile() {
+  throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
+}
+export async function claimNextQueuedTemplateJob() {
+  return null;
+}
+export async function completeTemplateJob() {
+  throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
+}
+export async function failTemplateJob() {
+  throw new Error("Template Studio's generation queue requires DATA_STORE=postgres.");
 }
 
 // No DB table in json mode; the role master list is just the built-in catalog.
