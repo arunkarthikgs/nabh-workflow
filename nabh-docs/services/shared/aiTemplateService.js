@@ -9,6 +9,7 @@ const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 const STRUCTURE_SYSTEM_PROMPT = `You turn a hospital administrator's plain-language description of a form ("story") into a clean, structured document outline for an NABH-compliant controlled document.
+The user message may include labelled sections - TYPE SKELETON (fixed structural/document-type guidance), STANDARD/EXPECTED CONTENT (what a specific NABH standard requires this document to cover), and HOSPITAL CONTEXT (the administrator's own notes). When present, follow the TYPE SKELETON's mandatory structure and make sure every item in STANDARD/EXPECTED CONTENT is covered by a section or field, then layer in the HOSPITAL CONTEXT specifics.
 Respond with strict JSON only, matching this shape:
 {
   "title": "Document title",
@@ -63,12 +64,31 @@ function normalizeStructure(structure) {
   };
 }
 
-// Calls the configured LLM to turn a story into a structured section/field outline.
-export async function generateTemplateStructure(story) {
+// Combines the seed prompt library's three layers into one user message:
+// [TYPE SKELETON] category.metaPrompt + [STANDARD/EXPECTED CONTENT] document seed row + [HOSPITAL CONTEXT] story.
+function buildLayeredPrompt(story, seed) {
+  if (!seed) return story;
+  const standardBlock = [
+    seed.standardRef && `Standard reference: ${seed.standardRef}`,
+    seed.name && `Document name: ${seed.name}`,
+    seed.expectedContent && `Expected content: ${seed.expectedContent}`,
+    seed.documentPrompt
+  ].filter(Boolean).join("\n");
+  return [
+    seed.metaPrompt && `[TYPE SKELETON]\n${seed.metaPrompt}`,
+    standardBlock && `[STANDARD/EXPECTED CONTENT]\n${standardBlock}`,
+    `[HOSPITAL CONTEXT]\n${story || "(No additional hospital-specific notes provided.)"}`
+  ].filter(Boolean).join("\n\n");
+}
+
+// Calls the configured LLM to turn a story into a structured section/field outline. `seed`, when
+// provided, layers in a category meta-prompt and/or seed document (see buildLayeredPrompt above).
+export async function generateTemplateStructure(story, seed = null) {
   const trimmedStory = String(story || "").trim();
-  if (!trimmedStory) throw new Error("Describe the form before generating a structure.");
+  if (!trimmedStory && !seed) throw new Error("Describe the form before generating a structure.");
   if (!apiKey()) throw new Error("AI template generation is not configured. Set AI_TEMPLATE_API_KEY (or OPENAI_API_KEY) in config.properties.");
 
+  const userMessage = buildLayeredPrompt(trimmedStory, seed);
   const response = await fetch(`${baseUrl()}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey()}` },
@@ -77,7 +97,7 @@ export async function generateTemplateStructure(story) {
       temperature: 0.4,
       messages: [
         { role: "system", content: STRUCTURE_SYSTEM_PROMPT },
-        { role: "user", content: trimmedStory }
+        { role: "user", content: userMessage }
       ]
     })
   });

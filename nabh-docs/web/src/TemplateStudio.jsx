@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, RefreshCw, Download, Plus, Trash2, FolderOpen, FileSearch, Search } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
@@ -20,9 +20,6 @@ const NABH_ACCREDITATION_PROGRAMMES = [
   "Wellness Centres"
 ];
 
-// Must match NABH_WORKSPACE_CATEGORIES in services/shared/documentCategoryService.js.
-const NABH_WORKSPACE_CATEGORIES = ["Manuals", "Policies", "Standard Operating Procedures", "Forms and Formats", "Registers", "Department Manuals", "Checklists", "Training Requirements", "Records and Evidence"];
-
 const fieldTypes = ["text", "date", "number", "checkbox", "signature", "table"];
 
 function blankField() {
@@ -35,45 +32,72 @@ function blankSection() {
 
 export default function TemplateStudio() {
   const [programme, setProgramme] = useState("");
-  const [department, setDepartment] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [category, setCategory] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [story, setStory] = useState("");
   const [structure, setStructure] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState("");
 
-  const filteredDepartments = NABH_WORKSPACE_CATEGORIES.filter((category) => category.toLowerCase().includes(departmentFilter.trim().toLowerCase()));
+  useEffect(() => {
+    fetch("/api/admin/template-studio/categories")
+      .then((response) => (response.ok ? response.json() : { categories: [] }))
+      .then((result) => setCategories(result.categories || []))
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
+
+  const filteredCategories = categories.filter((item) => item.name.toLowerCase().includes(departmentFilter.trim().toLowerCase()));
+  const selectedDocument = documents.find((doc) => String(doc.id) === String(selectedDocumentId)) || null;
 
   function chooseProgramme(nextProgramme) {
     setProgramme(nextProgramme);
-    setDepartment("");
+    setCategory(null);
+    setDocuments([]);
+    setSelectedDocumentId("");
     setStory("");
     setStructure(null);
     setError("");
   }
 
-  function chooseDepartment(category) {
-    setDepartment(category);
+  // Documents for a department are loaded by category_id as soon as it's selected.
+  function chooseDepartment(nextCategory) {
+    setCategory(nextCategory);
+    setSelectedDocumentId("");
     setStory("");
     setStructure(null);
     setError("");
+    setDocumentsLoading(true);
+    fetch(`/api/admin/template-studio/categories/${nextCategory.id}/documents`)
+      .then((response) => (response.ok ? response.json() : { documents: [] }))
+      .then((result) => setDocuments(result.documents || []))
+      .catch(() => setDocuments([]))
+      .finally(() => setDocumentsLoading(false));
   }
 
   async function generateStructure(event) {
     event.preventDefault();
-    if (!story.trim()) return setError("Describe the form before generating a structure.");
+    if (!story.trim() && !selectedDocumentId) return setError("Describe the form, or pick a seed document, before generating a structure.");
     setGenerating(true);
     setError("");
     try {
       const response = await fetch("/api/admin/template-studio/structure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ story: `Accreditation programme: ${programme}\nDepartment: ${department}\n${story}` })
+        body: JSON.stringify({
+          story: `Accreditation programme: ${programme}\nDepartment: ${category.name}\n${story}`,
+          documentId: selectedDocumentId || undefined
+        })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to generate a template structure.");
-      setStructure({ ...result.structure, programme, department });
+      setStructure({ ...result.structure, programme, department: category.name });
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -178,26 +202,55 @@ export default function TemplateStudio() {
               <Search size={14} />
               <input value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} placeholder="Filter departments" />
             </label>
-            {filteredDepartments.map((category) => (
-              <button className={category === department ? "active" : ""} key={category} title={`Design a template for ${category}`} onClick={() => chooseDepartment(category)}>
+            {categoriesLoading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading departments...</p>}
+            {!categoriesLoading && filteredCategories.map((item) => (
+              <button className={category?.id === item.id ? "active" : ""} key={item.id} title={`Design a template for ${item.name}`} onClick={() => chooseDepartment(item)}>
                 <FolderOpen size={16} />
-                <span>{category}</span>
+                <span>{item.name}</span>
               </button>
             ))}
-            {filteredDepartments.length === 0 && <p className="empty">No departments match.</p>}
+            {!categoriesLoading && filteredCategories.length === 0 && <p className="empty">No departments match.</p>}
           </nav>
           <section className="document-panel">
-            {!department && <p className="empty">Select a department to describe its form.</p>}
-            {department && (
+            {!category && <p className="empty">Select a department to describe its form.</p>}
+            {category && (
               <>
                 <div className="panel-heading">
                   <FileSearch size={18} />
-                  <h2>{department}</h2>
+                  <h2>{category.name}</h2>
                 </div>
+
+                {category.metaPrompt && (
+                  <div className="template-studio-prompt-preview">
+                    <small>Category meta-prompt</small>
+                    <p>{category.metaPrompt}</p>
+                  </div>
+                )}
+
                 <section className="users-panel template-studio-story">
+                  {documentsLoading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading seed documents...</p>}
+                  {!documentsLoading && documents.length > 0 && (
+                    <label className="role-name">
+                      Start from a seed document (optional)
+                      <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)}>
+                        <option value="">None - describe the form from scratch</option>
+                        {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {!documentsLoading && documents.length === 0 && <p className="empty">No seed documents yet for this department - describe the form from scratch below.</p>}
+
+                  {selectedDocument && (
+                    <div className="template-studio-prompt-preview">
+                      {selectedDocument.standardRef && <p><small>Standard reference</small><strong>{selectedDocument.standardRef}</strong></p>}
+                      {selectedDocument.expectedContent && <p><small>Expected content</small>{selectedDocument.expectedContent}</p>}
+                      <p><small>Document prompt</small>{selectedDocument.documentPrompt}</p>
+                    </div>
+                  )}
+
                   <form onSubmit={generateStructure}>
                     <label>
-                      Describe the form
+                      Hospital-specific notes {selectedDocumentId ? "(optional)" : ""}
                       <textarea rows={6} value={story} onChange={(event) => setStory(event.target.value)} placeholder="Example: We need a Patient Consent form for surgical procedures. It should capture patient identification, the procedure details, risks explained, consent statement, and signatures from the patient and the consenting doctor." />
                     </label>
                     {error && <p className="status error">{error}</p>}

@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, createAuthSession, dataStoreDriver, dataStoreInfo, getDocumentVersionCache, getNabhDocument, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listTemplateCatalog, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire } from "./services/shared/dataStore.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -595,8 +595,22 @@ app.get("/api/admin/template-library/questionnaire-report.pdf", async (request, 
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
+app.get("/api/admin/template-studio/categories", async (_request, response, next) => {
+  try { response.json({ categories: await listNabhCategories() }); }
+  catch (error) { next(error); }
+});
+
+app.get("/api/admin/template-studio/categories/:categoryId/documents", async (request, response, next) => {
+  try { response.json({ documents: await listNabhDocuments(Number(request.params.categoryId)) }); }
+  catch (error) { next(error); }
+});
+
 app.post("/api/admin/template-studio/structure", async (request, response, next) => {
-  try { response.json({ structure: await generateTemplateStructure(request.body?.story) }); }
+  try {
+    const documentId = request.body?.documentId;
+    const seed = documentId ? await getNabhDocument(Number(documentId)) : null;
+    response.json({ structure: await generateTemplateStructure(request.body?.story, seed) });
+  }
   catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 

@@ -317,6 +317,27 @@ const schemaStatements = [
      updated_at timestamptz not null default now(),
      unique (scope, hospital_id, programme, document_key)
    )`,
+  // Template Studio's prompt library - nabh_categories.name is the department (Manuals, Policies,
+  // etc.); nabh_documents holds the per-document seed prompt used alongside the category's meta-prompt.
+  `create table if not exists nabh_categories (
+     id serial primary key,
+     name text not null unique,
+     meta_prompt text not null,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists nabh_documents (
+     id serial primary key,
+     category_id integer not null references nabh_categories (id) on delete cascade,
+     name text not null,
+     standard_ref text,
+     expected_content text,
+     basis text check (basis = any (array['source', 'source-referenced', 'practice'])),
+     document_prompt text not null,
+     created_at timestamptz not null default now(),
+     unique (category_id, name)
+   )`,
+  `create index if not exists idx_nabh_documents_category on nabh_documents (category_id)`,
+  `create index if not exists idx_nabh_documents_standard_ref on nabh_documents (standard_ref)`,
   `insert into schema_migrations (version) values (1) on conflict (version) do nothing`
 ];
 
@@ -424,6 +445,35 @@ export async function listRoleMaster() {
   const client = await connect();
   const { rows } = await client.query(`select id, name, category, reports from nabh_role_master where is_enabled = true order by category, name`);
   return rows.map((row) => ({ id: row.id, name: row.name, category: row.category, reports: row.reports || [] }));
+}
+
+// Template Studio prompt library: categories (departments) with their meta-prompt.
+export async function listNabhCategories() {
+  const client = await connect();
+  const { rows } = await client.query(`select id, name, meta_prompt from nabh_categories order by name`);
+  return rows.map((row) => ({ id: row.id, name: row.name, metaPrompt: row.meta_prompt }));
+}
+
+// Seed documents for a category, used to prefill the story and layer the document-specific prompt.
+export async function listNabhDocuments(categoryId) {
+  const client = await connect();
+  const { rows } = await client.query(
+    `select id, category_id, name, standard_ref, expected_content, basis, document_prompt from nabh_documents where category_id = $1 order by name`,
+    [categoryId]
+  );
+  return rows.map((row) => ({ id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt }));
+}
+
+// A single seed document plus its category's meta-prompt, for building the layered AI prompt.
+export async function getNabhDocument(documentId) {
+  const client = await connect();
+  const { rows: [row] } = await client.query(
+    `select d.id, d.category_id, d.name, d.standard_ref, d.expected_content, d.basis, d.document_prompt, c.name as category_name, c.meta_prompt
+     from nabh_documents d join nabh_categories c on c.id = d.category_id where d.id = $1`,
+    [documentId]
+  );
+  if (!row) return null;
+  return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt, categoryName: row.category_name, metaPrompt: row.meta_prompt };
 }
 
 export async function initialize() {

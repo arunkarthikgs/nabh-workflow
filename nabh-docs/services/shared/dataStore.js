@@ -52,6 +52,9 @@ export async function listTemplateCatalog(programme) { return (await store()).li
 export async function saveTemplateCatalog(programme, entries) { return (await store()).saveTemplateCatalog(programme, entries); }
 export async function getDocumentVersionCache(scope, hospitalId, programme, documentKey) { return (await store()).getDocumentVersionCache(scope, hospitalId, programme, documentKey); }
 export async function saveDocumentVersionCache(scope, hospitalId, programme, documentKey, manifest) { return (await store()).saveDocumentVersionCache(scope, hospitalId, programme, documentKey, manifest); }
+export async function listNabhCategories() { return (await store()).listNabhCategories(); }
+export async function listNabhDocuments(categoryId) { return (await store()).listNabhDocuments(categoryId); }
+export async function getNabhDocument(documentId) { return (await store()).getNabhDocument(documentId); }
 
 export async function saveHospitals(hospitals) {
   return (await store()).saveHospitals(hospitals);

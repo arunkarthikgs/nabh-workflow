@@ -403,6 +403,11 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-section input, .template-studio-section select { background: #fbfbff; border: 1px solid #d9dcf3; border-radius: 5px; font: 13px Poppins; margin-bottom: 8px; padding: 8px; }
 .template-studio-field { align-items: center; display: flex; gap: 8px; }
 .template-studio-field input { flex: 1; }
+.template-studio-prompt-preview { background: #f8f9ff; border: 1px solid #e2e4fb; border-radius: 6px; margin: 0 0 16px; padding: 12px 14px; }
+.template-studio-prompt-preview small { color: #6c6fb0; display: block; font-size: 10px; font-weight: 700; letter-spacing: .04em; margin-bottom: 3px; text-transform: uppercase; }
+.template-studio-prompt-preview p { color: #4a4e82; font-size: 12px; line-height: 1.5; margin: 0 0 10px; white-space: pre-wrap; }
+.template-studio-prompt-preview p:last-child { margin-bottom: 0; }
+.template-studio-prompt-preview strong { color: #3a3f6b; display: block; font-size: 13px; }
 .template-studio-actions { margin-top: 18px; }.document-picker { border: 1px solid #e2e4fb; border-radius: 5px; display: grid; gap: 8px; margin: 0 0 18px; max-height: 390px; overflow: auto; padding: 12px; }.document-picker legend { align-items: center; color: #4a4e82; display: flex; font-size: 12px; font-weight: 600; gap: 6px; }.document-picker label { align-items: flex-start; border-top: 1px solid #eef0ff; color: #4a4e82; display: flex; font-size: 12px; gap: 8px; padding: 9px 0 0; }.document-picker label:first-of-type { border-top: 0; }.document-picker input { accent-color: #3547d1; margin-top: 3px; }.document-picker strong, .document-picker small { display: block; }.document-picker small { color: #8a8dc7; font-size: 10px; margin-top: 2px; }
 .complete-access { align-items: center; background: #eef0ff; border: 1px solid #d9dcf3; border-radius: 5px; color: #3547d1; display: flex; font-size: 12px; font-weight: 600; gap: 8px; margin-bottom: 18px; padding: 10px; }.complete-access input { accent-color: #3547d1; }
 @media (max-width: 760px) { .role-layout { grid-template-columns: 1fr; } }
