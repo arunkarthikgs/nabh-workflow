@@ -694,6 +694,32 @@ app.get("/api/admin/template-studio/jobs/:jobId/download", async (request, respo
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
+app.get("/api/admin/template-studio/jobs/:jobId/preview", async (request, response, next) => {
+  try {
+    const file = await getTemplateJobFile(request.params.jobId);
+    if (!file) return response.status(404).json({ error: "This template is not ready for preview yet." });
+
+    const cacheKey = createHash("sha256").update(`template-studio-job:${request.params.jobId}:${file.objectKey}`).digest("hex");
+    const cacheDirectory = path.join(previewCacheRoot, "template-studio-jobs", cacheKey);
+    await mkdir(cacheDirectory, { recursive: true });
+    const sourcePath = path.join(cacheDirectory, "template.docx");
+    const pdfPath = path.join(cacheDirectory, "template.pdf");
+
+    let pdfInfo;
+    try { pdfInfo = await stat(pdfPath); } catch { pdfInfo = null; }
+    if (!pdfInfo) {
+      await writeFile(sourcePath, await getR2GeneratedTemplate(file.objectKey));
+      try {
+        await execFileAsync(process.env.SOFFICE_PATH || "soffice", ["--headless", "--convert-to", "pdf", "--outdir", cacheDirectory, sourcePath]);
+      } catch (error) {
+        return response.status(503).json({ error: `Unable to create PDF preview. ${error.stderr || error.message}` });
+      }
+    }
+    await access(pdfPath);
+    response.type("application/pdf").send(await readFile(pdfPath));
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
 app.get("/api/admin/template-library/questions", async (request, response, next) => {
   try {
     const programme = String(request.query.programme || "").trim();

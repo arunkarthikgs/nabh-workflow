@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, ChevronDown } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, ChevronDown, Eye } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -53,6 +53,7 @@ export default function TemplateStudio() {
 
   const [job, setJob] = useState(null);
   const [submittingJob, setSubmittingJob] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const pollRef = useRef(null);
 
   const [jobHistoryOpen, setJobHistoryOpen] = useState(false);
@@ -90,6 +91,7 @@ export default function TemplateStudio() {
   function resetJob() {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setJob(null);
+    setPreviewOpen(false);
   }
 
   function chooseProgramme(nextProgramme) {
@@ -472,9 +474,23 @@ export default function TemplateStudio() {
                     )}
                     {job.status === "failed" && <p className="status error">{job.error || "Template generation failed."}</p>}
                     {job.status === "completed" && (
-                      <a className="primary-button" href={`/api/admin/template-studio/jobs/${job.id}/download`}>
-                        <Download size={16} /> Download {job.documentName}.docx
-                      </a>
+                      <>
+                        <div className="template-studio-job-actions">
+                          <a className="primary-button" href={`/api/admin/template-studio/jobs/${job.id}/download`}>
+                            <Download size={16} /> Download {job.documentName}.docx
+                          </a>
+                          <button className="secondary-button" type="button" onClick={() => setPreviewOpen((current) => !current)}>
+                            <Eye size={16} /> {previewOpen ? "Hide preview" : "Preview PDF"}
+                          </button>
+                        </div>
+                        {previewOpen && (
+                          <iframe
+                            className="template-studio-job-preview"
+                            title={`PDF preview of ${job.documentName}`}
+                            src={`/api/admin/template-studio/jobs/${job.id}/preview`}
+                          />
+                        )}
+                      </>
                     )}
                   </section>
                 )}

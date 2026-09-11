@@ -430,6 +430,8 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-job-status-processing { background: #eef0ff; color: #3547d1; }
 .template-studio-job-status-completed { background: #e4f7ec; color: #1e9e5c; }
 .template-studio-job-status-failed { background: #fff0f0; color: #c23a56; }
+.template-studio-job-actions { align-items: center; display: flex; gap: 10px; }
+.template-studio-job-preview { border: 1px solid #e2e4fb; border-radius: 6px; height: 600px; margin-top: 14px; width: 100%; }
 .template-studio-actions { margin-top: 18px; }.document-picker { border: 1px solid #e2e4fb; border-radius: 5px; display: grid; gap: 8px; margin: 0 0 18px; max-height: 390px; overflow: auto; padding: 12px; }.document-picker legend { align-items: center; color: #4a4e82; display: flex; font-size: 12px; font-weight: 600; gap: 6px; }.document-picker label { align-items: flex-start; border-top: 1px solid #eef0ff; color: #4a4e82; display: flex; font-size: 12px; gap: 8px; padding: 9px 0 0; }.document-picker label:first-of-type { border-top: 0; }.document-picker input { accent-color: #3547d1; margin-top: 3px; }.document-picker strong, .document-picker small { display: block; }.document-picker small { color: #8a8dc7; font-size: 10px; margin-top: 2px; }
 .complete-access { align-items: center; background: #eef0ff; border: 1px solid #d9dcf3; border-radius: 5px; color: #3547d1; display: flex; font-size: 12px; font-weight: 600; gap: 8px; margin-bottom: 18px; padding: 10px; }.complete-access input { accent-color: #3547d1; }
 @media (max-width: 760px) { .role-layout { grid-template-columns: 1fr; } }
