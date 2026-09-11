@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, ChevronDown, Eye } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -27,6 +27,7 @@ function blankDocumentDraft() {
 }
 
 export default function TemplateStudio() {
+  const [tab, setTab] = useState("generate");
   const [programme, setProgramme] = useState("");
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -56,7 +57,6 @@ export default function TemplateStudio() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const pollRef = useRef(null);
 
-  const [jobHistoryOpen, setJobHistoryOpen] = useState(false);
   const [jobHistory, setJobHistory] = useState(null);
   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
 
@@ -69,10 +69,9 @@ export default function TemplateStudio() {
       .finally(() => setJobHistoryLoading(false));
   }
 
-  function toggleJobHistory() {
-    const opening = !jobHistoryOpen;
-    setJobHistoryOpen(opening);
-    if (opening) loadJobHistory();
+  function openTab(nextTab) {
+    setTab(nextTab);
+    if (nextTab === "history") loadJobHistory();
   }
 
   useEffect(() => {
@@ -297,42 +296,45 @@ export default function TemplateStudio() {
         </div>
       </header>
 
-      <section className="users-panel template-studio-job-history">
-        <button className="template-studio-job-history-toggle" type="button" onClick={toggleJobHistory}>
-          <ListChecks size={16} /> Recent generation jobs
-          <ChevronDown size={15} className={jobHistoryOpen ? "template-studio-chevron-open" : ""} />
-        </button>
-        {jobHistoryOpen && (
-          <div className="template-studio-job-history-body">
+      <nav className="access-tabs">
+        <button className={tab === "generate" ? "active" : ""} type="button" onClick={() => openTab("generate")}><Sparkles size={16} /> Generate</button>
+        <button className={tab === "history" ? "active" : ""} type="button" onClick={() => openTab("history")}><ListChecks size={16} /> Recent generation jobs</button>
+      </nav>
+
+      {tab === "history" && (
+        <section className="users-panel template-studio-job-history">
+          <div className="panel-heading">
+            <ListChecks size={18} />
+            <h2>Recent generation jobs</h2>
             <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
-            {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
-            {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
-            {!jobHistoryLoading && jobHistory?.length > 0 && (
-              <table className="template-studio-job-history-table">
-                <thead>
-                  <tr><th>Document</th><th>Department</th><th>Status</th><th>Requested</th><th>Completed</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {jobHistory.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{entry.documentName}</td>
-                      <td>{entry.department || "-"}</td>
-                      <td><span className={`template-studio-job-status template-studio-job-status-${entry.status}`}>{entry.status}</span></td>
-                      <td>{new Date(entry.createdAt).toLocaleString()}</td>
-                      <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
-                      <td>{entry.status === "completed" && <a className="icon-button" title="Download" href={`/api/admin/template-studio/jobs/${entry.id}/download`}><Download size={14} /></a>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
           </div>
-        )}
-      </section>
+          {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
+          {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
+          {!jobHistoryLoading && jobHistory?.length > 0 && (
+            <table className="template-studio-job-history-table">
+              <thead>
+                <tr><th>Document</th><th>Department</th><th>Status</th><th>Requested</th><th>Completed</th><th></th></tr>
+              </thead>
+              <tbody>
+                {jobHistory.map((entry) => (
+                  <tr key={entry.id}>
+                    <td>{entry.documentName}</td>
+                    <td>{entry.department || "-"}</td>
+                    <td><span className={`template-studio-job-status template-studio-job-status-${entry.status}`}>{entry.status}</span></td>
+                    <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                    <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
+                    <td>{entry.status === "completed" && <a className="icon-button" title="Download" href={`/api/admin/template-studio/jobs/${entry.id}/download`}><Download size={14} /></a>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
 
-      {!programme && <p className="empty">Select an NABH accreditation type to continue.</p>}
+      {tab === "generate" && !programme && <p className="empty">Select an NABH accreditation type to continue.</p>}
 
-      {programme && (
+      {tab === "generate" && programme && (
         <section className="layout">
           <nav className="department-list">
             <label className="filter-box">
