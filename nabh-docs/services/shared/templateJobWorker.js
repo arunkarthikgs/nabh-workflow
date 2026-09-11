@@ -12,7 +12,7 @@ async function processNextJob() {
   const job = await claimNextQueuedTemplateJob();
   if (!job) return;
   try {
-    const { buffer } = await generateTemplateDocx(job.documentPrompt);
+    const { buffer } = await generateTemplateDocx(job.documentPrompt, { department: job.department, standardRef: job.standardRef });
     const fileName = `${(job.documentName || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
     const objectKey = await saveR2GeneratedTemplate(job.department, fileName, buffer);
     await completeTemplateJob(job.id, objectKey);

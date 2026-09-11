@@ -366,6 +366,7 @@ const schemaStatements = [
      document_id integer references nabh_documents (id) on delete set null,
      category_id integer references nabh_categories (id) on delete set null,
      department text not null default '',
+     standard_ref text not null default '',
      document_name text not null,
      document_prompt text not null,
      status text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'failed')),
@@ -378,6 +379,7 @@ const schemaStatements = [
    )`,
   // Upgrades an already-created table from an earlier bytea-based draft of this feature.
   `alter table nabh_template_jobs add column if not exists department text not null default ''`,
+  `alter table nabh_template_jobs add column if not exists standard_ref text not null default ''`,
   `alter table nabh_template_jobs add column if not exists result_object_key text`,
   `alter table nabh_template_jobs drop column if exists result_file`,
   `create index if not exists idx_nabh_template_jobs_status on nabh_template_jobs (status, created_at)`,
@@ -605,12 +607,12 @@ export async function listNabhPromptHistory(entityType, entityId) {
 
 // Queues an AI template-generation request; a background worker (see templateGenerationService.js)
 // polls for 'queued' rows, uploads the result to R2 under api/<department>/, and stores its key.
-export async function enqueueTemplateJob({ documentId, categoryId, department, documentName, documentPrompt, requestedBy }) {
+export async function enqueueTemplateJob({ documentId, categoryId, department, standardRef, documentName, documentPrompt, requestedBy }) {
   const client = await connect();
   const id = randomUUID();
   await client.query(
-    `insert into nabh_template_jobs (id, document_id, category_id, department, document_name, document_prompt, requested_by) values ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, documentId || null, categoryId || null, department || "", documentName, documentPrompt, requestedBy || ""]
+    `insert into nabh_template_jobs (id, document_id, category_id, department, standard_ref, document_name, document_prompt, requested_by) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [id, documentId || null, categoryId || null, department || "", standardRef || "", documentName, documentPrompt, requestedBy || ""]
   );
   return { id, status: "queued" };
 }
@@ -661,12 +663,12 @@ export async function claimNextQueuedTemplateJob() {
   try {
     await dbClient.query("begin");
     const { rows: [row] } = await dbClient.query(
-      `select id, document_prompt, document_name, department from nabh_template_jobs where status = 'queued' order by created_at limit 1 for update skip locked`
+      `select id, document_prompt, document_name, department, standard_ref from nabh_template_jobs where status = 'queued' order by created_at limit 1 for update skip locked`
     );
     if (!row) { await dbClient.query("commit"); return null; }
     await dbClient.query(`update nabh_template_jobs set status = 'processing', started_at = now() where id = $1`, [row.id]);
     await dbClient.query("commit");
-    return { id: row.id, documentPrompt: row.document_prompt, documentName: row.document_name, department: row.department || "" };
+    return { id: row.id, documentPrompt: row.document_prompt, documentName: row.document_name, department: row.department || "", standardRef: row.standard_ref || "" };
   } catch (error) {
     await dbClient.query("rollback");
     throw error;

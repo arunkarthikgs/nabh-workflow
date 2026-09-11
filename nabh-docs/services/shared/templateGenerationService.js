@@ -1,8 +1,8 @@
 // NABH Template Studio's async generation pipeline: pulls a document_prompt off the
 // nabh_template_jobs queue, calls the configured AI provider for STRUCTURED JSON (not raw prose),
-// and renders that JSON into a formatted .docx with the `docx` package.
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
+// and renders that JSON into a styled .docx via styledDocxRenderer.js.
 import { configValue } from "./config.js";
+import { buildStyledDocx } from "./styledDocxRenderer.js";
 
 const DEFAULT_BASE_URL = "https://api.anthropic.com";
 const DEFAULT_MODEL = "claude-sonnet-5";
@@ -100,52 +100,11 @@ export async function callAiProvider(documentPrompt) {
   return extractJson(text);
 }
 
-function numberedParagraphs(items) {
-  return items.map((item, index) => new Paragraph({ text: `${index + 1}. ${item}` }));
-}
-
-function sectionTable(table) {
-  const headers = Array.isArray(table?.headers) ? table.headers : [];
-  const rows = Array.isArray(table?.rows) ? table.rows : [];
-  if (!headers.length) return [];
-  return [
-    new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: [
-        new TableRow({ children: headers.map((header) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: header, bold: true })] })] })) }),
-        ...rows.map((row) => new TableRow({ children: row.map((value) => new TableCell({ children: [new Paragraph(String(value ?? ""))] })) }))
-      ]
-    }),
-    new Paragraph({ text: "" })
-  ];
-}
-
-// Renders the AI provider's structured JSON into a .docx buffer (title, document-number line,
-// then per-section heading/paragraphs/numbered list/table).
-export function buildDocxFromTemplateJson(template) {
-  const children = [
-    new Paragraph({ text: template?.title || "Untitled Document", heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: `${template?.document_number_label || "Document No."}: [DOCUMENT NUMBER]`, italics: true, size: 20 })]
-    }),
-    new Paragraph({ text: "" })
-  ];
-
-  for (const section of Array.isArray(template?.sections) ? template.sections : []) {
-    children.push(new Paragraph({ text: section.heading || "", heading: HeadingLevel.HEADING_1 }));
-    for (const paragraph of Array.isArray(section.paragraphs) ? section.paragraphs : []) children.push(new Paragraph({ text: paragraph }));
-    if (Array.isArray(section.numbered_list) && section.numbered_list.length) children.push(...numberedParagraphs(section.numbered_list));
-    if (section.table) children.push(...sectionTable(section.table));
-  }
-
-  const document = new Document({ sections: [{ children }] });
-  return Packer.toBuffer(document);
-}
-
-// End-to-end: document_prompt -> AI provider JSON -> rendered .docx buffer.
-export async function generateTemplateDocx(documentPrompt) {
+// End-to-end: document_prompt -> AI provider JSON -> styled .docx buffer. `context` (department,
+// standardRef) comes from the seed document, when the job was generated from one - see
+// styledDocxRenderer.js for how it's used in the header/footer/title block.
+export async function generateTemplateDocx(documentPrompt, context = {}) {
   const template = await callAiProvider(documentPrompt);
-  const buffer = await buildDocxFromTemplateJson(template);
+  const buffer = await buildStyledDocx(template, context);
   return { template, buffer };
 }

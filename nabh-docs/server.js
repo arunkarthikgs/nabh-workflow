@@ -660,6 +660,7 @@ app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
     let documentName = String(request.body?.documentName || "Template").trim();
     let categoryId = null;
     let department = String(request.body?.department || "").trim();
+    let standardRef = "";
     if (documentId) {
       const seed = await getNabhDocument(Number(documentId));
       if (!seed) return response.status(404).json({ error: "Document not found." });
@@ -667,9 +668,10 @@ app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
       documentName = seed.name;
       categoryId = seed.categoryId;
       department = seed.categoryName;
+      standardRef = seed.standardRef;
     }
     if (!documentPrompt.trim()) return response.status(400).json({ error: "Describe the form, or pick a seed document, before generating a template." });
-    const job = await enqueueTemplateJob({ documentId: documentId ? Number(documentId) : null, categoryId, department, documentName, documentPrompt, requestedBy: "Super Admin" });
+    const job = await enqueueTemplateJob({ documentId: documentId ? Number(documentId) : null, categoryId, department, standardRef, documentName, documentPrompt, requestedBy: "Super Admin" });
     response.status(202).json({ job });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
