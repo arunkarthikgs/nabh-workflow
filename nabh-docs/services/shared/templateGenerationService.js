@@ -71,6 +71,12 @@ function extractJson(rawText) {
   catch (error) { throw new Error(`The AI provider did not return valid JSON (its response may have been cut off - try again or increase AI_PROVIDER_MAX_TOKENS): ${error.message}`); }
 }
 
+// The response may include non-text blocks (e.g. "thinking") before the actual text block, so find
+// the first block with type "text" rather than assuming it's at index 0.
+function firstTextBlock(content) {
+  return Array.isArray(content) ? content.find((block) => block?.type === "text")?.text : undefined;
+}
+
 // Calls the AI provider's Messages API with the document_prompt as the sole user message.
 export async function callAiProvider(documentPrompt) {
   if (!apiKey()) throw new Error("Template generation is not configured. Set AI_PROVIDER_API_KEY in config.properties.");
@@ -89,7 +95,9 @@ export async function callAiProvider(documentPrompt) {
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message || "The AI provider request failed.");
   if (data?.stop_reason === "max_tokens") throw new Error(`The AI provider's response was truncated at ${maxTokens()} tokens before finishing the JSON. Increase AI_PROVIDER_MAX_TOKENS in config.properties or shorten the document prompt.`);
-  return extractJson(data?.content?.[0]?.text);
+  const text = firstTextBlock(data?.content);
+  if (!text) throw new Error(`The AI provider returned no text content (stop_reason: ${data?.stop_reason || "unknown"}, content block types: ${(data?.content || []).map((block) => block?.type).join(", ") || "none"}).`);
+  return extractJson(text);
 }
 
 function numberedParagraphs(items) {
