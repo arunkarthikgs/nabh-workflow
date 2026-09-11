@@ -35,3 +35,6 @@ R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 # AI_PROVIDER_BASE_URL=https://api.anthropic.com
 # Optional. Raise this if generation fails with "response was truncated" for long/complex documents.
 # AI_PROVIDER_MAX_TOKENS=8192
+# Only needed if your API key is org-scoped rather than scoped to a single workspace (the
+# provider will error "not scoped to a workspace" without this).
+# AI_PROVIDER_WORKSPACE_ID=your-workspace-id

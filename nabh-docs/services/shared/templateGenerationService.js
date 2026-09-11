@@ -59,6 +59,10 @@ function maxTokens() {
   return Number(configValue("AI_PROVIDER_MAX_TOKENS", "8192")) || 8192;
 }
 
+function workspaceId() {
+  return configValue("AI_PROVIDER_WORKSPACE_ID");
+}
+
 function extractJson(rawText) {
   const text = String(rawText || "").trim();
   if (!text) throw new Error("The AI provider returned an empty response.");
@@ -70,9 +74,11 @@ function extractJson(rawText) {
 // Calls the AI provider's Messages API with the document_prompt as the sole user message.
 export async function callAiProvider(documentPrompt) {
   if (!apiKey()) throw new Error("Template generation is not configured. Set AI_PROVIDER_API_KEY in config.properties.");
+  const headers = { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": API_VERSION_HEADER };
+  if (workspaceId()) headers["anthropic-workspace-id"] = workspaceId();
   const response = await fetch(`${baseUrl()}/v1/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": API_VERSION_HEADER },
+    headers,
     body: JSON.stringify({
       model: model(),
       max_tokens: maxTokens(),

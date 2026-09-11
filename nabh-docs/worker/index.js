@@ -24,7 +24,8 @@ const forwardedKeys = [
   "AI_PROVIDER_API_KEY",
   "AI_PROVIDER_MODEL",
   "AI_PROVIDER_BASE_URL",
-  "AI_PROVIDER_MAX_TOKENS"
+  "AI_PROVIDER_MAX_TOKENS",
+  "AI_PROVIDER_WORKSPACE_ID"
 ];
 
 export class NabhApp extends Container {
