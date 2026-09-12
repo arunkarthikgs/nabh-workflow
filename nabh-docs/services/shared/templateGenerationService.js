@@ -100,9 +100,9 @@ export async function callAiMessageApi(systemPrompt, userMessage) {
   return extractJson(text);
 }
 
-// System prompt to transform layman's user description (context & purpose) into a refined document prompt.
+// System prompt to transform narrative description (context & purpose) into a refined document prompt.
 const PROMPT_MASSAGE_SYSTEM_PROMPT = `You are an expert NABH (National Accreditation Board for Hospitals & Healthcare Providers) quality and compliance documentation consultant.
-Your task is to take a hospital administrator's plain-language, layman description (purpose, context, workflow notes) of a healthcare document, along with its category (e.g., SOP, Policy, Form, Manual, Checklist, Register) and the category's structural meta-prompt, and convert it into a clear, comprehensive, and professional DOCUMENT-LEVEL PROMPT for generating an NABH master template.
+Your task is to take a hospital administrator's narrative description (purpose, context, operational workflow notes) of a healthcare document, along with its category (e.g., SOP, Policy, Form, Manual, Checklist, Register) and the category's structural meta-prompt, and convert it into a clear, comprehensive, and professional DOCUMENT-LEVEL PROMPT for generating an NABH master template.
 
 The generated output MUST be strict JSON only (no markdown code blocks, no preamble, no extra commentary) matching this exact shape:
 {
@@ -112,7 +112,7 @@ The generated output MUST be strict JSON only (no markdown code blocks, no pream
   "documentPrompt": "The detailed document-level prompt that will guide the master template generation. It must define the required sections, scope, procedures/fields, and use bracketed placeholders like [HOSPITAL NAME], [STAFF ROLE], [TIMEFRAME] for hospital variables."
 }`;
 
-// Massages a layman's description (context, purpose) into a refined document prompt, title, and expected content.
+// Refines a narrative description (context, purpose) into a structured document prompt, title, and expected content.
 export async function massageDocumentPrompt({ categoryName, metaPrompt, description, documentName = "", standardRef = "" }) {
   const trimmed = String(description || "").trim();
   if (!trimmed) throw new Error("Please enter a description of the document's context and purpose.");
@@ -122,7 +122,7 @@ export async function massageDocumentPrompt({ categoryName, metaPrompt, descript
     metaPrompt && `Category Meta-Prompt (Structural rules):\n${metaPrompt}`,
     documentName && `Working Document Name: ${documentName}`,
     standardRef && `Standard Reference: ${standardRef}`,
-    `User's Layman Description (Context & Purpose):\n${trimmed}`
+    `Document Context & Purpose Description:\n${trimmed}`
   ].filter(Boolean).join("\n\n");
 
   const result = await callAiMessageApi(PROMPT_MASSAGE_SYSTEM_PROMPT, userContent);

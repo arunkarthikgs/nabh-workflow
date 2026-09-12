@@ -439,9 +439,9 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-seed-selector-wrap { align-items: flex-end; display: flex; gap: 10px; }
 .template-studio-seed-selector-wrap .role-name { flex: 1; margin: 0; }
 .template-studio-new-doc-btn { height: 42px; margin-bottom: 0; white-space: nowrap; }
-.template-studio-layman-box { background: #fbfbff; border: 1px dashed #c8d0f3; border-radius: 8px; margin: 16px 0; padding: 18px 20px; }
-.template-studio-layman-box .panel-heading { border-bottom: 0; margin-bottom: 10px; padding-bottom: 0; }
-.template-studio-layman-box .panel-heading h3 { color: #3547d1; font-size: 14px; font-weight: 700; margin: 0; }
+.template-studio-narrative-box { background: #fbfbff; border: 1px dashed #c8d0f3; border-radius: 8px; margin: 16px 0; padding: 18px 20px; }
+.template-studio-narrative-box .panel-heading { border-bottom: 0; margin-bottom: 10px; padding-bottom: 0; }
+.template-studio-narrative-box .panel-heading h3 { color: #3547d1; font-size: 14px; font-weight: 700; margin: 0; }
 .template-studio-input-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
 @media (max-width: 680px) { .template-studio-input-grid { grid-template-columns: 1fr; } }
 .template-studio-massaged-card { background: #f7f9ff; border: 1px solid #c2cdf5; border-radius: 8px; margin: 18px 0; padding: 20px; }

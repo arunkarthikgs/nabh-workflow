@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, PlusCircle, Check } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, Check } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -37,8 +37,8 @@ export default function TemplateStudio() {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
 
-  // Layman's description input for AI prompt massaging
-  const [laymanDescription, setLaymanDescription] = useState("");
+  // Document description input for AI prompt refinement
+  const [documentDescription, setDocumentDescription] = useState("");
   const [workingDocName, setWorkingDocName] = useState("");
   const [workingStandardRef, setWorkingStandardRef] = useState("");
   const [massagingPrompt, setMassagingPrompt] = useState(false);
@@ -114,7 +114,7 @@ export default function TemplateStudio() {
     setCategory(null);
     setDocuments([]);
     setSelectedDocumentId("");
-    setLaymanDescription("");
+    setDocumentDescription("");
     setWorkingDocName("");
     setWorkingStandardRef("");
     setMassagedResult(null);
@@ -127,7 +127,7 @@ export default function TemplateStudio() {
   function chooseDepartment(nextCategory) {
     setCategory(nextCategory);
     setSelectedDocumentId("");
-    setLaymanDescription("");
+    setDocumentDescription("");
     setWorkingDocName("");
     setWorkingStandardRef("");
     setMassagedResult(null);
@@ -166,7 +166,7 @@ export default function TemplateStudio() {
     setDocumentHistory(null);
     setMassagedResult(null);
     setDocSavedMessage("");
-    setLaymanDescription("");
+    setDocumentDescription("");
     setWorkingDocName("");
     setWorkingStandardRef("");
     resetJob();
@@ -268,10 +268,10 @@ export default function TemplateStudio() {
     if (opening && selectedDocument) loadDocumentHistory(selectedDocument.id);
   }
 
-  // Calls the AI prompt-massage endpoint to convert layman's description into a refined document prompt
+  // Calls the AI prompt-refinement endpoint to convert description into a refined document prompt
   async function handleMassagePrompt(event) {
     event?.preventDefault();
-    if (!laymanDescription.trim()) return setError("Please enter a description of the document's context and purpose.");
+    if (!documentDescription.trim()) return setError("Please enter a description of the document's context and purpose.");
     setMassagingPrompt(true);
     setError("");
     setDocSavedMessage("");
@@ -283,7 +283,7 @@ export default function TemplateStudio() {
           categoryId: category?.id,
           categoryName: category?.name,
           metaPrompt: category?.metaPrompt,
-          description: laymanDescription,
+          description: documentDescription,
           name: workingDocName,
           standardRef: workingStandardRef
         })
@@ -360,8 +360,8 @@ export default function TemplateStudio() {
       docPromptToUse = selectedDocument.documentPrompt;
       docNameToUse = selectedDocument.name;
       standardRefToUse = selectedDocument.standardRef;
-    } else if (laymanDescription.trim()) {
-      docPromptToUse = laymanDescription;
+    } else if (documentDescription.trim()) {
+      docPromptToUse = documentDescription;
       docNameToUse = workingDocName || `${category?.name || "NABH"} template`;
       standardRefToUse = workingStandardRef;
     }
@@ -521,18 +521,13 @@ export default function TemplateStudio() {
                   <div className="template-studio-seed-header">
                     {documentsLoading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading seed documents...</p>}
                     {!documentsLoading && (
-                      <div className="template-studio-seed-selector-wrap">
-                        <label className="role-name">
-                          Select seed document
-                          <select value={selectedDocumentId} onChange={(event) => chooseDocument(event.target.value)}>
-                            <option value="">None — create / describe a new document</option>
-                            {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
-                          </select>
-                        </label>
-                        <button className="secondary-button template-studio-new-doc-btn" type="button" onClick={startCreateNewDocument}>
-                          <PlusCircle size={15} /> New document
-                        </button>
-                      </div>
+                      <label className="role-name">
+                        Select seed document
+                        <select value={selectedDocumentId} onChange={(event) => chooseDocument(event.target.value)}>
+                          <option value="">None — create / describe a new document</option>
+                          {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
+                        </select>
+                      </label>
                     )}
                   </div>
 
@@ -584,12 +579,12 @@ export default function TemplateStudio() {
                     </div>
                   )}
 
-                  {/* Layman Description & AI Prompt Massager (when creating a new doc or refining) */}
+                  {/* Document Narrative Description & AI Prompt Refinement (when creating a new doc or refining) */}
                   {(!selectedDocument || editingDocument) && !massagedResult && (
-                    <div className="template-studio-layman-box">
+                    <div className="template-studio-narrative-box">
                       <div className="panel-heading">
                         <Sparkles size={16} />
-                        <h3>Describe document in layman's language</h3>
+                        <h3>Describe Document Context &amp; Purpose</h3>
                       </div>
                       <div className="template-studio-input-grid">
                         <label className="role-name">
@@ -602,15 +597,15 @@ export default function TemplateStudio() {
                         </label>
                       </div>
                       <label>
-                        Context &amp; purpose (plain language description)
+                        Operational Context &amp; Purpose
                         <textarea
                           rows={6}
-                          value={laymanDescription}
-                          onChange={(event) => setLaymanDescription(event.target.value)}
-                          placeholder="Describe what this document is for in everyday language. Who uses it? What happens step-by-step? What clinical or administrative requirements must be met? What signatures, tables, or fields are needed? (e.g., We need an emergency transfer checklist used by nurses when shifting an unstable patient from ICU to CT scan...)"
+                          value={documentDescription}
+                          onChange={(event) => setDocumentDescription(event.target.value)}
+                          placeholder="Describe the clinical or administrative objective, workflow steps, responsible roles, required checks/verifications, data fields, and signing authorities. (e.g. SOP for inter-department patient transfers covering triage assessment, clinical handover checklist, transport equipment readiness, and receiving nurse acknowledgement...)"
                         />
                       </label>
-                      <button className="primary-button" type="button" disabled={massagingPrompt || !laymanDescription.trim()} onClick={handleMassagePrompt}>
+                      <button className="primary-button" type="button" disabled={massagingPrompt || !documentDescription.trim()} onClick={handleMassagePrompt}>
                         {massagingPrompt ? <><RefreshCw size={16} className="spin-icon" /> Refining prompt with AI...</> : <><Sparkles size={16} /> Refine prompt with AI</>}
                       </button>
                     </div>
