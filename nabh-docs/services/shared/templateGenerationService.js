@@ -77,8 +77,8 @@ function firstTextBlock(content) {
   return Array.isArray(content) ? content.find((block) => block?.type === "text")?.text : undefined;
 }
 
-// Calls the AI provider's Messages API with the document_prompt as the sole user message.
-export async function callAiProvider(documentPrompt) {
+// Low-level caller for the AI provider's Messages API with custom system prompt and user message.
+export async function callAiMessageApi(systemPrompt, userMessage) {
   if (!apiKey()) throw new Error("Template generation is not configured. Set AI_PROVIDER_API_KEY in config.properties.");
   const headers = { "Content-Type": "application/json", "x-api-key": apiKey(), "anthropic-version": API_VERSION_HEADER };
   if (workspaceId()) headers["anthropic-workspace-id"] = workspaceId();
@@ -88,16 +88,55 @@ export async function callAiProvider(documentPrompt) {
     body: JSON.stringify({
       model: model(),
       max_tokens: maxTokens(),
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: documentPrompt }]
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }]
     })
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data?.error?.message || "The AI provider request failed.");
-  if (data?.stop_reason === "max_tokens") throw new Error(`The AI provider's response was truncated at ${maxTokens()} tokens before finishing the JSON. Increase AI_PROVIDER_MAX_TOKENS in config.properties or shorten the document prompt.`);
+  if (data?.stop_reason === "max_tokens") throw new Error(`The AI provider's response was truncated at ${maxTokens()} tokens before finishing. Increase AI_PROVIDER_MAX_TOKENS in config.properties.`);
   const text = firstTextBlock(data?.content);
   if (!text) throw new Error(`The AI provider returned no text content (stop_reason: ${data?.stop_reason || "unknown"}, content block types: ${(data?.content || []).map((block) => block?.type).join(", ") || "none"}).`);
   return extractJson(text);
+}
+
+// System prompt to transform layman's user description (context & purpose) into a refined document prompt.
+const PROMPT_MASSAGE_SYSTEM_PROMPT = `You are an expert NABH (National Accreditation Board for Hospitals & Healthcare Providers) quality and compliance documentation consultant.
+Your task is to take a hospital administrator's plain-language, layman description (purpose, context, workflow notes) of a healthcare document, along with its category (e.g., SOP, Policy, Form, Manual, Checklist, Register) and the category's structural meta-prompt, and convert it into a clear, comprehensive, and professional DOCUMENT-LEVEL PROMPT for generating an NABH master template.
+
+The generated output MUST be strict JSON only (no markdown code blocks, no preamble, no extra commentary) matching this exact shape:
+{
+  "name": "Clean professional document title (e.g. 'Surgical Site Infection Surveillance SOP')",
+  "standardRef": "Relevant NABH standard reference code if identifiable (e.g. 'COP 8' or 'IPC 1'), or empty string",
+  "expectedContent": "Concise summary of key required items and compliance expectations",
+  "documentPrompt": "The detailed document-level prompt that will guide the master template generation. It must define the required sections, scope, procedures/fields, and use bracketed placeholders like [HOSPITAL NAME], [STAFF ROLE], [TIMEFRAME] for hospital variables."
+}`;
+
+// Massages a layman's description (context, purpose) into a refined document prompt, title, and expected content.
+export async function massageDocumentPrompt({ categoryName, metaPrompt, description, documentName = "", standardRef = "" }) {
+  const trimmed = String(description || "").trim();
+  if (!trimmed) throw new Error("Please enter a description of the document's context and purpose.");
+
+  const userContent = [
+    categoryName && `Category / Document Type: ${categoryName}`,
+    metaPrompt && `Category Meta-Prompt (Structural rules):\n${metaPrompt}`,
+    documentName && `Working Document Name: ${documentName}`,
+    standardRef && `Standard Reference: ${standardRef}`,
+    `User's Layman Description (Context & Purpose):\n${trimmed}`
+  ].filter(Boolean).join("\n\n");
+
+  const result = await callAiMessageApi(PROMPT_MASSAGE_SYSTEM_PROMPT, userContent);
+  return {
+    name: String(result?.name || documentName || "New Document").trim(),
+    standardRef: String(result?.standardRef || standardRef || "").trim(),
+    expectedContent: String(result?.expectedContent || "").trim(),
+    documentPrompt: String(result?.documentPrompt || "").trim()
+  };
+}
+
+// Calls the AI provider's Messages API with the document_prompt as the sole user message.
+export async function callAiProvider(documentPrompt) {
+  return callAiMessageApi(SYSTEM_PROMPT, documentPrompt);
 }
 
 // End-to-end: document_prompt -> AI provider JSON -> styled .docx buffer. `context` (department,

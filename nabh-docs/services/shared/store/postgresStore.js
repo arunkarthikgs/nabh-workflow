@@ -569,6 +569,31 @@ export async function updateNabhDocument(documentId, fields, changedBy) {
   return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt };
 }
 
+// Creates a new document under a category, ensuring a unique name in that category.
+export async function createNabhDocument({ categoryId, name, standardRef, expectedContent, basis = "practice", documentPrompt }) {
+  const client = await connect();
+  const trimmedName = String(name || "").trim();
+  if (!trimmedName) throw new Error("Document name is required.");
+  if (!String(documentPrompt || "").trim()) throw new Error("Document prompt is required.");
+
+  let finalName = trimmedName;
+  let suffix = 2;
+  while (true) {
+    const { rows: [existing] } = await client.query(`select 1 from nabh_documents where category_id = $1 and name = $2`, [categoryId, finalName]);
+    if (!existing) break;
+    finalName = `${trimmedName} (${suffix})`;
+    suffix += 1;
+  }
+
+  const { rows: [row] } = await client.query(
+    `insert into nabh_documents (category_id, name, standard_ref, expected_content, basis, document_prompt)
+     values ($1, $2, $3, $4, $5, $6)
+     returning id, category_id, name, standard_ref, expected_content, basis, document_prompt`,
+    [categoryId, finalName, standardRef || "", expectedContent || "", basis || "practice", documentPrompt]
+  );
+  return { id: row.id, categoryId: row.category_id, name: row.name, standardRef: row.standard_ref || "", expectedContent: row.expected_content || "", basis: row.basis || "", documentPrompt: row.document_prompt };
+}
+
 // Clones a seed document into the same category with a "CLONE - " name prefix (de-duplicated if
 // that name is already taken), so the admin can edit a copy without touching the original seed row.
 export async function cloneNabhDocument(documentId) {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, PlusCircle, Check } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -36,15 +36,29 @@ export default function TemplateStudio() {
   const [documents, setDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
-  const [story, setStory] = useState("");
+
+  // Layman's description input for AI prompt massaging
+  const [laymanDescription, setLaymanDescription] = useState("");
+  const [workingDocName, setWorkingDocName] = useState("");
+  const [workingStandardRef, setWorkingStandardRef] = useState("");
+  const [massagingPrompt, setMassagingPrompt] = useState(false);
+
+  // Massaged prompt result card (review & confirm)
+  const [massagedResult, setMassagedResult] = useState(null);
+  const [savingNewDoc, setSavingNewDoc] = useState(false);
+  const [docSavedMessage, setDocSavedMessage] = useState("");
+
+  const [specificNotes, setSpecificNotes] = useState("");
   const [error, setError] = useState("");
 
+  // Category meta-prompt edit state
   const [editingCategoryPrompt, setEditingCategoryPrompt] = useState(false);
   const [categoryPromptDraft, setCategoryPromptDraft] = useState("");
   const [savingCategoryPrompt, setSavingCategoryPrompt] = useState(false);
   const [categoryHistoryOpen, setCategoryHistoryOpen] = useState(false);
   const [categoryHistory, setCategoryHistory] = useState(null);
 
+  // Seed document edit & clone state
   const [editingDocument, setEditingDocument] = useState(false);
   const [documentDraft, setDocumentDraft] = useState(blankDocumentDraft());
   const [savingDocument, setSavingDocument] = useState(false);
@@ -52,13 +66,28 @@ export default function TemplateStudio() {
   const [documentHistoryOpen, setDocumentHistoryOpen] = useState(false);
   const [documentHistory, setDocumentHistory] = useState(null);
 
+  // Job queue & preview state
   const [job, setJob] = useState(null);
   const [submittingJob, setSubmittingJob] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const pollRef = useRef(null);
 
+  // Job history tab state
   const [jobHistory, setJobHistory] = useState(null);
   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/template-studio/categories")
+      .then((response) => (response.ok ? response.json() : { categories: [] }))
+      .then((result) => setCategories(result.categories || []))
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoading(false));
+  }, []);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const filteredCategories = categories.filter((item) => item.name.toLowerCase().includes(departmentFilter.trim().toLowerCase()));
+  const selectedDocument = documents.find((doc) => String(doc.id) === String(selectedDocumentId)) || null;
 
   function loadJobHistory() {
     setJobHistoryLoading(true);
@@ -74,19 +103,6 @@ export default function TemplateStudio() {
     if (nextTab === "history") loadJobHistory();
   }
 
-  useEffect(() => {
-    fetch("/api/admin/template-studio/categories")
-      .then((response) => (response.ok ? response.json() : { categories: [] }))
-      .then((result) => setCategories(result.categories || []))
-      .catch(() => setCategories([]))
-      .finally(() => setCategoriesLoading(false));
-  }, []);
-
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
-
-  const filteredCategories = categories.filter((item) => item.name.toLowerCase().includes(departmentFilter.trim().toLowerCase()));
-  const selectedDocument = documents.find((doc) => String(doc.id) === String(selectedDocumentId)) || null;
-
   function resetJob() {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setJob(null);
@@ -98,7 +114,11 @@ export default function TemplateStudio() {
     setCategory(null);
     setDocuments([]);
     setSelectedDocumentId("");
-    setStory("");
+    setLaymanDescription("");
+    setWorkingDocName("");
+    setWorkingStandardRef("");
+    setMassagedResult(null);
+    setSpecificNotes("");
     setError("");
     resetJob();
   }
@@ -107,8 +127,13 @@ export default function TemplateStudio() {
   function chooseDepartment(nextCategory) {
     setCategory(nextCategory);
     setSelectedDocumentId("");
-    setStory("");
+    setLaymanDescription("");
+    setWorkingDocName("");
+    setWorkingStandardRef("");
+    setMassagedResult(null);
+    setSpecificNotes("");
     setError("");
+    setDocSavedMessage("");
     resetJob();
     setEditingCategoryPrompt(false);
     setCategoryHistoryOpen(false);
@@ -129,6 +154,21 @@ export default function TemplateStudio() {
     setEditingDocument(false);
     setDocumentHistoryOpen(false);
     setDocumentHistory(null);
+    setMassagedResult(null);
+    setDocSavedMessage("");
+    resetJob();
+  }
+
+  function startCreateNewDocument() {
+    setSelectedDocumentId("");
+    setEditingDocument(false);
+    setDocumentHistoryOpen(false);
+    setDocumentHistory(null);
+    setMassagedResult(null);
+    setDocSavedMessage("");
+    setLaymanDescription("");
+    setWorkingDocName("");
+    setWorkingStandardRef("");
     resetJob();
   }
 
@@ -196,8 +236,6 @@ export default function TemplateStudio() {
     }
   }
 
-  // Clones the selected seed document (server prefixes the name with "CLONE - "), then selects
-  // and opens the clone for editing so the admin can adjust it without touching the original.
   async function cloneSelectedDocument() {
     if (!selectedDocument) return;
     setCloning(true);
@@ -230,6 +268,65 @@ export default function TemplateStudio() {
     if (opening && selectedDocument) loadDocumentHistory(selectedDocument.id);
   }
 
+  // Calls the AI prompt-massage endpoint to convert layman's description into a refined document prompt
+  async function handleMassagePrompt(event) {
+    event?.preventDefault();
+    if (!laymanDescription.trim()) return setError("Please enter a description of the document's context and purpose.");
+    setMassagingPrompt(true);
+    setError("");
+    setDocSavedMessage("");
+    try {
+      const response = await fetch("/api/admin/template-studio/massage-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: category?.id,
+          categoryName: category?.name,
+          metaPrompt: category?.metaPrompt,
+          description: laymanDescription,
+          name: workingDocName,
+          standardRef: workingStandardRef
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to refine the prompt with AI.");
+      setMassagedResult(data.result);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setMassagingPrompt(false);
+    }
+  }
+
+  // Saves the massaged prompt as a new persistent document in nabh_documents under the category
+  async function handleSaveNewDocument() {
+    if (!massagedResult || !category) return;
+    setSavingNewDoc(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/template-studio/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: category.id,
+          name: massagedResult.name,
+          standardRef: massagedResult.standardRef,
+          expectedContent: massagedResult.expectedContent,
+          documentPrompt: massagedResult.documentPrompt
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to save the document to category.");
+      setDocuments((current) => [...current, data.document]);
+      setSelectedDocumentId(String(data.document.id));
+      setDocSavedMessage(`Saved "${data.document.name}" into ${category.name}.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSavingNewDoc(false);
+    }
+  }
+
   function pollJob(jobId) {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(() => {
@@ -244,24 +341,49 @@ export default function TemplateStudio() {
     }, JOB_POLL_INTERVAL_MS);
   }
 
-  // Submits the request to the backend queue - a worker process picks it up, generates the
-  // template, and
-  // uploads the rendered .docx to R2. The frontend just polls job status until it's done.
-  async function generateTemplate(event) {
-    event.preventDefault();
-    if (!story.trim() && !selectedDocumentId) return setError("Describe the form, or pick a seed document, before generating a template.");
-    setSubmittingJob(true);
+  // Enqueues the template generation job combining category meta-prompt + massaged prompt
+  async function handleGenerateTemplate(event) {
+    event?.preventDefault();
     setError("");
     resetJob();
+
+    let docPromptToUse = "";
+    let docNameToUse = "";
+    let standardRefToUse = "";
+    let docIdToUse = selectedDocumentId || undefined;
+
+    if (massagedResult) {
+      docPromptToUse = massagedResult.documentPrompt;
+      docNameToUse = massagedResult.name;
+      standardRefToUse = massagedResult.standardRef;
+    } else if (selectedDocument) {
+      docPromptToUse = selectedDocument.documentPrompt;
+      docNameToUse = selectedDocument.name;
+      standardRefToUse = selectedDocument.standardRef;
+    } else if (laymanDescription.trim()) {
+      docPromptToUse = laymanDescription;
+      docNameToUse = workingDocName || `${category?.name || "NABH"} template`;
+      standardRefToUse = workingStandardRef;
+    }
+
+    if (!docPromptToUse.trim()) {
+      return setError("Describe the document or select a seed document before generating a template.");
+    }
+
+    setSubmittingJob(true);
     try {
       const response = await fetch("/api/admin/template-studio/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          documentId: selectedDocumentId || undefined,
-          documentName: selectedDocument?.name || `${category.name} template`,
-          department: category.name,
-          story
+          documentId: docIdToUse,
+          categoryId: category?.id,
+          department: category?.name || "",
+          metaPrompt: category?.metaPrompt || "",
+          documentName: docNameToUse,
+          documentPrompt: docPromptToUse,
+          standardRef: standardRefToUse,
+          story: specificNotes
         })
       });
       const result = await response.json();
@@ -359,6 +481,7 @@ export default function TemplateStudio() {
                   <h2>{category.name}</h2>
                 </div>
 
+                {/* Category Meta-Prompt */}
                 {category.metaPrompt !== undefined && (
                   <div className="template-studio-prompt-preview">
                     <div className="template-studio-prompt-preview-heading">
@@ -394,22 +517,30 @@ export default function TemplateStudio() {
                 )}
 
                 <section className="users-panel template-studio-story">
-                  {documentsLoading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading seed documents...</p>}
-                  {!documentsLoading && documents.length > 0 && (
-                    <label className="role-name">
-                      Start from a seed document (optional)
-                      <select value={selectedDocumentId} onChange={(event) => chooseDocument(event.target.value)}>
-                        <option value="">None - describe the form from scratch</option>
-                        {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
-                      </select>
-                    </label>
-                  )}
-                  {!documentsLoading && documents.length === 0 && <p className="empty">No seed documents yet for this department - describe the form from scratch below.</p>}
+                  {/* Seed document selection row */}
+                  <div className="template-studio-seed-header">
+                    {documentsLoading && <p className="loading-state"><RefreshCw size={15} className="spin-icon" /> Loading seed documents...</p>}
+                    {!documentsLoading && (
+                      <div className="template-studio-seed-selector-wrap">
+                        <label className="role-name">
+                          Select seed document
+                          <select value={selectedDocumentId} onChange={(event) => chooseDocument(event.target.value)}>
+                            <option value="">None — create / describe a new document</option>
+                            {documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.name}{doc.standardRef ? ` (${doc.standardRef})` : ""}</option>)}
+                          </select>
+                        </label>
+                        <button className="secondary-button template-studio-new-doc-btn" type="button" onClick={startCreateNewDocument}>
+                          <PlusCircle size={15} /> New document
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                  {selectedDocument && (
+                  {/* Selected seed document details */}
+                  {selectedDocument && !massagedResult && (
                     <div className="template-studio-prompt-preview">
                       <div className="template-studio-prompt-preview-heading">
-                        <small>Seed document</small>
+                        <small>Seed document prompt</small>
                         <div className="template-studio-prompt-actions">
                           <button className="icon-button" type="button" title="Clone this document" disabled={cloning} onClick={cloneSelectedDocument}><Copy size={14} /></button>
                           {!editingDocument && <button className="icon-button" type="button" title="Edit document" onClick={startEditingDocument}><Pencil size={14} /></button>}
@@ -453,18 +584,101 @@ export default function TemplateStudio() {
                     </div>
                   )}
 
-                  <form onSubmit={generateTemplate}>
-                    <label>
-                      Specific Notes {selectedDocumentId ? "(optional)" : ""}
-                      <textarea rows={6} value={story} onChange={(event) => setStory(event.target.value)} placeholder="Example: We need a Patient Consent form for surgical procedures. It should capture patient identification, the procedure details, risks explained, consent statement, and signatures from the patient and the consenting doctor." />
-                    </label>
-                    {error && <p className="status error">{error}</p>}
-                    <button className="primary-button" type="submit" disabled={submittingJob || (job && job.status !== "completed" && job.status !== "failed")}>
-                      {submittingJob ? <><RefreshCw size={16} className="spin-icon" /> Queuing...</> : <><Sparkles size={16} /> Generate Template</>}
-                    </button>
-                  </form>
+                  {/* Layman Description & AI Prompt Massager (when creating a new doc or refining) */}
+                  {(!selectedDocument || editingDocument) && !massagedResult && (
+                    <div className="template-studio-layman-box">
+                      <div className="panel-heading">
+                        <Sparkles size={16} />
+                        <h3>Describe document in layman's language</h3>
+                      </div>
+                      <div className="template-studio-input-grid">
+                        <label className="role-name">
+                          Working document title (optional)
+                          <input value={workingDocName} onChange={(event) => setWorkingDocName(event.target.value)} placeholder="e.g. Surgical Safety Checklist or Patient Admission SOP" />
+                        </label>
+                        <label className="role-name">
+                          Standard reference (optional)
+                          <input value={workingStandardRef} onChange={(event) => setWorkingStandardRef(event.target.value)} placeholder="e.g. COP 8 or AAC 2" />
+                        </label>
+                      </div>
+                      <label>
+                        Context &amp; purpose (plain language description)
+                        <textarea
+                          rows={6}
+                          value={laymanDescription}
+                          onChange={(event) => setLaymanDescription(event.target.value)}
+                          placeholder="Describe what this document is for in everyday language. Who uses it? What happens step-by-step? What clinical or administrative requirements must be met? What signatures, tables, or fields are needed? (e.g., We need an emergency transfer checklist used by nurses when shifting an unstable patient from ICU to CT scan...)"
+                        />
+                      </label>
+                      <button className="primary-button" type="button" disabled={massagingPrompt || !laymanDescription.trim()} onClick={handleMassagePrompt}>
+                        {massagingPrompt ? <><RefreshCw size={16} className="spin-icon" /> Refining prompt with AI...</> : <><Sparkles size={16} /> Refine prompt with AI</>}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Massaged AI Prompt Output (Review & Confirm) */}
+                  {massagedResult && (
+                    <div className="template-studio-massaged-card">
+                      <div className="panel-heading">
+                        <Sparkles size={16} />
+                        <h3>AI Refined Document Prompt (Review &amp; Confirm)</h3>
+                      </div>
+                      <p className="intro">AI has transformed your description into a structured document prompt. Review and edit any field before generating the template:</p>
+
+                      <div className="template-studio-input-grid">
+                        <label className="role-name">
+                          Document title
+                          <input value={massagedResult.name} onChange={(event) => setMassagedResult((current) => ({ ...current, name: event.target.value }))} />
+                        </label>
+                        <label className="role-name">
+                          Standard reference
+                          <input value={massagedResult.standardRef} onChange={(event) => setMassagedResult((current) => ({ ...current, standardRef: event.target.value }))} />
+                        </label>
+                      </div>
+
+                      <label className="role-name">
+                        Expected content summary
+                        <textarea rows={3} value={massagedResult.expectedContent} onChange={(event) => setMassagedResult((current) => ({ ...current, expectedContent: event.target.value }))} />
+                      </label>
+
+                      <label className="role-name">
+                        Refined document prompt
+                        <textarea rows={7} value={massagedResult.documentPrompt} onChange={(event) => setMassagedResult((current) => ({ ...current, documentPrompt: event.target.value }))} />
+                      </label>
+
+                      <div className="template-studio-massaged-actions">
+                        <button className="secondary-button" type="button" onClick={() => setMassagedResult(null)}>
+                          <X size={15} /> Re-describe
+                        </button>
+                        <button className="secondary-button" type="button" disabled={savingNewDoc} onClick={handleSaveNewDocument}>
+                          <Save size={15} /> {savingNewDoc ? "Saving..." : "Save to Category"}
+                        </button>
+                        <button className="primary-button" type="button" disabled={submittingJob} onClick={handleGenerateTemplate}>
+                          <Check size={16} /> Confirm &amp; Generate Template
+                        </button>
+                      </div>
+
+                      {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
+                    </div>
+                  )}
+
+                  {/* Specific notes & Generate Template for selected existing document */}
+                  {selectedDocument && !massagedResult && !editingDocument && (
+                    <form onSubmit={handleGenerateTemplate}>
+                      <label>
+                        Specific Notes (optional)
+                        <textarea rows={4} value={specificNotes} onChange={(event) => setSpecificNotes(event.target.value)} placeholder="Add any specific requirements or notes to include alongside the prompt..." />
+                      </label>
+                      <button className="primary-button" type="submit" disabled={submittingJob || (job && job.status !== "completed" && job.status !== "failed")}>
+                        {submittingJob ? <><RefreshCw size={16} className="spin-icon" /> Queuing...</> : <><Sparkles size={16} /> Generate Template</>}
+                      </button>
+                    </form>
+                  )}
+
+                  {error && <p className="status error">{error}</p>}
                 </section>
 
+                {/* Job queue status, download & preview */}
                 {job && (
                   <section className="users-panel template-studio-job">
                     <div className="panel-heading">

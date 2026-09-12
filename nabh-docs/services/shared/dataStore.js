@@ -55,6 +55,7 @@ export async function saveDocumentVersionCache(scope, hospitalId, programme, doc
 export async function listNabhCategories() { return (await store()).listNabhCategories(); }
 export async function listNabhDocuments(categoryId) { return (await store()).listNabhDocuments(categoryId); }
 export async function getNabhDocument(documentId) { return (await store()).getNabhDocument(documentId); }
+export async function createNabhDocument(input) { return (await store()).createNabhDocument(input); }
 export async function updateNabhCategoryMetaPrompt(categoryId, metaPrompt, changedBy) { return (await store()).updateNabhCategoryMetaPrompt(categoryId, metaPrompt, changedBy); }
 export async function updateNabhDocument(documentId, fields, changedBy) { return (await store()).updateNabhDocument(documentId, fields, changedBy); }
 export async function cloneNabhDocument(documentId) { return (await store()).cloneNabhDocument(documentId); }

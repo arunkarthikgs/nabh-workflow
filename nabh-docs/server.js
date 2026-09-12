@@ -11,7 +11,8 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, createNabhDocument, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
+import { massageDocumentPrompt } from "./services/shared/templateGenerationService.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
 import { NABH_ACCREDITATION_PROGRAMMES, accreditationProgrammeSlug, getAccreditationState, hasAcceptedAccreditation, selectAccreditationProgramme } from "./services/shared/accreditationService.js";
@@ -634,11 +635,53 @@ app.patch("/api/admin/template-studio/documents/:documentId", async (request, re
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
+app.post("/api/admin/template-studio/documents", async (request, response, next) => {
+  try {
+    const categoryId = Number(request.body?.categoryId);
+    const name = String(request.body?.name || "").trim();
+    const standardRef = String(request.body?.standardRef || "").trim();
+    const expectedContent = String(request.body?.expectedContent || "").trim();
+    const basis = String(request.body?.basis || "practice").trim();
+    const documentPrompt = String(request.body?.documentPrompt || "").trim();
+    if (!categoryId) return response.status(400).json({ error: "Category ID is required." });
+    if (!name) return response.status(400).json({ error: "Document name is required." });
+    if (!documentPrompt) return response.status(400).json({ error: "Document prompt is required." });
+    const document = await createNabhDocument({ categoryId, name, standardRef, expectedContent, basis, documentPrompt });
+    response.status(201).json({ document });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
 app.post("/api/admin/template-studio/documents/:documentId/clone", async (request, response, next) => {
   try {
     const cloned = await cloneNabhDocument(Number(request.params.documentId));
     if (!cloned) return response.status(404).json({ error: "Document not found." });
     response.status(201).json({ document: cloned });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/template-studio/massage-prompt", async (request, response, next) => {
+  try {
+    const categoryId = request.body?.categoryId;
+    let categoryName = String(request.body?.categoryName || "").trim();
+    let metaPrompt = String(request.body?.metaPrompt || "").trim();
+    if (categoryId) {
+      const categories = await listNabhCategories();
+      const found = categories.find((c) => Number(c.id) === Number(categoryId));
+      if (found) {
+        categoryName = categoryName || found.name;
+        metaPrompt = metaPrompt || found.metaPrompt;
+      }
+    }
+    const description = String(request.body?.description || "").trim();
+    if (!description) return response.status(400).json({ error: "Please enter a description of the document's context and purpose." });
+    const result = await massageDocumentPrompt({
+      categoryName,
+      metaPrompt,
+      description,
+      documentName: String(request.body?.name || "").trim(),
+      standardRef: String(request.body?.standardRef || "").trim()
+    });
+    response.json({ result });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -656,22 +699,56 @@ app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
   try {
     const documentId = request.body?.documentId;
     const story = String(request.body?.story || "").trim();
-    let documentPrompt = story;
+    let documentPrompt = String(request.body?.documentPrompt || "").trim();
     let documentName = String(request.body?.documentName || "Template").trim();
-    let categoryId = null;
+    let categoryId = request.body?.categoryId ? Number(request.body.categoryId) : null;
     let department = String(request.body?.department || "").trim();
-    let standardRef = "";
+    let standardRef = String(request.body?.standardRef || "").trim();
+    let metaPrompt = String(request.body?.metaPrompt || "").trim();
+
     if (documentId) {
       const seed = await getNabhDocument(Number(documentId));
       if (!seed) return response.status(404).json({ error: "Document not found." });
-      documentPrompt = story ? `${seed.documentPrompt}\n\nAdditional hospital-specific notes:\n${story}` : seed.documentPrompt;
-      documentName = seed.name;
+      documentPrompt = documentPrompt || seed.documentPrompt;
+      documentName = documentName !== "Template" ? documentName : seed.name;
       categoryId = seed.categoryId;
       department = seed.categoryName;
-      standardRef = seed.standardRef;
+      standardRef = standardRef || seed.standardRef;
+      metaPrompt = metaPrompt || seed.metaPrompt;
+    } else if (categoryId && !metaPrompt) {
+      const categories = await listNabhCategories();
+      const found = categories.find((c) => Number(c.id) === categoryId);
+      if (found) {
+        metaPrompt = found.metaPrompt;
+        department = department || found.name;
+      }
     }
+
+    if (!documentPrompt) {
+      documentPrompt = story;
+    }
+
     if (!documentPrompt.trim()) return response.status(400).json({ error: "Describe the form, or pick a seed document, before generating a template." });
-    const job = await enqueueTemplateJob({ documentId: documentId ? Number(documentId) : null, categoryId, department, standardRef, documentName, documentPrompt, requestedBy: "Super Admin" });
+
+    // The final prompt for the template generation combines the category-specific meta-prompt + the massaged prompt
+    let finalPrompt = "";
+    if (metaPrompt) {
+      finalPrompt += `[CATEGORY SPECIFIC PROMPT / TYPE SKELETON]\n${metaPrompt}\n\n`;
+    }
+    finalPrompt += `[DOCUMENT LEVEL PROMPT]\n${documentPrompt}`;
+    if (story && story !== documentPrompt) {
+      finalPrompt += `\n\n[SPECIFIC NOTES / CONTEXT]\n${story}`;
+    }
+
+    const job = await enqueueTemplateJob({
+      documentId: documentId ? Number(documentId) : null,
+      categoryId,
+      department,
+      standardRef,
+      documentName,
+      documentPrompt: finalPrompt,
+      requestedBy: "Super Admin"
+    });
     response.status(202).json({ job });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });

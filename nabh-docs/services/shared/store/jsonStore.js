@@ -45,6 +45,9 @@ export async function listNabhDocuments() {
 export async function getNabhDocument() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
 }
+export async function createNabhDocument() {
+  throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
+}
 export async function updateNabhCategoryMetaPrompt() {
   throw new Error("Template Studio's prompt library requires DATA_STORE=postgres.");
 }
