@@ -81,7 +81,10 @@ export default function TemplateStudio() {
   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
   const [jobHistorySearch, setJobHistorySearch] = useState("");
   const [jobHistoryDepartment, setJobHistoryDepartment] = useState("all");
+  const [jobHistoryProgramme, setJobHistoryProgramme] = useState("all");
   const [historyPreviewJob, setHistoryPreviewJob] = useState(null);
+
+  const activeProgrammeFilter = jobHistoryProgramme !== "all" ? jobHistoryProgramme : programme;
 
   const historyDepartments = useMemo(() => {
     const set = new Set();
@@ -93,6 +96,9 @@ export default function TemplateStudio() {
   const filteredJobHistory = useMemo(() => {
     if (!jobHistory) return [];
     return jobHistory.filter((entry) => {
+      if (activeProgrammeFilter && activeProgrammeFilter !== "all") {
+        if (entry.programme && entry.programme !== activeProgrammeFilter) return false;
+      }
       if (jobHistoryDepartment !== "all" && entry.department !== jobHistoryDepartment) {
         return false;
       }
@@ -100,13 +106,14 @@ export default function TemplateStudio() {
         const q = jobHistorySearch.trim().toLowerCase();
         const matchName = (entry.documentName || "").toLowerCase().includes(q);
         const matchDept = (entry.department || "").toLowerCase().includes(q);
+        const matchProg = (entry.programme || "").toLowerCase().includes(q);
         const matchStatus = (entry.status || "").toLowerCase().includes(q);
         const matchError = (entry.error || "").toLowerCase().includes(q);
-        if (!matchName && !matchDept && !matchStatus && !matchError) return false;
+        if (!matchName && !matchDept && !matchProg && !matchStatus && !matchError) return false;
       }
       return true;
     });
-  }, [jobHistory, jobHistoryDepartment, jobHistorySearch]);
+  }, [jobHistory, activeProgrammeFilter, jobHistoryDepartment, jobHistorySearch]);
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -487,7 +494,7 @@ export default function TemplateStudio() {
         <section className="users-panel template-studio-job-history">
           <div className="panel-heading">
             <ListChecks size={18} />
-            <h2>Recent generation jobs</h2>
+            <h2>Recent generation jobs{activeProgrammeFilter ? ` - ${activeProgrammeFilter}` : ""}</h2>
             <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
           </div>
 
@@ -502,6 +509,19 @@ export default function TemplateStudio() {
             </label>
             <div className="template-studio-history-controls">
               <div className="template-studio-history-filter-item">
+                <label className="filter-label">Accreditation type</label>
+                <select
+                  className="audit-filter-select"
+                  value={jobHistoryProgramme}
+                  onChange={(e) => setJobHistoryProgramme(e.target.value)}
+                >
+                  <option value="all">All accreditation types</option>
+                  {NABH_ACCREDITATION_PROGRAMMES.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="template-studio-history-filter-item">
                 <label className="filter-label">Department</label>
                 <select
                   className="audit-filter-select"
@@ -514,12 +534,12 @@ export default function TemplateStudio() {
                   ))}
                 </select>
               </div>
-              {(jobHistorySearch || jobHistoryDepartment !== "all") && (
+              {(jobHistorySearch || jobHistoryDepartment !== "all" || jobHistoryProgramme !== "all") && (
                 <button
                   className="secondary-button"
                   type="button"
                   title="Reset filters"
-                  onClick={() => { setJobHistorySearch(""); setJobHistoryDepartment("all"); }}
+                  onClick={() => { setJobHistorySearch(""); setJobHistoryDepartment("all"); setJobHistoryProgramme("all"); }}
                 >
                   Reset filters
                 </button>
@@ -530,7 +550,7 @@ export default function TemplateStudio() {
           {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
           {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
           {!jobHistoryLoading && jobHistory?.length > 0 && filteredJobHistory.length === 0 && (
-            <p className="empty">No generation jobs match your search or department filter.</p>
+            <p className="empty">No generation jobs match your search or filter criteria.</p>
           )}
           {!jobHistoryLoading && filteredJobHistory.length > 0 && (
             <table className="template-studio-job-history-table">
@@ -538,6 +558,7 @@ export default function TemplateStudio() {
                 <tr>
                   <th>Document</th>
                   <th>Department</th>
+                  <th>Accreditation type</th>
                   <th>Status</th>
                   <th>Requested</th>
                   <th>Completed</th>
@@ -554,6 +575,7 @@ export default function TemplateStudio() {
                       )}
                     </td>
                     <td>{entry.department || "-"}</td>
+                    <td>{entry.programme || "-"}</td>
                     <td><span className={`template-studio-job-status template-studio-job-status-${entry.status}`}>{entry.status}</span></td>
                     <td>{new Date(entry.createdAt).toLocaleString()}</td>
                     <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>

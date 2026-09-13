@@ -366,6 +366,7 @@ const schemaStatements = [
      document_id integer references nabh_documents (id) on delete set null,
      category_id integer references nabh_categories (id) on delete set null,
      department text not null default '',
+     programme text not null default '',
      standard_ref text not null default '',
      document_name text not null,
      document_prompt text not null,
@@ -379,6 +380,7 @@ const schemaStatements = [
    )`,
   // Upgrades an already-created table from an earlier bytea-based draft of this feature.
   `alter table nabh_template_jobs add column if not exists department text not null default ''`,
+  `alter table nabh_template_jobs add column if not exists programme text not null default ''`,
   `alter table nabh_template_jobs add column if not exists standard_ref text not null default ''`,
   `alter table nabh_template_jobs add column if not exists result_object_key text`,
   `alter table nabh_template_jobs drop column if exists result_file`,
@@ -632,12 +634,12 @@ export async function listNabhPromptHistory(entityType, entityId) {
 
 // Queues an AI template-generation request; a background worker (see templateGenerationService.js)
 // polls for 'queued' rows, uploads the result to R2 under api/<department>/, and stores its key.
-export async function enqueueTemplateJob({ documentId, categoryId, department, standardRef, documentName, documentPrompt, requestedBy }) {
+export async function enqueueTemplateJob({ documentId, categoryId, department, programme, standardRef, documentName, documentPrompt, requestedBy }) {
   const client = await connect();
   const id = randomUUID();
   await client.query(
-    `insert into nabh_template_jobs (id, document_id, category_id, department, standard_ref, document_name, document_prompt, requested_by) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [id, documentId || null, categoryId || null, department || "", standardRef || "", documentName, documentPrompt, requestedBy || ""]
+    `insert into nabh_template_jobs (id, document_id, category_id, department, programme, standard_ref, document_name, document_prompt, requested_by) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [id, documentId || null, categoryId || null, department || "", programme || "", standardRef || "", documentName, documentPrompt, requestedBy || ""]
   );
   return { id, status: "queued" };
 }
@@ -646,12 +648,13 @@ export async function enqueueTemplateJob({ documentId, categoryId, department, s
 export async function listTemplateJobs(limit = 50) {
   const client = await connect();
   const { rows } = await client.query(
-    `select id, department, document_name, status, error, requested_by, created_at, started_at, completed_at from nabh_template_jobs order by created_at desc limit $1`,
+    `select id, department, programme, document_name, status, error, requested_by, created_at, started_at, completed_at from nabh_template_jobs order by created_at desc limit $1`,
     [Math.min(Number(limit) || 50, 200)]
   );
   return rows.map((row) => ({
     id: row.id,
     department: row.department || "",
+    programme: row.programme || "",
     documentName: row.document_name,
     status: row.status,
     error: row.error || "",

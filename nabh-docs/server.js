@@ -703,6 +703,7 @@ app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
     let documentName = String(request.body?.documentName || "Template").trim();
     let categoryId = request.body?.categoryId ? Number(request.body.categoryId) : null;
     let department = String(request.body?.department || "").trim();
+    let programme = String(request.body?.programme || "").trim();
     let standardRef = String(request.body?.standardRef || "").trim();
     let metaPrompt = String(request.body?.metaPrompt || "").trim();
 
@@ -744,6 +745,7 @@ app.post("/api/admin/template-studio/jobs", async (request, response, next) => {
       documentId: documentId ? Number(documentId) : null,
       categoryId,
       department,
+      programme,
       standardRef,
       documentName,
       documentPrompt: finalPrompt,
