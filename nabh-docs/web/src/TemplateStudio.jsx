@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, Check } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, Check, FileText } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
@@ -51,20 +51,24 @@ export default function TemplateStudio() {
   const [specificNotes, setSpecificNotes] = useState("");
   const [error, setError] = useState("");
 
-  // Category meta-prompt edit state
+  // Category meta-prompt modal & edit state
+  const [metaPromptModalOpen, setMetaPromptModalOpen] = useState(false);
   const [editingCategoryPrompt, setEditingCategoryPrompt] = useState(false);
   const [categoryPromptDraft, setCategoryPromptDraft] = useState("");
   const [savingCategoryPrompt, setSavingCategoryPrompt] = useState(false);
   const [categoryHistoryOpen, setCategoryHistoryOpen] = useState(false);
   const [categoryHistory, setCategoryHistory] = useState(null);
+  const [metaPromptCopied, setMetaPromptCopied] = useState(false);
 
-  // Seed document edit & clone state
+  // Seed document modal, edit & clone state
+  const [docPromptModalOpen, setDocPromptModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState(false);
   const [documentDraft, setDocumentDraft] = useState(blankDocumentDraft());
   const [savingDocument, setSavingDocument] = useState(false);
   const [cloning, setCloning] = useState(false);
   const [documentHistoryOpen, setDocumentHistoryOpen] = useState(false);
   const [documentHistory, setDocumentHistory] = useState(null);
+  const [docPromptCopied, setDocPromptCopied] = useState(false);
 
   // Job queue & preview state
   const [job, setJob] = useState(null);
@@ -103,6 +107,27 @@ export default function TemplateStudio() {
     if (nextTab === "history") loadJobHistory();
   }
 
+  function copyText(text, setCopiedFn) {
+    if (!text) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedFn(true);
+        setTimeout(() => setCopiedFn(false), 2000);
+      }).catch(() => fallbackCopy(text, setCopiedFn));
+    } else {
+      fallbackCopy(text, setCopiedFn);
+    }
+  }
+
+  function fallbackCopy(text, setCopiedFn) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try { document.execCommand("copy"); setCopiedFn(true); setTimeout(() => setCopiedFn(false), 2000); } catch {}
+    textArea.remove();
+  }
+
   function resetJob() {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setJob(null);
@@ -120,6 +145,8 @@ export default function TemplateStudio() {
     setMassagedResult(null);
     setSpecificNotes("");
     setError("");
+    setMetaPromptModalOpen(false);
+    setDocPromptModalOpen(false);
     resetJob();
   }
 
@@ -134,6 +161,8 @@ export default function TemplateStudio() {
     setSpecificNotes("");
     setError("");
     setDocSavedMessage("");
+    setMetaPromptModalOpen(false);
+    setDocPromptModalOpen(false);
     resetJob();
     setEditingCategoryPrompt(false);
     setCategoryHistoryOpen(false);
@@ -154,6 +183,7 @@ export default function TemplateStudio() {
     setEditingDocument(false);
     setDocumentHistoryOpen(false);
     setDocumentHistory(null);
+    setDocPromptModalOpen(false);
     setMassagedResult(null);
     setDocSavedMessage("");
     resetJob();
@@ -164,6 +194,7 @@ export default function TemplateStudio() {
     setEditingDocument(false);
     setDocumentHistoryOpen(false);
     setDocumentHistory(null);
+    setDocPromptModalOpen(false);
     setMassagedResult(null);
     setDocSavedMessage("");
     setDocumentDescription("");
@@ -248,6 +279,7 @@ export default function TemplateStudio() {
       setSelectedDocumentId(String(result.document.id));
       setDocumentDraft({ name: result.document.name, standardRef: result.document.standardRef, expectedContent: result.document.expectedContent, documentPrompt: result.document.documentPrompt });
       setEditingDocument(true);
+      setDocPromptModalOpen(true);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -479,42 +511,21 @@ export default function TemplateStudio() {
                 <div className="panel-heading">
                   <FileSearch size={18} />
                   <h2>{category.name}</h2>
+                  {category.metaPrompt !== undefined && (
+                    <button
+                      className="secondary-button template-studio-header-btn"
+                      type="button"
+                      title="View or edit the category meta-prompt"
+                      onClick={() => {
+                        setCategoryPromptDraft(category.metaPrompt);
+                        setEditingCategoryPrompt(false);
+                        setMetaPromptModalOpen(true);
+                      }}
+                    >
+                      <FileText size={14} /> View / Edit Meta-Prompt
+                    </button>
+                  )}
                 </div>
-
-                {/* Category Meta-Prompt */}
-                {category.metaPrompt !== undefined && (
-                  <div className="template-studio-prompt-preview">
-                    <div className="template-studio-prompt-preview-heading">
-                      <small>Category meta-prompt</small>
-                      <div className="template-studio-prompt-actions">
-                        {!editingCategoryPrompt && <button className="icon-button" type="button" title="Edit meta-prompt" onClick={() => { setCategoryPromptDraft(category.metaPrompt); setEditingCategoryPrompt(true); }}><Pencil size={14} /></button>}
-                        <button className="icon-button" type="button" title="View edit history" onClick={toggleCategoryHistory}><History size={14} /></button>
-                      </div>
-                    </div>
-                    {editingCategoryPrompt ? (
-                      <>
-                        <textarea rows={5} value={categoryPromptDraft} onChange={(event) => setCategoryPromptDraft(event.target.value)} />
-                        <div className="template-studio-prompt-edit-actions">
-                          <button className="secondary-button" type="button" onClick={() => setEditingCategoryPrompt(false)}><X size={14} /> Cancel</button>
-                          <button className="primary-button" type="button" disabled={savingCategoryPrompt} onClick={saveCategoryPrompt}><Save size={14} /> {savingCategoryPrompt ? "Saving..." : "Save"}</button>
-                        </div>
-                      </>
-                    ) : <p>{category.metaPrompt}</p>}
-                    {categoryHistoryOpen && (
-                      <div className="template-studio-prompt-history">
-                        {categoryHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
-                        {categoryHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
-                        {categoryHistory?.map((entry) => (
-                          <div className="template-studio-prompt-history-entry" key={entry.id}>
-                            <small>{entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
-                            <p><strong>Before:</strong> {entry.previousValue}</p>
-                            <p><strong>After:</strong> {entry.newValue}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 <section className="users-panel template-studio-story">
                   {/* Seed document selection row */}
@@ -531,51 +542,37 @@ export default function TemplateStudio() {
                     )}
                   </div>
 
-                  {/* Selected seed document details */}
+                  {/* Selected seed document summary badge with button to open modal */}
                   {selectedDocument && !massagedResult && (
-                    <div className="template-studio-prompt-preview">
-                      <div className="template-studio-prompt-preview-heading">
-                        <small>Seed document prompt</small>
-                        <div className="template-studio-prompt-actions">
-                          <button className="icon-button" type="button" title="Clone this document" disabled={cloning} onClick={cloneSelectedDocument}><Copy size={14} /></button>
-                          {!editingDocument && <button className="icon-button" type="button" title="Edit document" onClick={startEditingDocument}><Pencil size={14} /></button>}
-                          <button className="icon-button" type="button" title="View edit history" onClick={toggleDocumentHistory}><History size={14} /></button>
-                        </div>
+                    <div className="template-studio-selected-doc-badge">
+                      <div className="template-studio-selected-doc-info">
+                        <strong>{selectedDocument.name}</strong>
+                        {selectedDocument.standardRef && (
+                          <span className="template-studio-std-pill">{selectedDocument.standardRef}</span>
+                        )}
                       </div>
-
-                      {editingDocument ? (
-                        <>
-                          <label className="role-name">Name<input value={documentDraft.name} onChange={(event) => setDocumentDraft((current) => ({ ...current, name: event.target.value }))} /></label>
-                          <label className="role-name">Standard reference<input value={documentDraft.standardRef} onChange={(event) => setDocumentDraft((current) => ({ ...current, standardRef: event.target.value }))} /></label>
-                          <label className="role-name">Expected content<textarea rows={3} value={documentDraft.expectedContent} onChange={(event) => setDocumentDraft((current) => ({ ...current, expectedContent: event.target.value }))} /></label>
-                          <label className="role-name">Document prompt<textarea rows={6} value={documentDraft.documentPrompt} onChange={(event) => setDocumentDraft((current) => ({ ...current, documentPrompt: event.target.value }))} /></label>
-                          <div className="template-studio-prompt-edit-actions">
-                            <button className="secondary-button" type="button" onClick={() => setEditingDocument(false)}><X size={14} /> Cancel</button>
-                            <button className="primary-button" type="button" disabled={savingDocument} onClick={saveDocument}><Save size={14} /> {savingDocument ? "Saving..." : "Save"}</button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <p><strong>{selectedDocument.name}</strong></p>
-                          {selectedDocument.standardRef && <p><small>Standard reference</small><strong>{selectedDocument.standardRef}</strong></p>}
-                          {selectedDocument.expectedContent && <p><small>Expected content</small>{selectedDocument.expectedContent}</p>}
-                          <p><small>Document prompt</small>{selectedDocument.documentPrompt}</p>
-                        </>
-                      )}
-
-                      {documentHistoryOpen && (
-                        <div className="template-studio-prompt-history">
-                          {documentHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
-                          {documentHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
-                          {documentHistory?.map((entry) => (
-                            <div className="template-studio-prompt-history-entry" key={entry.id}>
-                              <small>{entry.field} - {entry.changedBy || "Unknown"} - {new Date(entry.changedAt).toLocaleString()}</small>
-                              <p><strong>Before:</strong> {entry.previousValue}</p>
-                              <p><strong>After:</strong> {entry.newValue}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div className="template-studio-selected-doc-actions">
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          title="View, edit, or copy prompt"
+                          onClick={() => {
+                            setDocumentDraft({
+                              name: selectedDocument.name,
+                              standardRef: selectedDocument.standardRef,
+                              expectedContent: selectedDocument.expectedContent,
+                              documentPrompt: selectedDocument.documentPrompt
+                            });
+                            setEditingDocument(false);
+                            setDocPromptModalOpen(true);
+                          }}
+                        >
+                          <Eye size={14} /> View / Edit Prompt
+                        </button>
+                        <button className="secondary-button" type="button" disabled={cloning} onClick={cloneSelectedDocument}>
+                          <Copy size={14} /> Clone
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -709,6 +706,155 @@ export default function TemplateStudio() {
             )}
           </section>
         </section>
+      )}
+
+      {/* Category Meta-Prompt Modal */}
+      {metaPromptModalOpen && category && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setMetaPromptModalOpen(false)}>
+          <section className="preview-dialog template-studio-modal-dialog" role="dialog" aria-modal="true" aria-label={`Category Meta-Prompt: ${category.name}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Category Meta-Prompt</p>
+                <h2>{category.name}</h2>
+              </div>
+              <button className="icon-button" type="button" title="Close" onClick={() => setMetaPromptModalOpen(false)}><X size={18} /></button>
+            </div>
+            <div className="template-studio-modal-body">
+              <div className="template-studio-modal-toolbar">
+                <button className="secondary-button" type="button" onClick={() => copyText(category.metaPrompt, setMetaPromptCopied)}>
+                  <Copy size={14} /> {metaPromptCopied ? "Copied!" : "Copy prompt"}
+                </button>
+                {!editingCategoryPrompt ? (
+                  <button className="secondary-button" type="button" onClick={() => { setCategoryPromptDraft(category.metaPrompt); setEditingCategoryPrompt(true); }}>
+                    <Pencil size={14} /> Edit prompt
+                  </button>
+                ) : (
+                  <button className="secondary-button" type="button" onClick={() => setEditingCategoryPrompt(false)}>
+                    <X size={14} /> Cancel edit
+                  </button>
+                )}
+                <button className="secondary-button" type="button" onClick={toggleCategoryHistory}>
+                  <History size={14} /> {categoryHistoryOpen ? "Hide history" : "View history"}
+                </button>
+              </div>
+
+              {editingCategoryPrompt ? (
+                <div className="template-studio-modal-edit-box">
+                  <textarea rows={10} value={categoryPromptDraft} onChange={(event) => setCategoryPromptDraft(event.target.value)} />
+                  <div className="template-studio-prompt-edit-actions">
+                    <button className="secondary-button" type="button" onClick={() => setEditingCategoryPrompt(false)}><X size={14} /> Cancel</button>
+                    <button className="primary-button" type="button" disabled={savingCategoryPrompt} onClick={saveCategoryPrompt}><Save size={14} /> {savingCategoryPrompt ? "Saving..." : "Save prompt"}</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="template-studio-prompt-box">
+                  {category.metaPrompt || <span className="empty">No meta-prompt defined for this category.</span>}
+                </div>
+              )}
+
+              {categoryHistoryOpen && (
+                <div className="template-studio-prompt-history">
+                  <small>Edit history</small>
+                  {categoryHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
+                  {categoryHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
+                  {categoryHistory?.map((entry) => (
+                    <div className="template-studio-prompt-history-entry" key={entry.id}>
+                      <small>{entry.changedBy || "Unknown"} — {new Date(entry.changedAt).toLocaleString()}</small>
+                      <p><strong>Before:</strong> {entry.previousValue}</p>
+                      <p><strong>After:</strong> {entry.newValue}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Seed Document Prompt Modal */}
+      {docPromptModalOpen && selectedDocument && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setDocPromptModalOpen(false)}>
+          <section className="preview-dialog template-studio-modal-dialog" role="dialog" aria-modal="true" aria-label={`Seed Document Prompt: ${selectedDocument.name}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Seed Document Details &amp; Prompt</p>
+                <h2>{selectedDocument.name}</h2>
+              </div>
+              <button className="icon-button" type="button" title="Close" onClick={() => setDocPromptModalOpen(false)}><X size={18} /></button>
+            </div>
+            <div className="template-studio-modal-body">
+              <div className="template-studio-modal-toolbar">
+                <button className="secondary-button" type="button" onClick={() => copyText(selectedDocument.documentPrompt, setDocPromptCopied)}>
+                  <Copy size={14} /> {docPromptCopied ? "Copied!" : "Copy prompt"}
+                </button>
+                {!editingDocument ? (
+                  <button className="secondary-button" type="button" onClick={startEditingDocument}>
+                    <Pencil size={14} /> Edit document
+                  </button>
+                ) : (
+                  <button className="secondary-button" type="button" onClick={() => setEditingDocument(false)}>
+                    <X size={14} /> Cancel edit
+                  </button>
+                )}
+                <button className="secondary-button" type="button" disabled={cloning} onClick={cloneSelectedDocument}>
+                  <Copy size={14} /> Clone document
+                </button>
+                <button className="secondary-button" type="button" onClick={toggleDocumentHistory}>
+                  <History size={14} /> {documentHistoryOpen ? "Hide history" : "View history"}
+                </button>
+              </div>
+
+              {editingDocument ? (
+                <div className="template-studio-modal-edit-box">
+                  <label className="role-name">Name<input value={documentDraft.name} onChange={(event) => setDocumentDraft((current) => ({ ...current, name: event.target.value }))} /></label>
+                  <label className="role-name">Standard reference<input value={documentDraft.standardRef} onChange={(event) => setDocumentDraft((current) => ({ ...current, standardRef: event.target.value }))} /></label>
+                  <label className="role-name">Expected content<textarea rows={3} value={documentDraft.expectedContent} onChange={(event) => setDocumentDraft((current) => ({ ...current, expectedContent: event.target.value }))} /></label>
+                  <label className="role-name">Document prompt<textarea rows={8} value={documentDraft.documentPrompt} onChange={(event) => setDocumentDraft((current) => ({ ...current, documentPrompt: event.target.value }))} /></label>
+                  <div className="template-studio-prompt-edit-actions">
+                    <button className="secondary-button" type="button" onClick={() => setEditingDocument(false)}><X size={14} /> Cancel</button>
+                    <button className="primary-button" type="button" disabled={savingDocument} onClick={saveDocument}><Save size={14} /> {savingDocument ? "Saving..." : "Save document"}</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="template-studio-modal-meta-grid">
+                    {selectedDocument.standardRef && (
+                      <div className="template-studio-modal-meta-item">
+                        <small>Standard reference</small>
+                        <strong>{selectedDocument.standardRef}</strong>
+                      </div>
+                    )}
+                    {selectedDocument.expectedContent && (
+                      <div className="template-studio-modal-meta-item">
+                        <small>Expected content</small>
+                        <p>{selectedDocument.expectedContent}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="template-studio-prompt-box">
+                    <small className="template-studio-box-label">Document Prompt</small>
+                    {selectedDocument.documentPrompt}
+                  </div>
+                </>
+              )}
+
+              {documentHistoryOpen && (
+                <div className="template-studio-prompt-history">
+                  <small>Edit history</small>
+                  {documentHistory === null && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading history...</p>}
+                  {documentHistory?.length === 0 && <p className="empty">No edits recorded yet.</p>}
+                  {documentHistory?.map((entry) => (
+                    <div className="template-studio-prompt-history-entry" key={entry.id}>
+                      <small>{entry.field} — {entry.changedBy || "Unknown"} — {new Date(entry.changedAt).toLocaleString()}</small>
+                      <p><strong>Before:</strong> {entry.previousValue}</p>
+                      <p><strong>After:</strong> {entry.newValue}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </main>
   );
