@@ -425,9 +425,15 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-prompt-history-entry p { margin: 0 0 4px; }
 .template-studio-job-history { margin-bottom: 20px; }
 .template-studio-job-history .panel-heading .icon-button { margin-left: auto; }
+.template-studio-history-filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
+.template-studio-history-search { flex: 1 1 280px; margin-bottom: 0; }
+.template-studio-history-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.template-studio-history-filter-item { display: flex; flex-direction: column; gap: 4px; }
 .template-studio-job-history-table { border-collapse: collapse; font-size: 12px; width: 100%; }
-.template-studio-job-history-table th { color: #8a8dc7; font-size: 10px; padding: 6px 8px; text-align: left; text-transform: uppercase; }
-.template-studio-job-history-table td { border-top: 1px solid #eceeff; color: #3a3f6b; padding: 8px; }
+.template-studio-job-history-table th { color: #8a8dc7; font-size: 10px; padding: 8px 10px; text-align: left; text-transform: uppercase; }
+.template-studio-job-history-table td { border-top: 1px solid #eceeff; color: #3a3f6b; padding: 10px 8px; vertical-align: middle; }
+.template-studio-job-error { color: #c23a56; display: block; font-size: 11px; margin-top: 2px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.template-studio-row-actions { align-items: center; display: inline-flex; gap: 6px; justify-content: flex-end; }
 .template-studio-job-status { border-radius: 999px; font-size: 10px; font-weight: 700; padding: 3px 8px; text-transform: capitalize; }
 .template-studio-job-status-queued { background: #f1f2fc; color: #8a8dc7; }
 .template-studio-job-status-processing { background: #eef0ff; color: #3547d1; }

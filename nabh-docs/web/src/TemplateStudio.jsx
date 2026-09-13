@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, Check, FileText } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
@@ -79,6 +79,34 @@ export default function TemplateStudio() {
   // Job history tab state
   const [jobHistory, setJobHistory] = useState(null);
   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+  const [jobHistorySearch, setJobHistorySearch] = useState("");
+  const [jobHistoryDepartment, setJobHistoryDepartment] = useState("all");
+  const [historyPreviewJob, setHistoryPreviewJob] = useState(null);
+
+  const historyDepartments = useMemo(() => {
+    const set = new Set();
+    (categories || []).forEach((c) => { if (c.name) set.add(c.name); });
+    (jobHistory || []).forEach((j) => { if (j.department) set.add(j.department); });
+    return Array.from(set).sort();
+  }, [categories, jobHistory]);
+
+  const filteredJobHistory = useMemo(() => {
+    if (!jobHistory) return [];
+    return jobHistory.filter((entry) => {
+      if (jobHistoryDepartment !== "all" && entry.department !== jobHistoryDepartment) {
+        return false;
+      }
+      if (jobHistorySearch.trim()) {
+        const q = jobHistorySearch.trim().toLowerCase();
+        const matchName = (entry.documentName || "").toLowerCase().includes(q);
+        const matchDept = (entry.department || "").toLowerCase().includes(q);
+        const matchStatus = (entry.status || "").toLowerCase().includes(q);
+        const matchError = (entry.error || "").toLowerCase().includes(q);
+        if (!matchName && !matchDept && !matchStatus && !matchError) return false;
+      }
+      return true;
+    });
+  }, [jobHistory, jobHistoryDepartment, jobHistorySearch]);
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -462,22 +490,94 @@ export default function TemplateStudio() {
             <h2>Recent generation jobs</h2>
             <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
           </div>
+
+          <div className="template-studio-history-filters">
+            <label className="filter-box document-search template-studio-history-search">
+              <Search size={14} />
+              <input
+                value={jobHistorySearch}
+                onChange={(e) => setJobHistorySearch(e.target.value)}
+                placeholder="Search document name, department, status, or error..."
+              />
+            </label>
+            <div className="template-studio-history-controls">
+              <div className="template-studio-history-filter-item">
+                <label className="filter-label">Department</label>
+                <select
+                  className="audit-filter-select"
+                  value={jobHistoryDepartment}
+                  onChange={(e) => setJobHistoryDepartment(e.target.value)}
+                >
+                  <option value="all">All departments</option>
+                  {historyDepartments.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+              {(jobHistorySearch || jobHistoryDepartment !== "all") && (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  title="Reset filters"
+                  onClick={() => { setJobHistorySearch(""); setJobHistoryDepartment("all"); }}
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
+          </div>
+
           {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
           {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
-          {!jobHistoryLoading && jobHistory?.length > 0 && (
+          {!jobHistoryLoading && jobHistory?.length > 0 && filteredJobHistory.length === 0 && (
+            <p className="empty">No generation jobs match your search or department filter.</p>
+          )}
+          {!jobHistoryLoading && filteredJobHistory.length > 0 && (
             <table className="template-studio-job-history-table">
               <thead>
-                <tr><th>Document</th><th>Department</th><th>Status</th><th>Requested</th><th>Completed</th><th></th></tr>
+                <tr>
+                  <th>Document</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th>Requested</th>
+                  <th>Completed</th>
+                  <th style={{ textAlign: "right", paddingRight: "16px" }}>Actions</th>
+                </tr>
               </thead>
               <tbody>
-                {jobHistory.map((entry) => (
+                {filteredJobHistory.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{entry.documentName}</td>
+                    <td>
+                      <strong>{entry.documentName}</strong>
+                      {entry.error && entry.status === "failed" && (
+                        <small className="template-studio-job-error" title={entry.error}>{entry.error}</small>
+                      )}
+                    </td>
                     <td>{entry.department || "-"}</td>
                     <td><span className={`template-studio-job-status template-studio-job-status-${entry.status}`}>{entry.status}</span></td>
                     <td>{new Date(entry.createdAt).toLocaleString()}</td>
                     <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
-                    <td>{entry.status === "completed" && <a className="icon-button" title="Download" href={`/api/admin/template-studio/jobs/${entry.id}/download`}><Download size={14} /></a>}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {entry.status === "completed" && (
+                        <div className="template-studio-row-actions">
+                          <button
+                            className="icon-button"
+                            type="button"
+                            title={`Preview PDF for ${entry.documentName}`}
+                            onClick={() => setHistoryPreviewJob(entry)}
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <a
+                            className="icon-button"
+                            title={`Download ${entry.documentName}.docx`}
+                            href={`/api/admin/template-studio/jobs/${entry.id}/download`}
+                          >
+                            <Download size={15} />
+                          </a>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -853,6 +953,34 @@ export default function TemplateStudio() {
                 </div>
               )}
             </div>
+          </section>
+        </div>
+      )}
+
+      {/* History Job PDF Preview Modal */}
+      {historyPreviewJob && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setHistoryPreviewJob(null)}>
+          <section className="preview-dialog" role="dialog" aria-modal="true" aria-label={`PDF preview of ${historyPreviewJob.documentName}`} onClick={(event) => event.stopPropagation()}>
+            <div className="preview-header">
+              <div>
+                <p className="eyebrow">Template PDF preview</p>
+                <h2>{historyPreviewJob.documentName}</h2>
+                <p className="editor-file-name">{historyPreviewJob.department || "Template"}</p>
+              </div>
+              <div className="preview-actions">
+                <a className="download-button" title="Download DOCX" href={`/api/admin/template-studio/jobs/${historyPreviewJob.id}/download`}>
+                  <Download size={16} /> Download DOCX
+                </a>
+                <button className="icon-button" type="button" title="Close preview" onClick={() => setHistoryPreviewJob(null)}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <iframe
+              className="policy-preview"
+              src={`/api/admin/template-studio/jobs/${historyPreviewJob.id}/preview`}
+              title={`PDF preview of ${historyPreviewJob.documentName}`}
+            />
           </section>
         </div>
       )}
