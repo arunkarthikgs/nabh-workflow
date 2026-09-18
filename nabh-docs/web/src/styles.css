@@ -424,6 +424,44 @@ body.roles-loading .role-layout > .users-panel:first-child .role-list::after { a
 .template-studio-prompt-history-entry small { color: #8a8dc7; display: block; font-size: 10px; margin-bottom: 4px; text-transform: none; }
 .template-studio-prompt-history-entry p { margin: 0 0 4px; }
 .template-studio-job-history { margin-bottom: 20px; }
+.pending-moves-panel { overflow: hidden; padding: 0; }
+.pending-moves-heading { align-items: center; background: linear-gradient(120deg, #f4fbfd 0%, #eef4ff 100%); border-bottom: 1px solid #dce7ee; display: flex; gap: 16px; padding: 22px 24px; }
+.pending-moves-title { align-items: center; display: flex; flex: 1; gap: 13px; min-width: 0; }
+.pending-moves-title .eyebrow { color: #2383a2; margin-bottom: 3px; }
+.pending-moves-title h2 { color: #263b58; font-size: 22px; }
+.pending-moves-title p:last-child { color: #60738b; font-size: 12px; margin: 4px 0 0; }
+.pending-moves-icon { align-items: center; background: #ffffff; border: 1px solid #c8e1eb; border-radius: 9px; color: #147d78; display: flex; flex: 0 0 auto; height: 42px; justify-content: center; width: 42px; }
+.pending-moves-count { align-items: flex-end; border-left: 1px solid #c8dce5; display: flex; flex-direction: column; padding-left: 18px; }
+.pending-moves-count strong { color: #147d78; font: 700 24px/1 "Libre Baskerville", Georgia, serif; }
+.pending-moves-count span { color: #60738b; font-size: 10px; margin-top: 4px; white-space: nowrap; }
+.pending-moves-heading > .icon-button { align-self: flex-start; }
+.pending-moves-panel > .access-message, .pending-moves-panel > .loading-state, .pending-moves-panel > .empty { margin-left: 24px; margin-right: 24px; }
+.pending-moves-toolbar { align-items: center; background: #fbfcfd; border-bottom: 1px solid #e1e8ed; display: flex; justify-content: space-between; padding: 14px 24px; }
+.pending-moves-filters { align-items: end; background: #ffffff; border-bottom: 1px solid #e1e8ed; display: flex; flex-wrap: wrap; gap: 12px 16px; padding: 16px 24px; }
+.pending-filter-heading { align-items: center; color: #53677d; display: inline-flex; font-size: 11px; font-weight: 700; gap: 6px; margin-right: auto; width: 100%; }
+.pending-filter-heading svg { color: #147d78; }
+.pending-moves-filters label { color: #60738b; display: flex; flex-direction: column; font-size: 10px; font-weight: 700; gap: 5px; min-width: 220px; }
+.pending-moves-filters select { background: #fbfcfd; border: 1px solid #c8dce5; border-radius: 5px; color: #334b64; font: 500 11px "Manrope", sans-serif; min-height: 34px; padding: 7px 10px; }
+.pending-programme-picker { align-items: center; color: #53677d; display: inline-flex; font-size: 11px; font-weight: 700; gap: 8px; }
+.pending-programme-picker select { background: #ffffff; border: 1px solid #c8dce5; border-radius: 5px; color: #334b64; font: 500 11px "Manrope", sans-serif; max-width: 250px; padding: 8px 10px; }
+.pending-select-all { align-items: center; color: #334b64; display: inline-flex; font-size: 12px; font-weight: 700; gap: 8px; }
+.pending-select-all input, .pending-select-column input { accent-color: #147d78; cursor: pointer; height: 15px; width: 15px; }
+.pending-select-all small { color: #8292a3; font-size: 11px; font-weight: 500; margin-left: 3px; }
+.pending-move-button { background: #147d78; border-color: #147d78; box-shadow: 0 4px 10px rgba(20, 125, 120, .16); }
+.pending-move-button:hover { background: #0e6965; border-color: #0e6965; }
+.pending-move-button:disabled { background: #c8d7d8; border-color: #c8d7d8; box-shadow: none; }
+.pending-moves-table-wrap { overflow-x: auto; padding: 0 24px 24px; }
+.pending-moves-table { min-width: 760px; }
+.pending-moves-table th { color: #8292a3; font-size: 10px; padding: 14px 10px 9px; }
+.pending-moves-table td { border-top: 1px solid #edf1f3; color: #53677d; padding: 13px 10px; vertical-align: middle; }
+.pending-moves-table tbody tr { transition: background .15s ease; }
+.pending-moves-table tbody tr:hover, .pending-moves-table tbody tr.selected { background: #f2faf9; }
+.pending-moves-table .pending-select-column { padding-left: 4px; width: 58px; }
+.pending-moves-table .pending-action-column { padding-right: 4px; text-align: right; width: 68px; }
+.pending-document-name { color: #263b58; display: block; font-size: 13px; }
+.pending-document-status { color: #91a0ad; display: block; font-size: 10px; margin-top: 3px; }
+.pending-moves-table .icon-button { background: #eef9f8; border: 1px solid #c8e1dc; color: #147d78; padding: 7px; }
+.pending-moves-table .icon-button:hover { background: #d9f1ee; border-color: #8ecfc8; }
 .template-studio-job-history .panel-heading .icon-button { margin-left: auto; }
 .template-studio-history-filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 16px; }
 .template-studio-history-search { flex: 1 1 280px; margin-bottom: 0; }

@@ -87,6 +87,8 @@ export default function TemplateStudio() {
   const [publishedJobIds, setPublishedJobIds] = useState(() => new Set());
   const [pendingJobIds, setPendingJobIds] = useState(() => new Set());
   const [bulkPublishing, setBulkPublishing] = useState(false);
+  const [pendingProgrammeFilter, setPendingProgrammeFilter] = useState("all");
+  const [pendingDepartmentFilter, setPendingDepartmentFilter] = useState("all");
 
   const activeProgrammeFilter = jobHistoryProgramme !== "all" ? jobHistoryProgramme : programme;
 
@@ -120,6 +122,11 @@ export default function TemplateStudio() {
   }, [jobHistory, activeProgrammeFilter, jobHistoryDepartment, jobHistorySearch]);
 
   const pendingJobs = useMemo(() => (jobHistory || []).filter((entry) => entry.status === "completed" && !entry.published), [jobHistory]);
+  const filteredPendingJobs = useMemo(() => pendingJobs.filter((entry) => {
+    const matchesProgramme = pendingProgrammeFilter === "all" || (entry.programme || "") === pendingProgrammeFilter;
+    const matchesDepartment = pendingDepartmentFilter === "all" || (entry.department || "") === pendingDepartmentFilter;
+    return matchesProgramme && matchesDepartment;
+  }), [pendingJobs, pendingProgrammeFilter, pendingDepartmentFilter]);
 
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
@@ -152,24 +159,27 @@ export default function TemplateStudio() {
   }
 
   function toggleAllPending() {
-    setPendingJobIds((current) => current.size === pendingJobs.length ? new Set() : new Set(pendingJobs.map((entry) => entry.id)));
+    setPendingJobIds((current) => current.size === filteredPendingJobs.length ? new Set() : new Set(filteredPendingJobs.map((entry) => entry.id)));
   }
 
   async function publishPendingJobs() {
-    const jobIds = [...pendingJobIds];
+    const visibleJobIds = new Set(filteredPendingJobs.map((entry) => entry.id));
+    const jobIds = [...pendingJobIds].filter((jobId) => visibleJobIds.has(jobId));
     if (!jobIds.length) return;
+    if (!programme) return setError("Select an accreditation type before moving templates.");
+    if (!window.confirm(`Move ${jobIds.length} selected template${jobIds.length === 1 ? "" : "s"} into the ${programme} template library? The generated document${jobIds.length === 1 ? " will" : "s will"} be moved under its department folder and added to the Template Master List.`)) return;
     setBulkPublishing(true);
     setError("");
     try {
       const response = await fetch("/api/admin/template-studio/jobs/publish-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobIds })
+        body: JSON.stringify({ jobIds, programme })
       });
       const result = await response.json();
       if (!response.ok && response.status !== 207) throw new Error(result.error || "Unable to move the selected templates.");
       setPendingJobIds(new Set());
-      setDocSavedMessage(`${result.published?.length || 0} template${result.published?.length === 1 ? "" : "s"} moved to the template library${result.errors?.length ? `; ${result.errors.length} failed.` : "."}`);
+      setDocSavedMessage(`${result.published?.length || 0} template${result.published?.length === 1 ? "" : "s"} moved to the template library${result.errors?.length ? `; ${result.errors.length} failed: ${result.errors.map((item) => item.error).join(" | ")}` : "."}`);
       loadJobHistory();
     } catch (requestError) {
       setError(requestError.message);
@@ -179,13 +189,16 @@ export default function TemplateStudio() {
   }
 
   async function publishTemplate(entry) {
+    const destinationProgramme = entry.programme || programme;
+    if (!destinationProgramme) return setError("Select an accreditation type before moving this template.");
+    if (!window.confirm(`Move "${entry.documentName}" into the ${destinationProgramme} template library? The generated document will be moved under its department folder and added to the Template Master List.`)) return;
     setPublishingJobId(entry.id);
     setError("");
     try {
       const response = await fetch(`/api/admin/template-studio/jobs/${entry.id}/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ programme: entry.programme, department: entry.department })
+        body: JSON.stringify({ programme: destinationProgramme, department: entry.department })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to publish the generated template.");
@@ -555,10 +568,13 @@ export default function TemplateStudio() {
       </nav>
 
       {tab === "pending" && (
-        <section className="users-panel template-studio-job-history">
-          <div className="panel-heading">
-            <FolderOpen size={18} />
-            <h2>Pending template moves</h2>
+        <section className="users-panel template-studio-job-history pending-moves-panel">
+          <div className="pending-moves-heading">
+            <div className="pending-moves-title">
+              <span className="pending-moves-icon"><FolderOpen size={19} /></span>
+              <div><p className="eyebrow">Template library intake</p><h2>Pending moves</h2><p>Review generated documents before adding them to the master template library.</p></div>
+            </div>
+            <div className="pending-moves-count"><strong>{pendingJobs.length}</strong><span>awaiting review</span></div>
             <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
           </div>
           {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
@@ -566,25 +582,34 @@ export default function TemplateStudio() {
           {!jobHistoryLoading && pendingJobs.length === 0 && <p className="empty">No completed templates are waiting to be moved.</p>}
           {!jobHistoryLoading && pendingJobs.length > 0 && (
             <>
-              <div className="template-studio-history-controls">
-                <label className="storage"><input type="checkbox" checked={pendingJobIds.size === pendingJobs.length} onChange={toggleAllPending} /> Select all pending templates</label>
-                <button className="secondary-button" type="button" disabled={!pendingJobIds.size || bulkPublishing} onClick={publishPendingJobs}>
+              <div className="pending-moves-filters">
+                <div className="pending-filter-heading"><Filter size={14} /><span>Filter pending templates</span></div>
+                <label><span>Accreditation type</span><select value={pendingProgrammeFilter} onChange={(event) => setPendingProgrammeFilter(event.target.value)}><option value="all">All accreditation types</option>{NABH_ACCREDITATION_PROGRAMMES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                <label><span>Department</span><select value={pendingDepartmentFilter} onChange={(event) => setPendingDepartmentFilter(event.target.value)}><option value="all">All departments</option>{historyDepartments.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                {(pendingProgrammeFilter !== "all" || pendingDepartmentFilter !== "all") && <button className="secondary-button" type="button" onClick={() => { setPendingProgrammeFilter("all"); setPendingDepartmentFilter("all"); }}>Clear filters</button>}
+              </div>
+              {filteredPendingJobs.length === 0 && <p className="empty">No pending templates match these filters.</p>}
+              {filteredPendingJobs.length > 0 && <>
+              <div className="pending-moves-toolbar">
+                <label className="pending-programme-picker"><span>Move into</span><select value={programme} onChange={(event) => setProgramme(event.target.value)}><option value="">Select accreditation type</option>{NABH_ACCREDITATION_PROGRAMMES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                <label className="pending-select-all"><input type="checkbox" checked={pendingJobIds.size === filteredPendingJobs.length} onChange={toggleAllPending} /> <span>Select all</span><small>{pendingJobIds.size ? `${pendingJobIds.size} selected` : `${filteredPendingJobs.length} shown`}</small></label>
+                <button className="primary-button pending-move-button" type="button" disabled={!pendingJobIds.size || !programme || bulkPublishing} onClick={publishPendingJobs}>
                   <FolderOpen size={15} /> {bulkPublishing ? "Moving..." : `Move selected (${pendingJobIds.size})`}
                 </button>
               </div>
-              <table className="template-studio-job-history-table">
-                <thead><tr><th>Select</th><th>Document</th><th>Department</th><th>Accreditation type</th><th>Completed</th><th>Action</th></tr></thead>
-                <tbody>{pendingJobs.map((entry) => (
-                  <tr key={entry.id}>
-                    <td><input type="checkbox" checked={pendingJobIds.has(entry.id)} onChange={() => togglePendingJob(entry.id)} /></td>
-                    <td><strong>{entry.documentName}</strong></td>
+              <div className="pending-moves-table-wrap"><table className="template-studio-job-history-table pending-moves-table">
+                <thead><tr><th className="pending-select-column">Select</th><th>Document</th><th>Department</th><th>Accreditation type</th><th>Completed</th><th className="pending-action-column">Action</th></tr></thead>
+                <tbody>{filteredPendingJobs.map((entry) => (
+                  <tr className={pendingJobIds.has(entry.id) ? "selected" : ""} key={entry.id}>
+                    <td className="pending-select-column"><input type="checkbox" checked={pendingJobIds.has(entry.id)} onChange={() => togglePendingJob(entry.id)} /></td>
+                    <td><strong className="pending-document-name">{entry.documentName}</strong><small className="pending-document-status">Generated template</small></td>
                     <td>{entry.department || "-"}</td>
                     <td>{entry.programme || "-"}</td>
                     <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
-                    <td><button className="icon-button" type="button" title={`Move ${entry.documentName} to template library`} onClick={() => publishTemplate(entry)}><FolderOpen size={15} /></button></td>
+                    <td className="pending-action-column"><button className="icon-button" type="button" title={`Move ${entry.documentName} to template library`} onClick={() => publishTemplate(entry)}><FolderOpen size={15} /></button></td>
                   </tr>
                 ))}</tbody>
-              </table>
+              </table></div></>}
             </>
           )}
         </section>

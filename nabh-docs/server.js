@@ -796,7 +796,7 @@ app.post("/api/admin/template-studio/jobs/publish-bulk", async (request, respons
     const published = [];
     const errors = [];
     for (const jobId of jobIds) {
-      try { published.push({ jobId, entry: await publishTemplateStudioJob(jobId) }); }
+      try { published.push({ jobId, entry: await publishTemplateStudioJob(jobId, request.body?.programme) }); }
       catch (error) { errors.push({ jobId, error: error.message }); }
     }
     response.status(errors.length ? 207 : 200).json({ published, errors });
