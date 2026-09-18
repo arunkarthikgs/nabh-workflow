@@ -2627,6 +2627,7 @@ function App() {
             >
               <Users size={16} /> User management
             </button>
+            <button className={view === "profile" ? "active" : ""} title="Open my profile" onClick={() => setView("profile")}><UserCircle size={16} /> My Profile</button>
             <button
               className={view === "audit" ? "active" : ""}
               title="Open audit log"
@@ -2692,6 +2693,8 @@ function App() {
           <TemplateStudio />
         ) : view === "users" ? (
           <SuperAdminUserManagement />
+        ) : view === "profile" ? (
+          <MyProfile />
         ) : view === "audit" ? (
           <AuditLog entries={auditEntries} />
         ) : (

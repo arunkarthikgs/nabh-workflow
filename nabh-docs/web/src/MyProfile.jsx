@@ -63,12 +63,12 @@ export default function MyProfile({ hospitalName }) {
           <div className="profile-avatar"><UserCircle size={38} /></div>
           <div><h2>{profile.user.name || "User"}</h2><p>{profile.user.email || "No email recorded"}</p></div>
         </div>
-        <div className="profile-hospital-banner"><Building2 size={18} /><span><strong>{profile.hospital.name}</strong><small>{profile.hospital.code} · {profile.hospital.status}</small></span><Mail size={16} /></div>
+        {profile.hospital ? <div className="profile-hospital-banner"><Building2 size={18} /><span><strong>{profile.hospital.name}</strong><small>{profile.hospital.code} · {profile.hospital.status}</small></span><Mail size={16} /></div> : <div className="profile-hospital-banner"><UserCircle size={18} /><span><strong>Platform administrator</strong><small>No hospital assignment</small></span><Mail size={16} /></div>}
         <div className="profile-details-grid">
           {profileFields.map(([key, label]) => <div className="profile-detail" key={key}><small>{label}</small><strong>{profile.user[key] || "Not provided"}</strong></div>)}
         </div>
       </section>
-      <section className="users-panel my-profile-card password-card">
+      {profile.hospital && <section className="users-panel my-profile-card password-card">
         <div className="panel-heading"><KeyRound size={18} /><h2>Reset password</h2></div>
         <form className="profile-form" onSubmit={changePassword}>
           <label>Current password<input type="password" autoComplete="current-password" value={passwords.currentPassword} onChange={(event) => setPasswords((current) => ({ ...current, currentPassword: event.target.value }))} required /></label>
@@ -78,7 +78,7 @@ export default function MyProfile({ hospitalName }) {
           {passwordMessage && <p className="access-message">{passwordMessage}</p>}
           <button className="primary-button" type="submit" disabled={savingPassword}><KeyRound size={16} /> {savingPassword ? "Updating..." : "Update password"}</button>
         </form>
-      </section>
+      </section>}
     </main>
   );
 }

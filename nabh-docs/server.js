@@ -315,6 +315,9 @@ app.get("/api/admin/users", async (request, response, next) => {
 
 app.get("/api/admin/me/profile", async (request, response, next) => {
   try {
+    if (request.appSession?.role === "Super Admin") {
+      return response.json({ user: { userId: "superadmin", name: request.appSession.userName || "Super Admin", email: configValue("PLATFORM_ADMIN_EMAIL", "Not configured"), role: "Super Admin" }, hospital: null });
+    }
     const hospitalId = request.appSession?.hospital_id || request.appSession?.hospitalId;
     const userId = request.appSession?.user_id || request.appSession?.userId;
     const hospital = await readHospitalById(hospitalId, { withUsers: true });
