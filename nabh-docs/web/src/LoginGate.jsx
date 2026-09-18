@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, FileText, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, CheckCircle2, FileText, KeyRound, Lock, ShieldCheck } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
 
 const exampleAccounts = [
@@ -69,12 +69,21 @@ export default function LoginGate({ onLogin, onShowRegister }) {
 
   return <main className="login-main">
     <section className="login-intro">
-      <div className="login-mark"><ShieldCheck size={20} /></div>
-      <p className="eyebrow">NABH compliance workspace</p>
-      <h1>Documents that stay ready for review.</h1>
-      <p>Manage hospital records, ownership, and accreditation evidence in one focused workspace.</p>
-      <div className="login-note"><FileText size={16} /><span>Master list of documents</span></div>
-      <LoginVisual />
+      <div className="login-clinical-panel">
+        <div className="login-platform-brand"><div className="login-mark"><ShieldCheck size={20} /></div><div><strong>NABH Docs</strong><span>5th Edition Standards Hub</span></div><b>v5.0</b></div>
+        <p className="eyebrow">Secure accreditation workspace</p>
+        <h1>Unified healthcare accreditation and audit repository.</h1>
+        <p>Centralize standard operating procedures, clinical indicators, objective elements, and evidence logs for institutional compliance.</p>
+        <div className="login-readiness-card">
+          <div className="login-readiness-heading"><div><strong>Audit readiness workspace</strong><span>Controlled documentation and review cycles</span></div><b>Ready</b></div>
+          <div className="login-readiness-bar"><span /></div>
+          <div className="login-readiness-items"><span><CheckCircle2 size={14} /> Templates indexed</span><span><Calendar size={14} /> Review cycles tracked</span></div>
+        </div>
+        <div className="login-security-banner"><ShieldCheck size={16} /><span><strong>Governed access:</strong> revision history, timestamps, and document ownership stay visible to authorized teams.</span></div>
+        <div className="login-note"><FileText size={16} /><span>Master list of documents</span></div>
+        <LoginVisual />
+        <div className="login-security-stamp"><span><Lock size={13} /> Confidentiality and access governed</span><code>NABH-SEC-5TH-ED</code></div>
+      </div>
     </section>
     <form className="login-panel" onSubmit={showForgotPassword ? requestReset : submit}>
       <img src={hospitalLogo} alt="NABH Docs" className="login-logo" />
