@@ -2596,6 +2596,7 @@ function App() {
         {isSuperAdmin ? (
           <>
             <button className={view === "home" ? "active" : ""} title="Open Super Admin home" onClick={() => setView("home")}><House size={16} /> Home</button>
+            <button className={view === "profile" ? "active" : ""} title="Open my profile" onClick={() => setView("profile")}><UserCircle size={16} /> My Profile</button>
             <button
               className={view === "admin" ? "active" : ""}
               title="Open hospital registry"
@@ -2627,7 +2628,6 @@ function App() {
             >
               <Users size={16} /> User management
             </button>
-            <button className={view === "profile" ? "active" : ""} title="Open my profile" onClick={() => setView("profile")}><UserCircle size={16} /> My Profile</button>
             <button
               className={view === "audit" ? "active" : ""}
               title="Open audit log"
