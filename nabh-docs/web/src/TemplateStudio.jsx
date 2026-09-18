@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, History, Pencil, Save, X, Search, ListChecks, Eye, Check, FileText } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Copy, FolderOpen, FileSearch, Filter, History, Pencil, Save, X, Search, ListChecks, Eye, Check, FileText } from "lucide-react";
 
 // Must match NABH_ACCREDITATION_PROGRAMMES in services/shared/accreditationService.js.
 const NABH_ACCREDITATION_PROGRAMMES = [
