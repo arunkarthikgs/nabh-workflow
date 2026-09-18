@@ -1,11 +1,27 @@
 // Sends transactional email via SMTP when configured; otherwise writes to a local dev outbox
 // so the flow is testable without real credentials (see output/outbox/*.json).
 import { mkdir, writeFile } from "fs/promises";
+import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { configValue } from "./config.js";
+import mjml2html from "mjml";
 
 const outboxDir = fileURLToPath(new URL("../../output/outbox", import.meta.url));
+const welcomeTemplatePath = fileURLToPath(new URL("../../templates/email/user-1.mjml", import.meta.url));
+const welcomeTemplate = readFileSync(welcomeTemplatePath, "utf8");
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[character]));
+}
+
+async function renderWelcomeHtml({ appUrl, appName, workspaceName, userEmail, supportEmail }) {
+  const values = { app_url: appUrl, app_name: appName, workspace_name: workspaceName, user_with_mail: userEmail, support_mail: supportEmail, current_year: new Date().getFullYear() };
+  const source = welcomeTemplate.replace(/{{\s*([a-z_]+)\s*}}/gi, (_, key) => escapeHtml(values[key]));
+  const result = await mjml2html(source, { validationLevel: "strict" });
+  if (Array.isArray(result.errors) && result.errors.length) throw new Error(`Welcome email template failed validation: ${result.errors.map((error) => error.message).join("; ")}`);
+  return result.html;
+}
 
 async function smtpTransport() {
   const host = configValue("SMTP_HOST");
@@ -57,11 +73,14 @@ export async function sendEmail(message) {
   return { delivered: false, transport: "dev-outbox", file: fileName };
 }
 
-export function buildWelcomeEmail(hospital, user, setupLink) {
+export async function buildWelcomeEmail(hospital, user, setupLink) {
+  const appName = configValue("APP_NAME", "NABH Readiness Platform");
+  const supportEmail = configValue("SUPPORT_EMAIL", configValue("SMTP_FROM", "no-reply@nabh-docs.local"));
   return {
     to: user.email,
     subject: `Welcome to the NABH Readiness Platform, ${hospital.name}`,
-    text: `Hi ${user.name},\n\nYour account for ${hospital.name} (client code ${hospital.code}) has been created on the NABH Readiness Platform.\n\nSet your password to activate your account and get started:\n${setupLink}\n\nThis link expires in 48 hours.\n\n- NABH Readiness Platform`
+    text: `Hi ${user.name},\n\nYour account for ${hospital.name} (client code ${hospital.code}) has been created on the NABH Readiness Platform.\n\nSet your password to activate your account and get started:\n${setupLink}\n\nThis link expires in 48 hours.\n\n- NABH Readiness Platform`,
+    html: await renderWelcomeHtml({ appUrl: setupLink, appName, workspaceName: hospital.name, userEmail: user.email, supportEmail })
   };
 }
 

@@ -83,6 +83,10 @@ export default function TemplateStudio() {
   const [jobHistoryDepartment, setJobHistoryDepartment] = useState("all");
   const [jobHistoryProgramme, setJobHistoryProgramme] = useState("all");
   const [historyPreviewJob, setHistoryPreviewJob] = useState(null);
+  const [publishingJobId, setPublishingJobId] = useState("");
+  const [publishedJobIds, setPublishedJobIds] = useState(() => new Set());
+  const [pendingJobIds, setPendingJobIds] = useState(() => new Set());
+  const [bulkPublishing, setBulkPublishing] = useState(false);
 
   const activeProgrammeFilter = jobHistoryProgramme !== "all" ? jobHistoryProgramme : programme;
 
@@ -115,6 +119,8 @@ export default function TemplateStudio() {
     });
   }, [jobHistory, activeProgrammeFilter, jobHistoryDepartment, jobHistorySearch]);
 
+  const pendingJobs = useMemo(() => (jobHistory || []).filter((entry) => entry.status === "completed" && !entry.published), [jobHistory]);
+
   useEffect(() => {
     fetch("/api/admin/template-studio/categories")
       .then((response) => (response.ok ? response.json() : { categories: [] }))
@@ -137,9 +143,65 @@ export default function TemplateStudio() {
       .finally(() => setJobHistoryLoading(false));
   }
 
+  function togglePendingJob(jobId) {
+    setPendingJobIds((current) => {
+      const next = new Set(current);
+      if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
+      return next;
+    });
+  }
+
+  function toggleAllPending() {
+    setPendingJobIds((current) => current.size === pendingJobs.length ? new Set() : new Set(pendingJobs.map((entry) => entry.id)));
+  }
+
+  async function publishPendingJobs() {
+    const jobIds = [...pendingJobIds];
+    if (!jobIds.length) return;
+    setBulkPublishing(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/template-studio/jobs/publish-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobIds })
+      });
+      const result = await response.json();
+      if (!response.ok && response.status !== 207) throw new Error(result.error || "Unable to move the selected templates.");
+      setPendingJobIds(new Set());
+      setDocSavedMessage(`${result.published?.length || 0} template${result.published?.length === 1 ? "" : "s"} moved to the template library${result.errors?.length ? `; ${result.errors.length} failed.` : "."}`);
+      loadJobHistory();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBulkPublishing(false);
+    }
+  }
+
+  async function publishTemplate(entry) {
+    setPublishingJobId(entry.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/template-studio/jobs/${entry.id}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ programme: entry.programme, department: entry.department })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to publish the generated template.");
+      setPublishedJobIds((current) => new Set([...current, entry.id]));
+      setDocSavedMessage(`Published "${entry.documentName}" to the template library.`);
+      loadJobHistory();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setPublishingJobId("");
+    }
+  }
+
   function openTab(nextTab) {
     setTab(nextTab);
-    if (nextTab === "history") loadJobHistory();
+    if (nextTab === "history" || nextTab === "pending") loadJobHistory();
   }
 
   function copyText(text, setCopiedFn) {
@@ -450,6 +512,7 @@ export default function TemplateStudio() {
           documentName: docNameToUse,
           documentPrompt: docPromptToUse,
           standardRef: standardRefToUse,
+          programme,
           story: specificNotes
         })
       });
@@ -487,8 +550,45 @@ export default function TemplateStudio() {
 
       <nav className="access-tabs">
         <button className={tab === "generate" ? "active" : ""} type="button" onClick={() => openTab("generate")}><Sparkles size={16} /> Generate</button>
+        <button className={tab === "pending" ? "active" : ""} type="button" onClick={() => openTab("pending")}><FolderOpen size={16} /> Pending moves{pendingJobs.length ? ` (${pendingJobs.length})` : ""}</button>
         <button className={tab === "history" ? "active" : ""} type="button" onClick={() => openTab("history")}><ListChecks size={16} /> Recent generation jobs</button>
       </nav>
+
+      {tab === "pending" && (
+        <section className="users-panel template-studio-job-history">
+          <div className="panel-heading">
+            <FolderOpen size={18} />
+            <h2>Pending template moves</h2>
+            <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
+          </div>
+          {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
+          {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading pending templates...</p>}
+          {!jobHistoryLoading && pendingJobs.length === 0 && <p className="empty">No completed templates are waiting to be moved.</p>}
+          {!jobHistoryLoading && pendingJobs.length > 0 && (
+            <>
+              <div className="template-studio-history-controls">
+                <label className="storage"><input type="checkbox" checked={pendingJobIds.size === pendingJobs.length} onChange={toggleAllPending} /> Select all pending templates</label>
+                <button className="secondary-button" type="button" disabled={!pendingJobIds.size || bulkPublishing} onClick={publishPendingJobs}>
+                  <FolderOpen size={15} /> {bulkPublishing ? "Moving..." : `Move selected (${pendingJobIds.size})`}
+                </button>
+              </div>
+              <table className="template-studio-job-history-table">
+                <thead><tr><th>Select</th><th>Document</th><th>Department</th><th>Accreditation type</th><th>Completed</th><th>Action</th></tr></thead>
+                <tbody>{pendingJobs.map((entry) => (
+                  <tr key={entry.id}>
+                    <td><input type="checkbox" checked={pendingJobIds.has(entry.id)} onChange={() => togglePendingJob(entry.id)} /></td>
+                    <td><strong>{entry.documentName}</strong></td>
+                    <td>{entry.department || "-"}</td>
+                    <td>{entry.programme || "-"}</td>
+                    <td>{entry.completedAt ? new Date(entry.completedAt).toLocaleString() : "-"}</td>
+                    <td><button className="icon-button" type="button" title={`Move ${entry.documentName} to template library`} onClick={() => publishTemplate(entry)}><FolderOpen size={15} /></button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </>
+          )}
+        </section>
+      )}
 
       {tab === "history" && (
         <section className="users-panel template-studio-job-history">
@@ -547,6 +647,8 @@ export default function TemplateStudio() {
             </div>
           </div>
 
+          {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
+
           {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
           {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
           {!jobHistoryLoading && jobHistory?.length > 0 && filteredJobHistory.length === 0 && (
@@ -597,6 +699,15 @@ export default function TemplateStudio() {
                           >
                             <Download size={15} />
                           </a>
+                          <button
+                            className="icon-button"
+                            type="button"
+                            title={entry.published || publishedJobIds.has(entry.id) ? "Published to template library" : `Move ${entry.documentName} to template library`}
+                            disabled={publishingJobId === entry.id || entry.published || publishedJobIds.has(entry.id)}
+                            onClick={() => publishTemplate(entry)}
+                          >
+                            {entry.published || publishedJobIds.has(entry.id) ? <Check size={15} /> : <FolderOpen size={15} />}
+                          </button>
                         </div>
                       )}
                     </td>

@@ -100,6 +100,9 @@ export async function listTemplateCatalog() {
   return [];
 }
 export async function saveTemplateCatalog() {}
+export async function upsertTemplateCatalogEntry() {
+  throw new Error("The Template Master List requires DATA_STORE=postgres.");
+}
 
 export async function readHospitals() {
   return readJson(hospitalsPath, []);

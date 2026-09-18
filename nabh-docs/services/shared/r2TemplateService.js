@@ -471,6 +471,18 @@ export async function getR2GeneratedTemplate(objectKey) {
   return Buffer.from(await result.Body.transformToByteArray());
 }
 
+export async function publishR2GeneratedTemplate(objectKey, programme, relativePath) {
+  if (!isEnabled()) throw new Error("R2 storage (R2_ENABLED=true) is required to publish Template Studio documents.");
+  if (!String(objectKey || "").startsWith("api/")) throw new Error("The generated template source path is invalid.");
+  const templatePath = safeRelativePath(relativePath);
+  const settings = config();
+  const source = await getR2GeneratedTemplate(objectKey);
+  const targetKey = `${programmeSourcePrefix(settings, programme)}${templatePath}`;
+  await client().send(new PutObjectCommand({ Bucket: settings.bucket, Key: targetKey, Body: source, ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
+  await client().send(new DeleteObjectCommand({ Bucket: settings.bucket, Key: objectKey }));
+  return { objectKey: targetKey, templatePath };
+}
+
 // Creates an empty placeholder object per NABH accreditation programme (S3/R2 has no real folders,
 // so a zero-byte key ending in "/" is what makes the "folder" show up in bucket browsers).
 export async function ensureProgrammeTemplateFolders() {

@@ -648,7 +648,7 @@ export async function enqueueTemplateJob({ documentId, categoryId, department, p
 export async function listTemplateJobs(limit = 50) {
   const client = await connect();
   const { rows } = await client.query(
-    `select id, department, programme, document_name, status, error, requested_by, created_at, started_at, completed_at from nabh_template_jobs order by created_at desc limit $1`,
+    `select id, department, programme, document_name, status, error, requested_by, result_object_key, created_at, started_at, completed_at from nabh_template_jobs order by created_at desc limit $1`,
     [Math.min(Number(limit) || 50, 200)]
   );
   return rows.map((row) => ({
@@ -657,6 +657,7 @@ export async function listTemplateJobs(limit = 50) {
     programme: row.programme || "",
     documentName: row.document_name,
     status: row.status,
+    published: String(row.result_object_key || "").startsWith("Templates/"),
     error: row.error || "",
     requestedBy: row.requested_by || "",
     createdAt: isoDate(row.created_at),
@@ -679,9 +680,9 @@ export async function getTemplateJob(jobId) {
 // The R2 object key for a completed job's generated .docx, for the download endpoint to fetch from R2.
 export async function getTemplateJobFile(jobId) {
   const client = await connect();
-  const { rows: [row] } = await client.query(`select document_name, status, result_object_key from nabh_template_jobs where id = $1`, [jobId]);
+  const { rows: [row] } = await client.query(`select document_name, department, programme, status, result_object_key from nabh_template_jobs where id = $1`, [jobId]);
   if (!row || row.status !== "completed" || !row.result_object_key) return null;
-  return { documentName: row.document_name, objectKey: row.result_object_key };
+  return { documentName: row.document_name, department: row.department || "", programme: row.programme || "", objectKey: row.result_object_key };
 }
 
 // Atomically claims the oldest queued job so only one worker process ever processes a given row.
@@ -820,6 +821,15 @@ export async function saveTemplateCatalog(programme, entries) {
     await client.query("rollback");
     throw error;
   }
+}
+
+export async function upsertTemplateCatalogEntry(programme, entry) {
+  const client = await connect();
+  await client.query(
+    `insert into nabh_template_catalog (id, programme, department, template_path, file_path) values ($1, $2, $3, $4, $5) on conflict (programme, template_path) do update set department = excluded.department, file_path = excluded.file_path, synced_at = now()`,
+    [randomUUID(), programme, entry.department, entry.templatePath, entry.filePath]
+  );
+  return { programme, department: entry.department, templatePath: entry.templatePath, filePath: entry.filePath };
 }
 
 // Caches the R2 version manifest (approval history) so the version-history icon doesn't need a

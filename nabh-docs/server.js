@@ -11,7 +11,7 @@ import path from "path";
 import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
-import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, createNabhDocument, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument } from "./services/shared/dataStore.js";
+import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, createNabhDocument, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument, upsertTemplateCatalogEntry, completeTemplateJob } from "./services/shared/dataStore.js";
 import { massageDocumentPrompt } from "./services/shared/templateGenerationService.js";
 import { createOnlyOfficeService } from "./services/shared/onlyOfficeService.js";
 import { DOCUMENT_STATUSES, getHospitalDocumentStatus, setHospitalDocumentStatus } from "./services/shared/documentStatusService.js";
@@ -26,7 +26,7 @@ import { createHospitalQuestionnaireReportPdf, createTemplateQuestionnaireReport
 import { createEvidence, getEvidenceFile, listDocumentEvidence } from "./services/shared/evidenceService.js";
 import { similarity } from "./services/shared/textSimilarity.js";
 import { customizeDocumentTemplate } from "./services/shared/documentCustomizer.js";
-import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientObjectKey, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2GeneratedTemplate, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateObjectKey, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
+import { approveR2ClientDocumentVersion, approveR2TemplateDocumentVersion, getDocumentKey, getR2ClientDocumentStatuses, getR2ClientFile, getR2ClientObjectKey, getR2ClientRepositoryStatus, getR2ClientVersionFile, getR2ClientVersionManifest, getR2ClientVersionManifests, getR2GeneratedTemplate, getR2HospitalAccreditation, getR2HospitalLogo, getR2ProgrammeTemplateFile, getR2TemplateFile, getR2TemplateObjectKey, getR2TemplateVersionManifest, listR2ClientAuditEvents, listR2ClientFiles, listR2ProgrammeTemplateFiles, listR2TemplateAuditEvents, listR2TemplateFiles, provisionR2ClientRepository, publishR2GeneratedTemplate, r2TemplateStorageEnabled, r2TemplateStorageInfo, recordR2ClientAuditEvent, saveR2ClientDocumentStatuses, saveR2HospitalAccreditation, saveR2HospitalLogo } from "./services/shared/r2TemplateService.js";
 import { startTemplateJobWorker } from "./services/shared/templateJobWorker.js";
 
 const app = express();
@@ -376,7 +376,7 @@ app.post("/api/admin/users/:userId/reset-password", async (request, response, ne
     if (!found) return response.status(404).json({ error: "User not found." });
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`;
-    const email = await sendEmail(buildWelcomeEmail(found.hospital, found.user, setupLink));
+    const email = await sendEmail(await buildWelcomeEmail(found.hospital, found.user, setupLink));
     response.json({ user: { id: found.user.id, name: found.user.name, email: found.user.email }, email });
   } catch (error) { next(error); }
 });
@@ -389,7 +389,7 @@ app.post("/api/admin/hospitals/:hospitalId/users/:userId/reset-password", async 
     if (!hospital.users?.some((user) => user.id === request.params.userId)) return response.status(404).json({ error: "User not found for this hospital." });
     const found = await resetHospitalUserPassword(request.params.userId);
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
-    const email = await sendEmail(buildWelcomeEmail(found.hospital, found.user, `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`));
+    const email = await sendEmail(await buildWelcomeEmail(found.hospital, found.user, `${origin}/?setPasswordToken=${found.user.passwordSetupToken}`));
     response.json({ user: { id: found.user.id, name: found.user.name, email: found.user.email }, email });
   } catch (error) { next(error); }
 });
@@ -763,6 +763,43 @@ app.get("/api/admin/template-studio/jobs/:jobId", async (request, response, next
   } catch (error) { next(error); }
 });
 
+async function publishTemplateStudioJob(jobId, programmeOverride, departmentOverride) {
+  const file = await getTemplateJobFile(jobId);
+  if (!file) throw new Error("This template is not ready to publish.");
+  const programme = String(programmeOverride || file.programme || "").trim();
+  const department = String(departmentOverride || file.department || "").trim();
+  if (!NABH_ACCREDITATION_PROGRAMMES.includes(programme)) throw new Error("Select a valid accreditation type before publishing.");
+  if (!department || !NABH_WORKSPACE_CATEGORIES.includes(department)) throw new Error("Select a valid template department before publishing.");
+  const fileName = `${(file.documentName || "template").replace(/[^a-z0-9]+/gi, "_")}.docx`;
+  const templatePath = `${department}/${fileName}`;
+  const published = await publishR2GeneratedTemplate(file.objectKey, programme, templatePath);
+  const catalogEntry = await upsertTemplateCatalogEntry(programme, { department, templatePath, filePath: published.objectKey });
+  await completeTemplateJob(jobId, published.objectKey);
+  return catalogEntry;
+}
+
+app.post("/api/admin/template-studio/jobs/:jobId/publish", async (request, response, next) => {
+  try {
+    if (!usesPostgresDataStore()) return response.status(400).json({ error: "Publishing Template Studio documents requires DATA_STORE=postgres." });
+    response.json({ published: await publishTemplateStudioJob(request.params.jobId, request.body?.programme, request.body?.department) });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
+app.post("/api/admin/template-studio/jobs/publish-bulk", async (request, response, next) => {
+  try {
+    if (!usesPostgresDataStore()) return response.status(400).json({ error: "Publishing Template Studio documents requires DATA_STORE=postgres." });
+    const jobIds = Array.isArray(request.body?.jobIds) ? [...new Set(request.body.jobIds.map((id) => String(id).trim()).filter(Boolean))].slice(0, 200) : [];
+    if (!jobIds.length) return response.status(400).json({ error: "Select at least one pending template." });
+    const published = [];
+    const errors = [];
+    for (const jobId of jobIds) {
+      try { published.push({ jobId, entry: await publishTemplateStudioJob(jobId) }); }
+      catch (error) { errors.push({ jobId, error: error.message }); }
+    }
+    response.status(errors.length ? 207 : 200).json({ published, errors });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
+
 app.get("/api/admin/template-studio/jobs/:jobId/download", async (request, response, next) => {
   try {
     const file = await getTemplateJobFile(request.params.jobId);
@@ -1092,8 +1129,8 @@ app.post("/api/register", async (request, response, next) => {
     // programme first (see POST /api/admin/hospitals/:hospitalId/accreditation).
     response.status(201).json({ hospital: { ...createdHospital, users: [safeUser] }, repository: { mode: r2TemplateStorageEnabled() ? "r2" : "local", provisioned: false, pending: "accreditation" }, email: { delivered: null, transport: "pending" } });
     void withTimeout(persistHospitalLogo(createdHospital), 12000, "Hospital logo upload timed out.").catch((error) => console.error("Hospital logo upload failed after registration:", error.message));
-    void withTimeout(sendEmail(buildWelcomeEmail(createdHospital, user, setupLink)), 12000, "Email delivery timed out.").catch((error) => console.error("Welcome email failed after registration:", error.message));
-    if (process.env.PLATFORM_ADMIN_EMAIL) void withTimeout(sendEmail({ ...buildWelcomeEmail(createdHospital, user, setupLink), to: process.env.PLATFORM_ADMIN_EMAIL, subject: `New hospital registration: ${createdHospital.name}` }), 12000, "Platform admin notification timed out.").catch((error) => console.error("Platform admin notification failed:", error.message));
+    void withTimeout(buildWelcomeEmail(createdHospital, user, setupLink).then(sendEmail), 12000, "Email delivery timed out.").catch((error) => console.error("Welcome email failed after registration:", error.message));
+    if (process.env.PLATFORM_ADMIN_EMAIL) void withTimeout(buildWelcomeEmail(createdHospital, user, setupLink).then((email) => sendEmail({ ...email, to: process.env.PLATFORM_ADMIN_EMAIL, subject: `New hospital registration: ${createdHospital.name}` })), 12000, "Platform admin notification timed out.").catch((error) => console.error("Platform admin notification failed:", error.message));
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
@@ -1104,7 +1141,7 @@ app.post("/api/admin/hospitals/:hospitalId/registration/resend", async (request,
     if (!result) return response.status(404).json({ error: "Hospital administrator not found." });
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${result.token}`;
-    const email = await sendEmail(buildWelcomeEmail(result.hospital, result.user, setupLink));
+    const email = await sendEmail(await buildWelcomeEmail(result.hospital, result.user, setupLink));
     response.json({ email: { delivered: email.delivered, transport: email.transport } });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
