@@ -8,7 +8,7 @@ import { access, mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
 import path from "path";
-import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
+import { addHospitalUser, approveHospitalOnboarding, changeHospitalUserPassword, completePasswordSetup, createHospital, createHospitalRole, deleteHospital, deleteHospitalRole, deleteHospitalUser, findHospitalUserForLogin, findUserBySetupToken, isProfileComplete, listHospitalRoles, listHospitals, listRegistryGroups, listRoleMasterGroups, missingProfileFields, registerHospital, resendRegistrationToken, resetHospitalUserPassword, roleActions, setHospitalLogoPath, submitHospitalProfile, updateHospital, updateHospitalRole, updateHospitalUser, verifyHospitalAdminPassword } from "./services/shared/hospitalAdminService.js";
 import { buildOnboardingApprovalEmail, buildWelcomeEmail, sendEmail, verifySmtp } from "./services/shared/emailService.js";
 import { configValue, loadConfig } from "./services/shared/config.js";
 import { appendDocumentAudit, appendUserAuditEvent, cloneNabhDocument, createAuthSession, createNabhDocument, dataStoreDriver, dataStoreInfo, enqueueTemplateJob, getDocumentVersionCache, getNabhDocument, getTemplateJob, getTemplateJobFile, hospitalDocumentCatalogExists, listHospitalDocumentCatalog, listNabhCategories, listNabhDocuments, listNabhPromptHistory, listTemplateCatalog, listTemplateJobs, readAuthSession, readBookingById, readDocumentAnswers, readDocumentAudit, readDocumentAuditByHospital, readDocumentMatches, readHospitalById, readHospitalRegistry, readHospitalSummaries, readTemplateQuestionnaire, readTemplateQuestionnaireSummaries, revokeAuthSession, saveDocumentAnswers, saveDocumentAudit, saveDocumentMatches, saveDocumentVersionCache, saveHospitalDocumentCatalog, saveTemplateCatalog, saveTemplateQuestionnaire, updateNabhCategoryMetaPrompt, updateNabhDocument, upsertTemplateCatalogEntry, completeTemplateJob } from "./services/shared/dataStore.js";
@@ -175,6 +175,22 @@ app.use("/api/admin/template-library", requireSuperAdmin);
 app.use("/api/admin/template-studio", requireSuperAdmin);
 app.use("/api/admin/smtp", requireSuperAdmin);
 app.use("/api/admin/hospitals/:hospitalId", requireHospitalAccess);
+
+app.post("/api/forgot-password", async (request, response, next) => {
+  try {
+    const identifier = String(request.body?.userId || request.body?.email || "").trim();
+    if (!identifier) return response.status(400).json({ error: "Enter your user ID or email address." });
+    const found = await findHospitalUserForLogin(identifier);
+    if (found?.user?.email && found.user.active !== false && found.user.status !== "inactive") {
+      const reset = await resetHospitalUserPassword(found.user.id);
+      const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
+      const setupLink = `${origin}/?setPasswordToken=${reset.user.passwordSetupToken}`;
+      const email = await buildWelcomeEmail(reset.hospital, reset.user, setupLink);
+      await sendEmail({ ...email, subject: `Reset your NABH Readiness Platform password` });
+    }
+    response.json({ message: "If an account matches those details, a password reset link has been sent to its registered email address." });
+  } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
+});
 
 app.get("/api/health", async (_request, response) => {
   let store = { driver: dataStoreDriver(), ok: false };

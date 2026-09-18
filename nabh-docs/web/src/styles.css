@@ -932,6 +932,9 @@ tr.history-row td { background: #f7f7f5; }
 .login-panel input:focus { border-color: #2383e2; box-shadow: 0 0 0 1px #2383e2; }
 .login-submit { align-items: center; background: #2383e2; border: 0; border-radius: 4px; color: #ffffff; cursor: pointer; display: flex; font: 600 13px "Manrope", sans-serif; gap: 9px; justify-content: center; margin-top: 24px; padding: 10px 14px; width: 100%; }
 .login-submit:hover { background: #0f6cbd; }
+.login-forgot-button, .login-back-button { align-items: center; background: transparent; border: 0; color: #3547d1; cursor: pointer; display: inline-flex; font: 600 12px "Manrope", sans-serif; gap: 6px; justify-content: center; margin: 12px auto 0; padding: 5px; width: 100%; }
+.login-forgot-button:hover, .login-back-button:hover { color: #0f6cbd; text-decoration: underline; }
+.login-form-copy { color: #787774; font-size: 12px; line-height: 1.55; margin: -12px 0 20px; }
 .login-hint { border-top: 1px solid #efefed; color: #9b9a97; font-size: 11px; line-height: 1.7; margin: 22px 0 0; padding-top: 16px; }
 .example-logins { border-top: 1px solid #efefed; margin-top: 22px; padding-top: 16px; }
 .example-logins p { color: #787774; font-size: 11px; font-weight: 700; margin: 0 0 8px; }
