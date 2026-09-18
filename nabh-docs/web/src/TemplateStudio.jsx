@@ -79,6 +79,7 @@ export default function TemplateStudio() {
   // Job history tab state
   const [jobHistory, setJobHistory] = useState(null);
   const [jobHistoryLoading, setJobHistoryLoading] = useState(false);
+  const [jobHistoryError, setJobHistoryError] = useState("");
   const [jobHistorySearch, setJobHistorySearch] = useState("");
   const [jobHistoryDepartment, setJobHistoryDepartment] = useState("all");
   const [jobHistoryProgramme, setJobHistoryProgramme] = useState("all");
@@ -142,12 +143,21 @@ export default function TemplateStudio() {
   const selectedDocument = documents.find((doc) => String(doc.id) === String(selectedDocumentId)) || null;
 
   function loadJobHistory() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     setJobHistoryLoading(true);
-    fetch("/api/admin/template-studio/jobs")
-      .then((response) => (response.ok ? response.json() : { jobs: [] }))
+    setJobHistoryError("");
+    fetch("/api/admin/template-studio/jobs", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("The template jobs service returned an error.");
+        return response.json();
+      })
       .then((result) => setJobHistory(result.jobs || []))
-      .catch(() => setJobHistory([]))
-      .finally(() => setJobHistoryLoading(false));
+      .catch((requestError) => {
+        setJobHistory([]);
+        setJobHistoryError(requestError.name === "AbortError" ? "Loading pending templates timed out. Check the database connection and try again." : requestError.message || "Unable to load pending templates.");
+      })
+      .finally(() => { clearTimeout(timeoutId); setJobHistoryLoading(false); });
   }
 
   function togglePendingJob(jobId) {
@@ -578,6 +588,7 @@ export default function TemplateStudio() {
             <button className="icon-button" type="button" title="Refresh" onClick={loadJobHistory}><RefreshCw size={14} className={jobHistoryLoading ? "spin-icon" : ""} /></button>
           </div>
           {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
+          {jobHistoryError && <p className="status error">{jobHistoryError} <button className="text-button" type="button" onClick={loadJobHistory}>Retry</button></p>}
           {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading pending templates...</p>}
           {!jobHistoryLoading && pendingJobs.length === 0 && <p className="empty">No completed templates are waiting to be moved.</p>}
           {!jobHistoryLoading && pendingJobs.length > 0 && (
@@ -675,6 +686,7 @@ export default function TemplateStudio() {
           {docSavedMessage && <p className="access-message"><Check size={14} /> {docSavedMessage}</p>}
 
           {jobHistoryLoading && <p className="loading-state"><RefreshCw size={14} className="spin-icon" /> Loading job history...</p>}
+          {jobHistoryError && <p className="status error">{jobHistoryError} <button className="text-button" type="button" onClick={loadJobHistory}>Retry</button></p>}
           {!jobHistoryLoading && jobHistory?.length === 0 && <p className="empty">No template generation jobs yet.</p>}
           {!jobHistoryLoading && jobHistory?.length > 0 && filteredJobHistory.length === 0 && (
             <p className="empty">No generation jobs match your search or filter criteria.</p>
