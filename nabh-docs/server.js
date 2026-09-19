@@ -1162,7 +1162,7 @@ app.post("/api/admin/hospitals/:hospitalId/registration/resend", async (request,
     const origin = process.env.PUBLIC_BASE_URL || `${request.protocol}://${request.get("host")}`;
     const setupLink = `${origin}/?setPasswordToken=${result.token}`;
     const email = await sendEmail(await buildWelcomeEmail(result.hospital, result.user, setupLink));
-    response.json({ email: { delivered: email.delivered, transport: email.transport } });
+    response.json({ email: { delivered: email.delivered, transport: email.transport }, setupLink });
   } catch (error) { if (error instanceof Error) response.status(400).json({ error: error.message }); else next(error); }
 });
 
