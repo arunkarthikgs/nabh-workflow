@@ -87,8 +87,8 @@ export default function LoginGate({ onLogin, onShowRegister }) {
     </section>
     <form className="login-panel" onSubmit={showForgotPassword ? requestReset : submit}>
       <img src={hospitalLogo} alt="NABH Docs" className="login-logo" />
-      <p className="eyebrow">Secure workspace</p>
-      <h2>{showForgotPassword ? "Reset your password" : "Sign in"}</h2>
+      <p className="eyebrow">Secure workspace access</p>
+      <h2>{showForgotPassword ? "Reset your password" : "Sign In"}</h2>
       {showForgotPassword ? <>
         <p className="login-form-copy">Enter your email or user ID and we will send the password reset link to your registered email address.</p>
         <label>Email or User ID<input value={resetIdentifier} onChange={(event) => setResetIdentifier(event.target.value)} autoComplete="username" autoFocus required /></label>
@@ -96,11 +96,11 @@ export default function LoginGate({ onLogin, onShowRegister }) {
         <button className="login-submit" disabled={resetting}><KeyRound size={16} /> {resetting ? "Sending link..." : "Send reset link"}</button>
         <button type="button" className="login-back-button" onClick={showSignIn}><ArrowLeft size={15} /> Back to sign in</button>
       </> : <>
+        <p className="login-form-copy">Sign in to continue managing hospital records and accreditation workflows.</p>
         <label>User ID or email<input value={userId} onChange={(event) => setUserId(event.target.value)} autoComplete="username" /></label>
-        <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label>
+        <div className="login-password-row"><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label><button type="button" className="login-inline-forgot" onClick={showReset}>Forgot password?</button></div>
         {error && <p className="status error">{error}</p>}
         <button className="login-submit">Continue <ArrowRight size={16} /></button>
-        <button type="button" className="login-forgot-button" onClick={showReset}>Forgot password?</button>
         {onShowRegister && <button type="button" className="login-submit" style={{ background: "transparent", color: "#3547d1" }} onClick={onShowRegister}>New hospital? Register here</button>}
         <div className="example-logins"><p>Example accounts</p>{exampleAccounts.map(([label, id, email, secret]) => <button type="button" key={id} onClick={() => { setUserId(id); setPassword(secret); setError(""); }}><span>{label}</span><code>{id}{email && ` · ${email}`}</code></button>)}</div>
         <p className="login-hint">Hospital administrator passwords use <code>Hospital@123</code>.</p>
