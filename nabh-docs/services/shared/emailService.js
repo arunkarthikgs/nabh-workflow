@@ -48,6 +48,7 @@ async function sendViaSmtp(message) {
   const transporter = await smtpTransport();
   if (!transporter) return false;
   const info = await transporter.sendMail({ from: configValue("SMTP_FROM", "no-reply@nabh-docs.local"), ...message });
+  console.log("SMTP delivery result:", JSON.stringify({ accepted: info.accepted, rejected: info.rejected, response: info.response, messageId: info.messageId }));
   // Ethereal test accounts never deliver to a real inbox; surface the preview link instead.
   const previewUrl = /ethereal\.email$/i.test(host) ? nodemailer.getTestMessageUrl(info) : null;
   return { previewUrl };
