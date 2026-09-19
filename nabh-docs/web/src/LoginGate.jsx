@@ -55,6 +55,10 @@ export default function LoginGate({ onLogin, onShowRegister }) {
 
   async function requestReset(event) {
     event.preventDefault();
+    if (resetIdentifier.trim().toLowerCase() === "superadmin") {
+      setError("The Super Admin demo account has no registered email. Contact the platform administrator to reset it.");
+      return;
+    }
     setResetting(true); setResetMessage(""); setError("");
     try {
       const response = await fetch("/api/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: resetIdentifier.trim(), email: resetIdentifier.trim() }) });
