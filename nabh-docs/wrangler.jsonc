@@ -8,6 +8,7 @@
   "vars": {
     "DATA_STORE": "postgres",
     "POSTGRES_SSL": "no-verify",
+    "PUBLIC_BASE_URL": "https://nabhpulse.inofinix.com",
     "SMTP_HOST": "mbox.inofinix.com",
     "SMTP_PORT": "465",
     "SMTP_SECURE": "true",
