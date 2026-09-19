@@ -3,7 +3,7 @@ WORKDIR /build
 COPY web/package*.json ./web/
 RUN npm --prefix web ci
 # Keep the UI image layer fresh when Cloudflare reuses the container build cache.
-ARG UI_BUILD_REV=2026-09-19-login-refresh
+ARG UI_BUILD_REV=2026-09-19-onboarding-link-refresh
 COPY web ./web
 RUN npm --prefix web run build
 
