@@ -2,6 +2,8 @@ FROM node:22-bookworm-slim AS ui
 WORKDIR /build
 COPY web/package*.json ./web/
 RUN npm --prefix web ci
+# Keep the UI image layer fresh when Cloudflare reuses the container build cache.
+ARG UI_BUILD_REV=2026-09-19-login-refresh
 COPY web ./web
 RUN npm --prefix web run build
 
