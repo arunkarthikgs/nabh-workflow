@@ -61,7 +61,15 @@ export async function verifySmtp() {
 }
 
 export async function sendEmail(message) {
-  const smtpResult = await sendViaSmtp(message).catch((error) => { console.error("SMTP send failed, falling back to the local dev outbox:", error.message); return false; });
+  const smtpConfigured = Boolean(configValue("SMTP_HOST"));
+  let smtpResult;
+  try {
+    smtpResult = await sendViaSmtp(message);
+  } catch (error) {
+    console.error("SMTP send failed:", error.message);
+    if (smtpConfigured) throw new Error(`Email delivery failed: ${error.message}`);
+    smtpResult = false;
+  }
   if (smtpResult) {
     if (smtpResult.previewUrl) console.log(`\n[email preview] ${message.to}: ${smtpResult.previewUrl}\n`);
     return { delivered: true, transport: "smtp", previewUrl: smtpResult.previewUrl || null };
