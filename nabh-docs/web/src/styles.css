@@ -930,7 +930,7 @@ tr.history-row td { background: #f7f7f5; }
 .login-security-stamp span { align-items: center; display: inline-flex; gap: 5px; }
 .login-security-stamp svg { color: #55d2ba; }
 .login-security-stamp code { color: #8799ab; font: 9px "DM Mono", monospace; }
-.login-panel { align-self: center; background: #ffffff; border: 0; border-radius: 0; box-shadow: none; justify-self: center; max-width: 460px; padding: clamp(28px, 5vw, 72px); width: 100%; }
+.login-panel { align-self: center; background: #ffffff; border: 0; border-radius: 0; box-shadow: none; justify-self: center; max-width: 520px; padding: clamp(56px, 9vh, 112px) clamp(34px, 5vw, 78px); width: 100%; }
 .registration-activation-panel { max-width: 560px; }
 .activation-fields { display: grid; gap: 12px; margin: 18px 0; }
 .activation-fields label { color: #5f5e5b; display: block; font-size: 12px; font-weight: 700; margin-bottom: 0; }
@@ -998,7 +998,7 @@ tr.history-row td { background: #f7f7f5; }
   .login-intro { display: block; padding: 34px 22px 28px; }
   .login-clinical-panel { max-width: none; padding: 0; }
   .login-intro h1 { font-size: 29px; }
-  .login-panel { max-width: none; padding: 36px 22px 48px; }
+  .login-panel { max-width: none; padding: 52px 22px 48px; }
   .document-editor-dialog { border-radius: 0; height: 100vh; }
   .editor-toolbar { gap: 12px; overflow-x: auto; padding: 10px 16px; }
   .editor-mode { display: none; }
