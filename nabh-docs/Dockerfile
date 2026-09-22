@@ -2,8 +2,9 @@ FROM node:22-bookworm-slim AS ui
 WORKDIR /build
 COPY web/package*.json ./web/
 RUN npm --prefix web ci
-# Keep the UI image layer fresh when Cloudflare reuses the container build cache.
-ARG UI_BUILD_REV=2026-09-19-onboarding-link-refresh
+# Force a fresh UI build whenever the login fix is deployed.
+ARG UI_BUILD_REV=2026-09-22-login-cleanup
+RUN echo "Building UI revision ${UI_BUILD_REV}"
 COPY web ./web
 RUN npm --prefix web run build
 
