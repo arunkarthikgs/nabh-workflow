@@ -1212,11 +1212,6 @@ app.post("/api/login", async (request, response, next) => {
   try {
     const userId = String(request.body?.userId || request.body?.email || "").trim();
     const password = String(request.body?.password || "");
-    if (userId.toLowerCase() === "superadmin" && password === "Admin@123") {
-      const session = { role: "Super Admin", userName: "Super Admin" };
-      await issueApplicationSession(response, session);
-      return response.json({ session });
-    }
     const authenticated = await verifyHospitalAdminPassword(userId, password);
     if (!authenticated) return response.status(401).json({ error: "Invalid credentials." });
     const { hospital, user } = authenticated;

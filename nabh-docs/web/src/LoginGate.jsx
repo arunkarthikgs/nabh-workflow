@@ -2,17 +2,6 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Calendar, CheckCircle2, FileText, KeyRound, Lock, ShieldCheck } from "lucide-react";
 import hospitalLogo from "./assets/nabh-readiness-system.png";
 
-const exampleAccounts = [
-  ["Super Admin", "superadmin", "", "Admin@123"],
-  ["Aarogyam Hospital", "10000000", "dr.ananya.rao.jph@example.test", "Hospital@123"],
-  ["Asha Oncology Hospital", "10000011", "dr.ananya.rao.sch@example.test", "Hospital@123"],
-  ["Dhanvantari Health Clinic", "10000021", "dr.ananya.rao.nhm@example.test", "Hospital@123"],
-  ["Kaveri Cardiac Institute", "10000031", "dr.ananya.rao.mmh@example.test", "Hospital@123"],
-  ["Lotus Eye Care", "10000042", "dr.ananya.rao.clh@example.test", "Hospital@123"],
-  ["Maitri Mental Health", "10000052", "dr.ananya.rao.kvh@example.test", "Hospital@123"],
-  ["Prana Mother Child Care", "10000062", "dr.ananya.rao.trh@example.test", "Hospital@123"]
-];
-
 const loginSlideSources = ["/home-1.png", "/home-2.png", "/home-3.png"];
 
 function LoginVisual() {
@@ -55,10 +44,6 @@ export default function LoginGate({ onLogin, onShowRegister }) {
 
   async function requestReset(event) {
     event.preventDefault();
-    if (resetIdentifier.trim().toLowerCase() === "superadmin") {
-      setError("The Super Admin demo account has no registered email. Contact the platform administrator to reset it.");
-      return;
-    }
     setResetting(true); setResetMessage(""); setError("");
     try {
       const response = await fetch("/api/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: resetIdentifier.trim(), email: resetIdentifier.trim() }) });
@@ -106,8 +91,6 @@ export default function LoginGate({ onLogin, onShowRegister }) {
         {error && <p className="status error">{error}</p>}
         <button className="login-submit">Continue <ArrowRight size={16} /></button>
         {onShowRegister && <button type="button" className="login-submit" style={{ background: "transparent", color: "#3547d1" }} onClick={onShowRegister}>New hospital? Register here</button>}
-        <div className="example-logins"><p>Example accounts</p>{exampleAccounts.map(([label, id, email, secret]) => <button type="button" key={id} onClick={() => { setUserId(id); setPassword(secret); setError(""); }}><span>{label}</span><code>{id}{email && ` · ${email}`}</code></button>)}</div>
-        <p className="login-hint">Hospital administrator passwords use <code>Hospital@123</code>.</p>
       </>}
     </form>
   </main>;
