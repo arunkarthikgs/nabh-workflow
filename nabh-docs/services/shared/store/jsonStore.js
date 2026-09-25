@@ -122,7 +122,7 @@ export async function findHospitalUserForLogin(identifier) {
   const hospitals = await readHospitals();
   const normalized = String(identifier || "").toLowerCase();
   for (const hospital of hospitals) {
-    const user = (hospital.users || []).find((item) => item.userId === String(identifier || "") || (item.email && item.email.toLowerCase() === normalized) || (item.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
+    const user = (hospital.users || []).find((item) => String(item.userId || "").toLowerCase() === normalized || (item.email && item.email.toLowerCase() === normalized) || (item.role === "Hospital Administrator" && `${hospital.code}-admin`.toLowerCase() === normalized));
     if (user) return { hospital, user };
   }
   return null;

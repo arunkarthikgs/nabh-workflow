@@ -1218,7 +1218,8 @@ app.post("/api/login", async (request, response, next) => {
     await appendUserAuditEvent({ hospitalId: hospital.id, userId: user.id, action: "login", entityType: "user", entityId: user.id, ipAddress: request.ip, userAgent: request.get("user-agent") });
     const hospitalWithLogo = await backfillHospitalLogos([hospital]);
     const role = hospital.roles?.find((item) => item.name === user.role);
-    const session = { role: user.role, userName: user.name, userId: user.userId, accountId: user.id, permissions: role?.permissions || ["view"], hospitalId: hospital.id, hospitalName: hospital.name, hospitalLogoPath: hospitalWithLogo[0].logoPath };
+    const isSuperAdmin = user.role === "Super Admin";
+    const session = { role: user.role, userName: user.name, userId: user.userId, accountId: user.id, permissions: isSuperAdmin ? [...roleActions] : role?.permissions || ["view"], hospitalId: isSuperAdmin ? null : hospital.id, hospitalName: isSuperAdmin ? null : hospital.name, hospitalLogoPath: isSuperAdmin ? null : hospitalWithLogo[0].logoPath };
     await issueApplicationSession(response, session);
     response.json({ session });
   } catch (error) { if (error?.reason === "registration_incomplete") response.status(error.status || 403).json({ error: error.message, reason: error.reason }); else next(error); }

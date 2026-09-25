@@ -38,6 +38,23 @@
     },
     "users": [
       {
+        "id": "a84d9186-e535-488b-aa4d-426b9cc9988f",
+        "userId": "superadmin",
+        "name": "Super Admin",
+        "email": "superadmin",
+        "role": "Super Admin",
+        "active": true,
+        "status": "active",
+        "contactPhone": "",
+        "createdAt": "2026-09-25T13:07:17.849Z",
+        "updatedAt": "2026-09-25T13:07:47.000Z",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "emailVerifiedAt": "2026-09-25T13:07:17.849Z",
+        "lastLoginAt": "2026-09-25T13:07:47.000Z"
+      },
+      {
         "id": "4d5d611b-7548-4b05-8304-907c1226d199",
         "name": "Dr. Ananya Rao",
         "email": "dr.ananya.rao.jph@example.test",
@@ -51,7 +68,11 @@
         "employeeId": "JPH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "76c991e0-ddc9-467c-9535-8e41d78ab40a",
@@ -67,7 +88,11 @@
         "employeeId": "JPH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "a46e8691-acd2-4025-8571-bdf7442b040b",
@@ -83,7 +108,11 @@
         "employeeId": "JPH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "8aa98a52-9837-43ff-9bd2-82a3882b389f",
@@ -99,7 +128,11 @@
         "employeeId": "JPH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "6df9f0ae-d888-4b85-8727-5b5af7e80f22",
@@ -115,7 +148,11 @@
         "employeeId": "JPH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e5f344de-4bb4-4906-b079-77519f919bae",
@@ -131,7 +168,11 @@
         "employeeId": "JPH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e1909a91-88a6-4f34-b19f-81f54e65c085",
@@ -147,7 +188,11 @@
         "employeeId": "JPH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "fda6367f-8f11-4568-99aa-f3152c13c106",
@@ -163,7 +208,11 @@
         "employeeId": "JPH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "2ff157b1-f2db-4a4a-8d30-b46b23b11bd7",
@@ -179,7 +228,11 @@
         "employeeId": "JPH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "6a4f6728-d10d-4133-b7e3-5f73f265f50e",
@@ -195,7 +248,11 @@
         "employeeId": "JPH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "a32f8279-ca94-4818-a0ac-f0be7dd0a97a",
@@ -211,11 +268,15 @@
         "department": "",
         "dateOfJoining": "",
         "employmentType": "Full-time",
-        "createdAt": "2026-09-04T00:30:04.722Z"
+        "createdAt": "2026-09-04T00:30:04.722Z",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-07T00:32:18.008Z",
+    "updatedAt": "2026-09-25T13:07:47.007Z",
     "logoPath": "/logos/aarogyam_hospital.png",
     "roles": [
       {
@@ -6883,7 +6944,11 @@
         "employeeId": "SCH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e0ff4dd6-7949-4bae-939b-7dc39aeedda4",
@@ -6899,7 +6964,11 @@
         "employeeId": "SCH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "36a81854-7f75-4557-823d-0034bc602b4a",
@@ -6915,7 +6984,11 @@
         "employeeId": "SCH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "3e0b5991-ddca-444b-8ee0-5019550ef2f1",
@@ -6931,7 +7004,11 @@
         "employeeId": "SCH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "b5e79596-26d0-49a1-918c-e0145fe37ceb",
@@ -6947,7 +7024,11 @@
         "employeeId": "SCH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e4077833-42c4-4040-a865-ea105dc5694e",
@@ -6963,7 +7044,11 @@
         "employeeId": "SCH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e22f42fe-4e60-45fe-ab8c-7b120b95e44a",
@@ -6979,7 +7064,11 @@
         "employeeId": "SCH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ac38b374-07b7-419d-9b54-fc20f162180f",
@@ -6995,7 +7084,11 @@
         "employeeId": "SCH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "d337d869-c2c2-4a7a-a569-0ba551300638",
@@ -7011,7 +7104,11 @@
         "employeeId": "SCH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "f19e1b5a-cf7f-4191-a1ae-223a788ea94a",
@@ -7027,11 +7124,15 @@
         "employeeId": "SCH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-06T23:51:03.202Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/asha_oncology_hospital.png",
     "roles": [
       {
@@ -12945,7 +13046,11 @@
         "employeeId": "NHM-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "914f3d91-2833-4d6c-8276-aefc83c6c501",
@@ -12961,7 +13066,11 @@
         "employeeId": "NHM-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "901ed528-208b-45ad-a2bd-ee24a7f271c2",
@@ -12977,7 +13086,11 @@
         "employeeId": "NHM-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "d538eb7c-96d9-446d-9863-c5a3cb4de4b0",
@@ -12993,7 +13106,11 @@
         "employeeId": "NHM-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "1b999058-a65f-4467-9e1b-845c8a54ccc4",
@@ -13009,7 +13126,11 @@
         "employeeId": "NHM-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ef90ff10-dd1a-4de9-a9bd-dd40baa13194",
@@ -13025,7 +13146,11 @@
         "employeeId": "NHM-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0658c069-0f79-45c2-b3c8-8c7d214ad21e",
@@ -13041,7 +13166,11 @@
         "employeeId": "NHM-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e8547ff7-c913-48e3-b0f8-f9f2efa2ff65",
@@ -13057,7 +13186,11 @@
         "employeeId": "NHM-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "b3ebe22f-ee43-4986-8533-ea90283623a1",
@@ -13073,7 +13206,11 @@
         "employeeId": "NHM-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "c68c1bfd-7177-4b90-96c5-cb893ad775fa",
@@ -13089,11 +13226,15 @@
         "employeeId": "NHM-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/dhanvantari_health_clinic.png",
     "roles": [
       {
@@ -19007,7 +19148,11 @@
         "employeeId": "MMH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "8927f03b-543c-40e3-9c56-e068caadfb0b",
@@ -19023,7 +19168,11 @@
         "employeeId": "MMH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "b441bd22-80a3-4033-833e-4ea2991754da",
@@ -19039,7 +19188,11 @@
         "employeeId": "MMH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0c01568a-8c35-4727-92ff-8227f0cb72a3",
@@ -19055,7 +19208,11 @@
         "employeeId": "MMH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "76369bff-c4b3-40e6-ad3d-03aade6a1a3d",
@@ -19071,7 +19228,11 @@
         "employeeId": "MMH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ddbe2e2b-ab4d-445c-be42-68883a4a38ff",
@@ -19087,7 +19248,11 @@
         "employeeId": "MMH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "5658c65d-c5dc-4832-ad01-b5a58156e8dc",
@@ -19103,7 +19268,11 @@
         "employeeId": "MMH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "cfb0f223-d391-4622-b6b0-d354b4bb2627",
@@ -19119,7 +19288,11 @@
         "employeeId": "MMH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "4c6c0ba8-33cd-4774-9749-9c1989a2ae66",
@@ -19135,7 +19308,11 @@
         "employeeId": "MMH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "cbe022b5-b14b-4f96-8aee-8ed8701d36d1",
@@ -19151,7 +19328,11 @@
         "employeeId": "MMH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "2fde58ac-6420-42ed-b047-5c5ab9dc7804",
@@ -19167,11 +19348,15 @@
         "department": "Clinical Care",
         "dateOfJoining": "",
         "employmentType": "Full-time",
-        "createdAt": "2026-09-04T04:03:58.934Z"
+        "createdAt": "2026-09-04T04:03:58.934Z",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-04T04:03:58.934Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/kaveri_cardiac_institute.png",
     "roles": [
       {
@@ -25416,7 +25601,11 @@
         "employeeId": "CLH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ab2b3429-2cb5-4ab5-90d1-5d6f1dbf3021",
@@ -25432,7 +25621,11 @@
         "employeeId": "CLH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "35dbe593-d120-4a32-8685-14d71b8bbc73",
@@ -25448,7 +25641,11 @@
         "employeeId": "CLH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "558a6af2-3419-4847-98c9-3d77b20a0442",
@@ -25464,7 +25661,11 @@
         "employeeId": "CLH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "287d078b-22a7-411a-8662-6d69ffeb4b89",
@@ -25480,7 +25681,11 @@
         "employeeId": "CLH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "58a5e985-9ff3-48af-ad22-ad5db58e65b9",
@@ -25496,7 +25701,11 @@
         "employeeId": "CLH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "12ce663d-5712-4d62-935a-affd7b094bbf",
@@ -25512,7 +25721,11 @@
         "employeeId": "CLH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "35ef97ed-66d4-4354-b5ce-5c303974818b",
@@ -25528,7 +25741,11 @@
         "employeeId": "CLH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "7040f091-254f-4c41-a632-ca3ed1a162aa",
@@ -25544,7 +25761,11 @@
         "employeeId": "CLH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0e7038fe-c5db-4eda-84d0-f027765ac7e8",
@@ -25560,11 +25781,15 @@
         "employeeId": "CLH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/lotus_eye_care.png",
     "roles": [
       {
@@ -31478,7 +31703,11 @@
         "employeeId": "KVH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "86bdeec2-891b-490b-8850-ae16a811b8ff",
@@ -31494,7 +31723,11 @@
         "employeeId": "KVH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "a6221a15-a9ca-42bd-bb95-6840ff45bbeb",
@@ -31510,7 +31743,11 @@
         "employeeId": "KVH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "c9ca5c9c-75dc-47e2-85e4-b5ea11963fc6",
@@ -31526,7 +31763,11 @@
         "employeeId": "KVH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "2e703765-cf02-4d21-8353-1e4cf4595803",
@@ -31542,7 +31783,11 @@
         "employeeId": "KVH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "70260b86-5d8b-48f6-8e23-cd3b80e346df",
@@ -31558,7 +31803,11 @@
         "employeeId": "KVH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "d749c44c-9449-4fe3-aef3-cfbff63d1a7d",
@@ -31574,7 +31823,11 @@
         "employeeId": "KVH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "94e7d7c5-b09b-4110-960d-5f022d4cd682",
@@ -31590,7 +31843,11 @@
         "employeeId": "KVH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "9edf7db4-8995-46c5-8b9b-a98a0603d7b4",
@@ -31606,7 +31863,11 @@
         "employeeId": "KVH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "44fffa4f-8bbf-4f26-9fff-95eb565ad863",
@@ -31622,11 +31883,15 @@
         "employeeId": "KVH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/maitri_mental_health.png",
     "roles": [
       {
@@ -37540,7 +37805,11 @@
         "employeeId": "TRH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "486fbfb0-1d4c-4dbd-bd6f-f708b941de2f",
@@ -37556,7 +37825,11 @@
         "employeeId": "TRH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "d3e8b2de-0eba-4a1d-8248-2b5be7a2f987",
@@ -37572,7 +37845,11 @@
         "employeeId": "TRH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "639c7e08-fb84-4c9e-8d25-c67ee62d2a88",
@@ -37588,7 +37865,11 @@
         "employeeId": "TRH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "2d57daba-82cc-4be0-b9a5-44368f7a81ee",
@@ -37604,7 +37885,11 @@
         "employeeId": "TRH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "f9d68c87-133d-4701-9674-f0d8e14861d1",
@@ -37620,7 +37905,11 @@
         "employeeId": "TRH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "cd2bf3a1-5bea-48e4-aba9-0d7b56b62189",
@@ -37636,7 +37925,11 @@
         "employeeId": "TRH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "4e8426f8-c952-4af7-a94d-579f8fcd7d98",
@@ -37652,7 +37945,11 @@
         "employeeId": "TRH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "bccfd348-6c56-4c29-b248-6855f7a8c664",
@@ -37668,7 +37965,11 @@
         "employeeId": "TRH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "abfc6d46-f307-48ad-825b-93b4f8acba31",
@@ -37684,11 +37985,15 @@
         "employeeId": "TRH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/prana_mother_child_care.png",
     "roles": [
       {
@@ -43602,7 +43907,11 @@
         "employeeId": "VMI-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "cf4d65a1-cef4-426a-8677-421db5be6590",
@@ -43618,7 +43927,11 @@
         "employeeId": "VMI-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "f3c304f5-5e09-445f-a535-0d0b0633be89",
@@ -43634,7 +43947,11 @@
         "employeeId": "VMI-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "7b8e34b3-49b8-454d-8c49-602c519795eb",
@@ -43650,7 +43967,11 @@
         "employeeId": "VMI-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "3f08949b-1af9-4566-b7d1-3ec575ec5c62",
@@ -43666,7 +43987,11 @@
         "employeeId": "VMI-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "1006a365-39c8-40ee-be0e-cbb90c76da62",
@@ -43682,7 +44007,11 @@
         "employeeId": "VMI-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "a669bbaf-e118-4988-bf63-885a0747d996",
@@ -43698,7 +44027,11 @@
         "employeeId": "VMI-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "fbae9908-7f4d-4a77-93fa-5941b6b788e6",
@@ -43714,7 +44047,11 @@
         "employeeId": "VMI-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "94840328-d414-4148-8863-31b8cd549248",
@@ -43730,7 +44067,11 @@
         "employeeId": "VMI-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "e9c8653d-8346-43bb-bdd4-3fd9d7e8da56",
@@ -43746,11 +44087,15 @@
         "employeeId": "VMI-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/surya_multispecialty.png",
     "roles": [
       {
@@ -49664,7 +50009,11 @@
         "employeeId": "KCH-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "2b4ea309-0b65-4082-907d-8f4a38e0b7b1",
@@ -49680,7 +50029,11 @@
         "employeeId": "KCH-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "f16dafe1-430c-4b2d-9976-1951462b5cd3",
@@ -49696,7 +50049,11 @@
         "employeeId": "KCH-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "eec2e155-1f59-458f-aa47-b673800aac31",
@@ -49712,7 +50069,11 @@
         "employeeId": "KCH-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0d8fe429-8a1c-4835-91d9-05ff1a6c0fa6",
@@ -49728,7 +50089,11 @@
         "employeeId": "KCH-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "cd2672f8-c0f2-4a18-a127-e1917769f6c4",
@@ -49744,7 +50109,11 @@
         "employeeId": "KCH-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "fa793666-3256-439b-8944-74175887a66c",
@@ -49760,7 +50129,11 @@
         "employeeId": "KCH-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ed3aaa25-b902-48d9-b96c-6fc7696ed5fb",
@@ -49776,7 +50149,11 @@
         "employeeId": "KCH-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "ba9afc29-4abc-4159-8ce2-90571efaced4",
@@ -49792,7 +50169,11 @@
         "employeeId": "KCH-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "56b29ea0-c3a1-4d1f-87e5-272b4bd455a4",
@@ -49808,11 +50189,15 @@
         "employeeId": "KCH-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/trishul_orthopedic_centre.png",
     "roles": [
       {
@@ -55726,7 +56111,11 @@
         "employeeId": "NKC-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "7e2405b2-029e-40e2-b470-ba95ce511194",
@@ -55742,7 +56131,11 @@
         "employeeId": "NKC-002",
         "department": "Clinical Services",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "d8d93b9c-d0c3-49f3-821e-15530f5a65df",
@@ -55758,7 +56151,11 @@
         "employeeId": "NKC-003",
         "department": "Quality",
         "dateOfJoining": "2022-03-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "7b973687-f08b-4e1e-a767-00fc90e7bb33",
@@ -55774,7 +56171,11 @@
         "employeeId": "NKC-004",
         "department": "Quality",
         "dateOfJoining": "2023-04-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "9ecba89f-5686-43b2-aedb-bd26239f692e",
@@ -55790,7 +56191,11 @@
         "employeeId": "NKC-005",
         "department": "Clinical Services",
         "dateOfJoining": "2020-05-15",
-        "employmentType": "Consultant"
+        "employmentType": "Consultant",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "6e4870f6-3f87-4afa-ac00-f40019f3667b",
@@ -55806,7 +56211,11 @@
         "employeeId": "NKC-006",
         "department": "Nursing",
         "dateOfJoining": "2021-06-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "7a68a7df-747b-4294-883f-a5172a6c37a6",
@@ -55822,7 +56231,11 @@
         "employeeId": "NKC-007",
         "department": "Clinical Services",
         "dateOfJoining": "2022-07-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0fa34ec7-33e7-48cf-9b5e-08ffc139052a",
@@ -55838,7 +56251,11 @@
         "employeeId": "NKC-008",
         "department": "Nursing",
         "dateOfJoining": "2023-08-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "0d5ad670-f02e-4044-bb44-b37841e4f208",
@@ -55854,7 +56271,11 @@
         "employeeId": "NKC-009",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       },
       {
         "id": "9cf1e1ca-4174-4233-aadd-de2155eaa30e",
@@ -55870,11 +56291,15 @@
         "employeeId": "NKC-010",
         "department": "Medical Records",
         "dateOfJoining": "2021-02-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "passwordSet": true,
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-03T19:26:30.126Z",
-    "updatedAt": "2026-09-03T19:26:30.126Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "logoPath": "/logos/vaidya_rural_health.png",
     "roles": [
       {
@@ -61788,7 +62213,7 @@
     },
     "users": [],
     "createdAt": "2026-09-04T00:28:04.021Z",
-    "updatedAt": "2026-09-04T00:28:04.021Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "roles": [
       {
         "id": "26035ace-7b09-45bb-ada6-47e32e49579e",
@@ -62211,11 +62636,12 @@
         "dateOfJoining": "2020-01-15",
         "employmentType": "Full-time",
         "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
-        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76"
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-06T23:27:25.783Z",
-    "updatedAt": "2026-09-06T23:38:46.061Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "roles": [
       {
         "id": "38e1f3f7-b00e-4d4c-acfc-a8f77cd566ce",
@@ -68138,9 +68564,7 @@
         "role": "Hospital Administrator",
         "active": true,
         "createdAt": "2026-09-06T23:36:17.898Z",
-        "passwordSet": false,
-        "passwordSetupToken": "37d5e763cd215984fa076aaa0d3318523b9de84a8cae9b63b10c9a8fdb4f9856",
-        "passwordSetupExpiresAt": "2026-09-08T23:36:17.899Z",
+        "passwordSet": true,
         "dateOfBirth": "1980-01-10",
         "gender": "Female",
         "mobileNumber": "9800120000",
@@ -68148,11 +68572,14 @@
         "employeeId": "JHI-001",
         "department": "Clinical Services",
         "dateOfJoining": "2020-01-15",
-        "employmentType": "Full-time"
+        "employmentType": "Full-time",
+        "passwordHash": "37b711bd7df84b4f605ef40d6228ea0f3ea128001faacc9f45864dfc6d62e20624be0ce7ba0cf58a9764ef3088f4a8d315b8a21a4b36ce56b293998639773d76",
+        "passwordSalt": "fcbb2c53b1ab468d64cf3cb7cff2d4ae",
+        "updatedAt": "2026-09-25T13:03:49.405Z"
       }
     ],
     "createdAt": "2026-09-06T23:36:17.898Z",
-    "updatedAt": "2026-09-06T23:36:17.898Z",
+    "updatedAt": "2026-09-25T13:03:49.405Z",
     "roles": [
       {
         "id": "a334b594-53c0-4d55-9344-51f333577ec8",
